@@ -1,0 +1,13 @@
+h5py
+matplotlib
+nibabel
+numpy
+pandas
+pydicom
+scikit_learn
+scipy
+tqdm
+tensorboard
+torchsummary
+
+scikit-learn
