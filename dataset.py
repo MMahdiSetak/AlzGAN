@@ -1,6 +1,8 @@
 import os
 import random
+import time
 
+import ants
 import h5py
 import numpy as np
 import nibabel as nib
@@ -31,8 +33,8 @@ def log_to_file_image(img, file_name):
         # ax.axis('off')
 
     # Save the figure to a file
-    # plt.show()
-    plt.savefig(f"log/pet/{file_name}.png")
+    plt.show()
+    # plt.savefig(f"log/pet/{file_name}.png")
     plt.close(fig)
 
 
@@ -267,11 +269,36 @@ def resize_image(image, target_size):
     return resized_image
 
 
+def pet_registration(moving_image_path):
+    # Load the MNI template and the subject's MRI scan
+    mni_template_path = "template/MNI152_PET_1mm.nii"
+    fixed_image = ants.image_read(mni_template_path)
+    log_to_file_image(fixed_image.numpy(), "debug")
+    # path = f"{moving_image_path}/{os.listdir(moving_image_path)[0]}"
+    moving_image = ants.from_numpy(moving_image_path)
+
+    # Perform affine registration
+    # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='Rigid')
+    # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='Affine')
+    # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='SyNRA')
+    affine_registration = ants.registration(fixed=fixed_image, moving=moving_image,
+                                            type_of_transform='antsRegistrationSyN[a]')
+    return affine_registration["warpedmovout"].numpy()
+    # Save the registered image
+    # final_registered_image.to_filename(output_image_path)
+    # print(f"Registered image saved to {output_image_path}")
+
+
 def pet_image_preprocess(img: np.ndarray) -> np.ndarray:
     # scaled_img = scale_image(img)
     # cropped_img = crop_image(scaled_img)
     normalized_img = normalize_image(img)
-    return normalized_img
+    normalized_img = np.transpose(normalized_img, (2, 1, 0))
+    normalized_img = normalized_img[:, ::-1, ::-1]
+    log_to_file_image(normalized_img, "debug")
+    registered_img = pet_registration(normalized_img)
+    log_to_file_image(registered_img, "debug")
+    return registered_img
 
 
 def create_mri_pet_label_dataset(mri_path, pet_path):
@@ -318,6 +345,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
             for mri_desc in tqdm(mri_descs, leave=False):
                 mri_dates = os.listdir(f"{mri_path}/{subject}/{mri_desc}")
                 for date in tqdm(mri_dates, leave=False):
+                    start = time.time()
                     mri_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
                     closest_pet_date = min(pet_dates_path.keys(), key=lambda x: abs(x - mri_date))
 
@@ -338,10 +366,11 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
                         continue
                     preprocessed_mri = mri_image_preprocess(mri_image)
                     mri_image = resize_image(preprocessed_mri, mri_target)
-                    # pet_img_path = 'PET/ADNI//013_S_0240/ADNI_STATIC_BRAIN__6X5_/2006-04-14_11_40_59.0/I13510'
+                    pet_img_path = 'PET/ADNI//022_S_4266/ADNI_Brain_PET__Raw_FDG/2011-12-20_11_02_13.0/I274741'
                     # pet_img_path = 'PET/ADNI//024_S_6033/Dy1_[F-18]FDG_4i_16s/2017-07-10_08_14_03.0/I872299' # ASC -> ACS
+
                     pet_image = read_PET(pet_img_path)
-                    # log_to_file_image(pet_image, pet_img_id)
+                    log_to_file_image(pet_image, pet_img_id)
                     if pet_image is None:
                         damaged_img += 1
                         continue
@@ -370,6 +399,8 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
                         label_test_ds[current_test_idx] = label
                         current_test_idx += 1
                     current_index += 1
+                    end = time.time()
+                    print(end - start)
             if current_index >= num_imgs:
                 break
 
