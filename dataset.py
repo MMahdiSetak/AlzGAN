@@ -170,37 +170,7 @@ def dataset_info(paths):
     df.to_csv('mri_info.csv')
 
 
-def read_image(path: str) -> np.ndarray | None:
-    files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.dcm')]
-    if len(files) == 0:
-        img_path = f'{path}/{os.listdir(path)[0]}'
-        if img_path.endswith('.v'):
-            try:
-                img = nib.ecat.load(img_path)
-            except Exception:
-                return None
-        elif img_path.endswith('.hdr'):
-            try:
-                img = nib.load(img_path)
-            except nib.filebasedimages.ImageFileError:
-                return None
-        else:
-            return None
-        image_3d = img.get_fdata()[:, :, :, 0]
-        image_3d = np.transpose(image_3d, (2, 0, 1))
-        return image_3d
-    elif len(files) == 1:
-        image_3d = pydicom.dcmread(files[0]).pixel_array
-    else:
-        slices = [pydicom.dcmread(f) for f in files]
-        slices.sort(key=lambda x: x.InstanceNumber)
-        image_3d = np.stack([s.pixel_array for s in slices])
-        if slices[0].Modality == 'PT':
-            image_3d = image_3d[:slices[0].NumberOfSlices]
-    return image_3d
-
-
-def read_pet(path: str) -> np.ndarray:
+def read_image(path: str) -> np.ndarray:
     files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.dcm')]
     slices = [pydicom.dcmread(f) for f in files]
     slices.sort(key=lambda x: x.InstanceNumber)
@@ -362,7 +332,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
                     # pet_img_path = 'PET/ADNI//022_S_4266/ADNI_Brain_PET__Raw_FDG/2011-12-20_11_02_13.0/I274741'
                     # pet_img_path = 'PET/ADNI//024_S_6033/Dy1_[F-18]FDG_4i_16s/2017-07-10_08_14_03.0/I872299' # ASC -> ACS
 
-                    pet_image = read_pet(pet_img_path)
+                    pet_image = read_image(pet_img_path)
                     if pet_image is None:
                         damaged_img += 1
                         continue
@@ -534,7 +504,7 @@ def create_mri_dataset(mri_path: str):
                         image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
                         # if os.path.exists(f"log/{img_id}.png"):
                         #     continue
-                        mri_image = read_mri(image_path)
+                        mri_image = read_image(image_path)
                         if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
                             # print(mri_image.shape)
                             continue
@@ -573,7 +543,7 @@ def pet_dcm2nii(pet_path):
         for date in tqdm(pet_dates, leave=False):
             img_id = os.listdir(f"{sub_path}/{date}")[0]
             image_path = f"{sub_path}/{date}/{img_id}"
-            pet_image = read_pet(image_path)
+            pet_image = read_image(image_path)
             pet_image = np.transpose(pet_image, (2, 1, 0))
             pet_image = pet_image[::-1, ::-1, :]
             nifti_img = nib.Nifti1Image(pet_image, affine)
@@ -598,7 +568,7 @@ def mri_dcm2nii(mri_path):
                     if img_id in image_id_black_list:
                         continue
                     image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
-                    mri_image = read_pet(image_path)
+                    mri_image = read_image(image_path)
                     if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
                         continue
 
