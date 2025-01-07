@@ -33,8 +33,8 @@ def log_to_file_image(img, file_name):
         # ax.axis('off')
 
     # Save the figure to a file
-    plt.show()
-    # plt.savefig(f"log/pet/{file_name}.png")
+    # plt.show()
+    plt.savefig(f"log/pet/{file_name}.png")
     plt.close(fig)
 
 
@@ -208,48 +208,41 @@ def read_PET(path: str) -> np.ndarray | None:
             try:
                 img = nib.ecat.load(img_path)
             except Exception:
+                # print("can't load .v file")
                 return None
         elif img_path.endswith('.hdr'):
             try:
                 img = nib.load(img_path)
             except nib.filebasedimages.ImageFileError:
+                # print("can't load .hdr file")
                 return None
         else:
+            # print("unsupported format")
             return None
         # image_3d = img.get_fdata()[:, :, :, 0]
         image_3d = img.get_fdata().sum(axis=3)
-        image_3d = np.transpose(image_3d, (2, 1, 0))
+        # image_3d = np.transpose(image_3d, (2, 1, 0))
         return image_3d
     elif len(files) == 1:
         image_3d = pydicom.dcmread(files[0]).pixel_array
+        image_3d = np.transpose(image_3d, (2, 1, 0))
+        image_3d = image_3d[:, ::-1, ::-1]
     else:
         slices = [pydicom.dcmread(f) for f in files]
-        # frame = defaultdict(int)
-        # for slice in slices:
-        #     frame[slice.AcquisitionTime] += 1
         slices.sort(key=lambda x: x.InstanceNumber)
-        # plt.imshow(slices[20].pixel_array, cmap='gray')
-        # plt.show()
         image_3d = np.stack([s.pixel_array for s in slices])
-        # if hasattr(slices[0], 'NumberOfTimeSlices'):
-        #     image_3d = image_3d[:len(slices) // slices[0].NumberOfTimeSlices]
-        # elif len(slices) > 200:
-        #     image_3d = image_3d[:slices[0].NumberOfSlices]
         if slices[0].NumberOfSlices > 200:
-            image_3d = image_3d[:len(slices) // slices[0].NumberOfTimeSlices]
+            image_3d = image_3d.reshape((slices[0].NumberOfTimeSlices, len(slices) // slices[0].NumberOfTimeSlices,
+                                         image_3d.shape[1], image_3d.shape[2])).astype(np.float64).sum(axis=0)
+            # image_3d = image_3d[:len(slices) // slices[0].NumberOfTimeSlices]
         elif slices[0].NumberOfSlices * 2 < len(slices):
-            image_3d = image_3d[:slices[0].NumberOfSlices]
-            if image_3d.shape[0] == 35 or image_3d.shape[0] == 90:  # image_3d.shape[1] == 336 or
-                image_3d = np.flip(image_3d, axis=0)
-            #     log_to_file_image(image_3d, "chert")
-            # elif image_3d.shape[0] == 47:
-            #     log_to_file_image(image_3d, "chert")
-            # else:
-            #     log_to_file_image(image_3d, "chert")
-            # image_3d = np.transpose(image_3d, (1, 0, 2))
-
-    # if image_3d.shape[0] == 81:
-    #     log_to_file_image(image_3d, "chert")
+            image_3d = image_3d.reshape((len(slices) // slices[0].NumberOfSlices, slices[0].NumberOfSlices,
+                                         image_3d.shape[1], image_3d.shape[2])).astype(np.float64).sum(axis=0)
+        image_3d = np.transpose(image_3d, (2, 1, 0))
+        image_3d = image_3d[:, ::-1, ::-1]
+        # image_3d = image_3d[:slices[0].NumberOfSlices]
+        # if image_3d.shape[0] == 35 or image_3d.shape[0] == 90:  # image_3d.shape[1] == 336 or
+        #     image_3d = np.flip(image_3d, axis=0)
 
     return image_3d
 
@@ -269,35 +262,31 @@ def resize_image(image, target_size):
     return resized_image
 
 
-def pet_registration(moving_image_path):
-    # Load the MNI template and the subject's MRI scan
-    mni_template_path = "template/MNI152_PET_1mm.nii"
-    fixed_image = ants.image_read(mni_template_path)
-    log_to_file_image(fixed_image.numpy(), "debug")
-    # path = f"{moving_image_path}/{os.listdir(moving_image_path)[0]}"
-    moving_image = ants.from_numpy(moving_image_path)
+# Load the MNI template and the subject's MRI scan
+pet_mni_template_path = "template/MNI152_PET_1mm.nii"
+fixed_image = ants.image_read(pet_mni_template_path)
 
-    # Perform affine registration
+
+def pet_registration(moving_image_path):
+    # log_to_file_image(fixed_image.numpy(), "debug")
+    moving_image = ants.from_numpy(moving_image_path)
     # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='Rigid')
     # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='Affine')
     # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='SyNRA')
-    affine_registration = ants.registration(fixed=fixed_image, moving=moving_image,
-                                            type_of_transform='antsRegistrationSyN[a]')
+    affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='TRSAA')
+    # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image,
+    #                                         type_of_transform='antsRegistrationSyN[a]')
     return affine_registration["warpedmovout"].numpy()
-    # Save the registered image
-    # final_registered_image.to_filename(output_image_path)
-    # print(f"Registered image saved to {output_image_path}")
 
 
 def pet_image_preprocess(img: np.ndarray) -> np.ndarray:
     # scaled_img = scale_image(img)
     # cropped_img = crop_image(scaled_img)
     normalized_img = normalize_image(img)
-    normalized_img = np.transpose(normalized_img, (2, 1, 0))
-    normalized_img = normalized_img[:, ::-1, ::-1]
-    log_to_file_image(normalized_img, "debug")
+    # normalized_img = np.transpose(normalized_img, (2, 1, 0))
+    # normalized_img = normalized_img[:, ::-1, ::-1]
+    # log_to_file_image(normalized_img, "debug")
     registered_img = pet_registration(normalized_img)
-    log_to_file_image(registered_img, "debug")
     return registered_img
 
 
@@ -306,31 +295,31 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
     damaged_img = 0
     mri_target = (160, 192, 192)
     pet_target = (35, 128, 128)
-    # num_imgs = 2656
-    num_imgs = 80
+    num_imgs = 2656
+    # num_imgs = 80
     indices = list(range(num_imgs))
     random.shuffle(indices)
     current_index = 0
-    current_train_idx, current_val_idx, current_test_idx = 0, 0, 0
+    # current_train_idx, current_val_idx, current_test_idx = 0, 0, 0
     image_id_black_list = ['I32421', 'I32853']
-    df = pd.read_csv("mri_labels.csv")
+    # df = pd.read_csv("mri_labels.csv")
 
     # Split indices into train (80%), validation (10%), and test (10%) sets
-    train_indices, temp_indices = train_test_split(indices, test_size=0.2, random_state=42)
-    val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
+    # train_indices, temp_indices = train_test_split(indices, test_size=0.2, random_state=42)
+    # val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
 
     with h5py.File('mri_pet_label_large_test.hdf5', 'w') as h5f:
-        mri_train_ds = h5f.create_dataset('mri_train', (len(train_indices), *mri_target), dtype='uint8')
-        mri_val_ds = h5f.create_dataset('mri_val', (len(val_indices), *mri_target), dtype='uint8')
-        mri_test_ds = h5f.create_dataset('mri_test', (len(test_indices), *mri_target), dtype='uint8')
-
-        pet_train_ds = h5f.create_dataset('pet_train', (len(train_indices), *pet_target), dtype='uint8')
-        pet_val_ds = h5f.create_dataset('pet_val', (len(val_indices), *pet_target), dtype='uint8')
-        pet_test_ds = h5f.create_dataset('pet_test', (len(test_indices), *pet_target), dtype='uint8')
-
-        label_train_ds = h5f.create_dataset('label_train', (len(train_indices),), dtype='int')
-        label_val_ds = h5f.create_dataset('label_val', (len(val_indices),), dtype='int')
-        label_test_ds = h5f.create_dataset('label_test', (len(test_indices),), dtype='int')
+        # mri_train_ds = h5f.create_dataset('mri_train', (len(train_indices), *mri_target), dtype='uint8')
+        # mri_val_ds = h5f.create_dataset('mri_val', (len(val_indices), *mri_target), dtype='uint8')
+        # mri_test_ds = h5f.create_dataset('mri_test', (len(test_indices), *mri_target), dtype='uint8')
+        #
+        # pet_train_ds = h5f.create_dataset('pet_train', (len(train_indices), *pet_target), dtype='uint8')
+        # pet_val_ds = h5f.create_dataset('pet_val', (len(val_indices), *pet_target), dtype='uint8')
+        # pet_test_ds = h5f.create_dataset('pet_test', (len(test_indices), *pet_target), dtype='uint8')
+        #
+        # label_train_ds = h5f.create_dataset('label_train', (len(train_indices),), dtype='int')
+        # label_val_ds = h5f.create_dataset('label_val', (len(val_indices),), dtype='int')
+        # label_test_ds = h5f.create_dataset('label_test', (len(test_indices),), dtype='int')
 
         for subject in tqdm(intersect, leave=True):
             pet_dates_path = {}
@@ -345,7 +334,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
             for mri_desc in tqdm(mri_descs, leave=False):
                 mri_dates = os.listdir(f"{mri_path}/{subject}/{mri_desc}")
                 for date in tqdm(mri_dates, leave=False):
-                    start = time.time()
+                    # start = time.time()
                     mri_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
                     closest_pet_date = min(pet_dates_path.keys(), key=lambda x: abs(x - mri_date))
 
@@ -354,53 +343,56 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
 
                     pet_img_path = f"{pet_dates_path[closest_pet_date]}/{pet_img_id}"
                     mri_img_path = f"{mri_path}/{subject}/{mri_desc}/{date}/{mri_img_id}"
-                    # if pet_img_id != 'I1227192':  # I1430127 I82843 -> flip I1295819 I1480309-> dont flip
+                    # if pet_img_id != 'I202949':  # I1430127 I82843 -> flip I1295819 I1480309-> dont flip
                     #     continue
 
                     if mri_img_id in image_id_black_list:
                         continue
-
-                    mri_image = read_3d_image(mri_img_path)
-                    if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
-                        damaged_img += 1
+                    analyzed = os.listdir("log/pet")
+                    if f"{pet_img_id}.png" in analyzed:
                         continue
-                    preprocessed_mri = mri_image_preprocess(mri_image)
-                    mri_image = resize_image(preprocessed_mri, mri_target)
-                    pet_img_path = 'PET/ADNI//022_S_4266/ADNI_Brain_PET__Raw_FDG/2011-12-20_11_02_13.0/I274741'
+                    # mri_image = read_3d_image(mri_img_path)
+                    # if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
+                    #     damaged_img += 1
+                    #     continue
+                    # preprocessed_mri = mri_image_preprocess(mri_image)
+                    # mri_image = resize_image(preprocessed_mri, mri_target)
+                    # pet_img_path = 'PET/ADNI//022_S_4266/ADNI_Brain_PET__Raw_FDG/2011-12-20_11_02_13.0/I274741'
                     # pet_img_path = 'PET/ADNI//024_S_6033/Dy1_[F-18]FDG_4i_16s/2017-07-10_08_14_03.0/I872299' # ASC -> ACS
 
                     pet_image = read_PET(pet_img_path)
-                    log_to_file_image(pet_image, pet_img_id)
                     if pet_image is None:
                         damaged_img += 1
                         continue
-                    pet_image = pet_image_preprocess(pet_image)
-                    pet_image = resize_image(pet_image, pet_target)
+                    log_to_file_image(pet_image, pet_img_id)
+                    # pet_image = pet_image_preprocess(pet_image)
+                    # log_to_file_image(pet_image, pet_img_id)
+                    # pet_image = resize_image(pet_image, pet_target)
                     # log_to_file_image(pet_image, pet_img_id)
                     # if pet_image.max() < 1:
                     #     print("oh no empy pet")
 
-                    label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
-                    label = group_mapping[label]
+                    # label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
+                    # label = group_mapping[label]
 
-                    if current_index in train_indices:
-                        mri_train_ds[current_train_idx] = mri_image
-                        pet_train_ds[current_train_idx] = pet_image
-                        label_train_ds[current_train_idx] = label
-                        current_train_idx += 1
-                    elif current_index in val_indices:
-                        mri_val_ds[current_val_idx] = mri_image
-                        pet_val_ds[current_val_idx] = pet_image
-                        label_val_ds[current_val_idx] = label
-                        current_val_idx += 1
-                    elif current_index in test_indices:
-                        mri_test_ds[current_test_idx] = mri_image
-                        pet_test_ds[current_test_idx] = pet_image
-                        label_test_ds[current_test_idx] = label
-                        current_test_idx += 1
+                    # if current_index in train_indices:
+                    #     mri_train_ds[current_train_idx] = mri_image
+                    #     pet_train_ds[current_train_idx] = pet_image
+                    #     label_train_ds[current_train_idx] = label
+                    #     current_train_idx += 1
+                    # elif current_index in val_indices:
+                    #     mri_val_ds[current_val_idx] = mri_image
+                    #     pet_val_ds[current_val_idx] = pet_image
+                    #     label_val_ds[current_val_idx] = label
+                    #     current_val_idx += 1
+                    # elif current_index in test_indices:
+                    #     mri_test_ds[current_test_idx] = mri_image
+                    #     pet_test_ds[current_test_idx] = pet_image
+                    #     label_test_ds[current_test_idx] = label
+                    #     current_test_idx += 1
                     current_index += 1
-                    end = time.time()
-                    print(end - start)
+                    # end = time.time()
+                    # print(end - start)
             if current_index >= num_imgs:
                 break
 
