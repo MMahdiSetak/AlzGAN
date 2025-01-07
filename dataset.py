@@ -170,7 +170,7 @@ def dataset_info(paths):
     df.to_csv('mri_info.csv')
 
 
-def read_3d_image(path: str) -> np.ndarray | None:
+def read_image(path: str) -> np.ndarray | None:
     files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.dcm')]
     if len(files) == 0:
         img_path = f'{path}/{os.listdir(path)[0]}'
@@ -534,7 +534,7 @@ def create_mri_dataset(mri_path: str):
                         image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
                         # if os.path.exists(f"log/{img_id}.png"):
                         #     continue
-                        mri_image = read_3d_image(image_path)
+                        mri_image = read_mri(image_path)
                         if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
                             # print(mri_image.shape)
                             continue
@@ -561,6 +561,9 @@ def create_mri_dataset(mri_path: str):
                         # log_to_file_image(preprocessed_mri, img_id)
 
 
+affine = np.eye(4)
+
+
 def pet_dcm2nii(pet_path):
     subjects = os.listdir(pet_path)
     shapes = defaultdict(int)
@@ -573,7 +576,6 @@ def pet_dcm2nii(pet_path):
             pet_image = read_pet(image_path)
             pet_image = np.transpose(pet_image, (2, 1, 0))
             pet_image = pet_image[::-1, ::-1, :]
-            affine = np.eye(4)
             nifti_img = nib.Nifti1Image(pet_image, affine)
             # Save as NIfTI file
             nib.save(nifti_img, "output_file.nii")
@@ -582,13 +584,39 @@ def pet_dcm2nii(pet_path):
     print(shapes)
 
 
+def mri_dcm2nii(mri_path):
+    image_id_black_list = ['I32421', 'I32853']
+    count = 0
+    subjects = os.listdir(mri_path)
+    for subject in tqdm(subjects, leave=False):
+        descs = os.listdir(f"{mri_path}/{subject}")
+        for desc in tqdm(descs, leave=False):
+            dates = os.listdir(f"{mri_path}/{subject}/{desc}")
+            for date in tqdm(dates, leave=False):
+                img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
+                for img_id in img_ids:
+                    if img_id in image_id_black_list:
+                        continue
+                    image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
+                    mri_image = read_pet(image_path)
+                    if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
+                        continue
+
+                    mri_image = np.transpose(mri_image, (0, 2, 1))
+                    mri_image = mri_image[::-1, ::-1, ::-1]
+                    nifti_img = nib.Nifti1Image(mri_image, affine)
+                    nib.save(nifti_img, "output_file.nii")
+                    count += 1
+    print(count)
+
+
 mri_data_paths = "MRI/ADNI/"
 pet_data_path = "PET/ADNI/"
 
 # dataset_info(mri_data_paths)
 # create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
 # mri_pet_label_info(mri_data_paths, pet_data_path)
-pet_dcm2nii(mri_data_paths)
+mri_dcm2nii(mri_data_paths)
 
 # info_analyze('mri_info.csv')
 
