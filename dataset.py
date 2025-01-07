@@ -200,50 +200,11 @@ def read_3d_image(path: str) -> np.ndarray | None:
     return image_3d
 
 
-def read_PET(path: str) -> np.ndarray | None:
+def read_pet(path: str) -> np.ndarray:
     files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.dcm')]
-    if len(files) == 0:
-        img_path = f'{path}/{os.listdir(path)[0]}'
-        if img_path.endswith('.v'):
-            try:
-                img = nib.ecat.load(img_path)
-            except Exception:
-                # print("can't load .v file")
-                return None
-        elif img_path.endswith('.hdr'):
-            try:
-                img = nib.load(img_path)
-            except nib.filebasedimages.ImageFileError:
-                # print("can't load .hdr file")
-                return None
-        else:
-            # print("unsupported format")
-            return None
-        # image_3d = img.get_fdata()[:, :, :, 0]
-        image_3d = img.get_fdata().sum(axis=3)
-        # image_3d = np.transpose(image_3d, (2, 1, 0))
-        return image_3d
-    elif len(files) == 1:
-        image_3d = pydicom.dcmread(files[0]).pixel_array
-        image_3d = np.transpose(image_3d, (2, 1, 0))
-        image_3d = image_3d[:, ::-1, ::-1]
-    else:
-        slices = [pydicom.dcmread(f) for f in files]
-        slices.sort(key=lambda x: x.InstanceNumber)
-        image_3d = np.stack([s.pixel_array for s in slices])
-        if slices[0].NumberOfSlices > 200:
-            image_3d = image_3d.reshape((slices[0].NumberOfTimeSlices, len(slices) // slices[0].NumberOfTimeSlices,
-                                         image_3d.shape[1], image_3d.shape[2])).astype(np.float64).sum(axis=0)
-            # image_3d = image_3d[:len(slices) // slices[0].NumberOfTimeSlices]
-        elif slices[0].NumberOfSlices * 2 < len(slices):
-            image_3d = image_3d.reshape((len(slices) // slices[0].NumberOfSlices, slices[0].NumberOfSlices,
-                                         image_3d.shape[1], image_3d.shape[2])).astype(np.float64).sum(axis=0)
-        image_3d = np.transpose(image_3d, (2, 1, 0))
-        image_3d = image_3d[:, ::-1, ::-1]
-        # image_3d = image_3d[:slices[0].NumberOfSlices]
-        # if image_3d.shape[0] == 35 or image_3d.shape[0] == 90:  # image_3d.shape[1] == 336 or
-        #     image_3d = np.flip(image_3d, axis=0)
-
+    slices = [pydicom.dcmread(f) for f in files]
+    slices.sort(key=lambda x: x.InstanceNumber)
+    image_3d = np.stack([s.pixel_array for s in slices])
     return image_3d
 
 
@@ -288,6 +249,47 @@ def pet_image_preprocess(img: np.ndarray) -> np.ndarray:
     # log_to_file_image(normalized_img, "debug")
     registered_img = pet_registration(normalized_img)
     return registered_img
+
+
+def mri_pet_label_info(mri_path, pet_path):
+    image_id_black_list = ['I32421', 'I32853']
+    damaged_img = 0
+    total = 0
+    intersect = calculate_subject_intersect(mri_path, pet_path)
+    for subject in tqdm(intersect, leave=True):
+        pet_dates_path = {}
+        pet_descs = os.listdir(f"{pet_path}/{subject}")
+        for pet_desc in pet_descs:
+            pet_dates = os.listdir(f"{pet_path}/{subject}/{pet_desc}")
+            for date in pet_dates:
+                pet_dates_path[datetime.strptime(date,
+                                                 '%Y-%m-%d_%H_%M_%S.%f')] = f"{pet_path}/{subject}/{pet_desc}/{date}"
+
+        mri_descs = os.listdir(f"{mri_path}/{subject}")
+        for mri_desc in tqdm(mri_descs, leave=False):
+            mri_dates = os.listdir(f"{mri_path}/{subject}/{mri_desc}")
+            for date in tqdm(mri_dates, leave=False):
+                # start = time.time()
+                mri_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
+                closest_pet_date = min(pet_dates_path.keys(), key=lambda x: abs(x - mri_date))
+
+                pet_img_id = os.listdir(pet_dates_path[closest_pet_date])[0]
+                mri_img_id = os.listdir(f"{mri_path}/{subject}/{mri_desc}/{date}")[0]
+
+                pet_img_path = f"{pet_dates_path[closest_pet_date]}/{pet_img_id}"
+                mri_img_path = f"{mri_path}/{subject}/{mri_desc}/{date}/{mri_img_id}"
+
+                if mri_img_id in image_id_black_list:
+                    damaged_img += 1
+                    continue
+                # analyzed = os.listdir("log/pet")
+                # if f"{pet_img_id}.png" in analyzed:
+                #     continue
+                # pet_image = read_pet(pet_img_path)
+                total += 1
+                # log_to_file_image(pet_image, pet_img_id)
+    print(total)
+    print(damaged_img)
 
 
 def create_mri_pet_label_dataset(mri_path, pet_path):
@@ -360,7 +362,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
                     # pet_img_path = 'PET/ADNI//022_S_4266/ADNI_Brain_PET__Raw_FDG/2011-12-20_11_02_13.0/I274741'
                     # pet_img_path = 'PET/ADNI//024_S_6033/Dy1_[F-18]FDG_4i_16s/2017-07-10_08_14_03.0/I872299' # ASC -> ACS
 
-                    pet_image = read_PET(pet_img_path)
+                    pet_image = read_pet(pet_img_path)
                     if pet_image is None:
                         damaged_img += 1
                         continue
@@ -559,11 +561,34 @@ def create_mri_dataset(mri_path: str):
                         # log_to_file_image(preprocessed_mri, img_id)
 
 
+def pet_dcm2nii(pet_path):
+    subjects = os.listdir(pet_path)
+    shapes = defaultdict(int)
+    for subject in tqdm(subjects, leave=True):
+        sub_path = f"{pet_path}/{subject}/Coreg,_Avg,_Standardized_Image_and_Voxel_Size"
+        pet_dates = os.listdir(sub_path)
+        for date in tqdm(pet_dates, leave=False):
+            img_id = os.listdir(f"{sub_path}/{date}")[0]
+            image_path = f"{sub_path}/{date}/{img_id}"
+            pet_image = read_pet(image_path)
+            pet_image = np.transpose(pet_image, (2, 1, 0))
+            pet_image = pet_image[::-1, ::-1, :]
+            affine = np.eye(4)
+            nifti_img = nib.Nifti1Image(pet_image, affine)
+            # Save as NIfTI file
+            nib.save(nifti_img, "output_file.nii")
+            shapes[pet_image.shape] += 1
+            # log_to_file_image(pet_image, img_id)
+    print(shapes)
+
+
 mri_data_paths = "MRI/ADNI/"
 pet_data_path = "PET/ADNI/"
 
 # dataset_info(mri_data_paths)
-create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
+# create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
+# mri_pet_label_info(mri_data_paths, pet_data_path)
+pet_dcm2nii(mri_data_paths)
 
 # info_analyze('mri_info.csv')
 
