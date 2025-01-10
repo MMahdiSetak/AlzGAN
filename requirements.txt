@@ -9,5 +9,6 @@ scipy
 tqdm
 tensorboard
 torchsummary
+antspyx
 
 scikit-learn
