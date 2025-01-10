@@ -1,19 +1,19 @@
 import os
 import random
-import time
+import subprocess
+from collections import defaultdict
+from datetime import datetime
 
 import ants
 import h5py
-import numpy as np
 import nibabel as nib
+import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-from tqdm import tqdm
 import pydicom
-from collections import defaultdict
-from datetime import datetime
+from matplotlib import pyplot as plt
 from scipy.ndimage import zoom
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 group_mapping = {'CN': 0, 'MCI': 1, 'AD': 2}
 
@@ -23,18 +23,18 @@ def log_to_file_image(img, file_name):
     # img = np.transpose(img, (0, 2, 1))
 
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
-    titles = ['Axial', 'Coronal', 'Sagittal']
+    # titles = ['Axial', 'Coronal', 'Sagittal']
 
     slices = [img[center_slices[0], :, :], img[:, center_slices[1], :], img[:, :, center_slices[2]]]
 
-    for ax, slice_img, title in zip(axes, slices, titles):
+    for ax, slice_img in zip(axes, slices):
         ax.imshow(slice_img, cmap='gray')
-        ax.set_title(title)
+        # ax.set_title(title)
         # ax.axis('off')
 
     # Save the figure to a file
     # plt.show()
-    plt.savefig(f"log/pet/{file_name}.png")
+    plt.savefig(f"log/mri/{file_name}.png")
     plt.close(fig)
 
 
@@ -195,7 +195,7 @@ def resize_image(image, target_size):
 
 # Load the MNI template and the subject's MRI scan
 pet_mni_template_path = "template/MNI152_PET_1mm.nii"
-fixed_image = ants.image_read(pet_mni_template_path)
+pet_template = ants.image_read(pet_mni_template_path)
 
 
 def pet_registration(moving_image_path):
@@ -204,9 +204,18 @@ def pet_registration(moving_image_path):
     # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='Rigid')
     # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='Affine')
     # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='SyNRA')
-    affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='TRSAA')
+    affine_registration = ants.registration(fixed=pet_template, moving=moving_image, type_of_transform='TRSAA')
     # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image,
     #                                         type_of_transform='antsRegistrationSyN[a]')
+    return affine_registration["warpedmovout"].numpy()
+
+
+mri_template = ants.image_read('template/icbm_avg_152_t1_tal_nlin_symmetric_VI_mask.nii')
+
+
+def mri_registration():
+    moving_image = ants.image_read('stripped.nii')
+    affine_registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Affine')
     return affine_registration["warpedmovout"].numpy()
 
 
@@ -432,12 +441,12 @@ def scale_image(img: np.ndarray) -> np.ndarray | None:
     slice_zoom_factor = 1 if shape[0] == 160 else 160 / shape[0]
 
     # Check for valid pixel dimensions
-    if shape[1] not in (192, 256):
+    if shape[2] not in (192, 256):
         print(f"Unexpected pixel dimensions: {shape[1]}, {shape[2]}")
         return None
 
     # Determine pixel zoom factor
-    pixel_zoom_factor = 1 if shape[1] == 192 else 0.8
+    pixel_zoom_factor = 1 if shape[2] == 192 else 0.8
 
     # Scale the image using cubic interpolation
     scaled_image = zoom(img, (slice_zoom_factor, pixel_zoom_factor, pixel_zoom_factor), order=3)
@@ -461,17 +470,22 @@ def normalize_image(img: np.ndarray) -> np.ndarray:
     return ((img.astype(np.float64) * 255) / m).astype(np.uint8)
 
 
-def mri_image_preprocess(img: np.ndarray) -> np.ndarray:
-    scaled_img = scale_image(img)
-    cropped_img = crop_image(scaled_img)
-    normalized_img = normalize_image(cropped_img)
+def mri_preprocess(img: np.ndarray) -> np.ndarray:
+    img = np.transpose(img, (0, 2, 1))
+    img = img[::-1, ::-1, ::-1]
+    skull_stripping(img)
+    img = mri_registration()
+    # scaled_img = scale_image(img)
+    # cropped_img = crop_image(scaled_img)
+    normalized_img = normalize_image(img)
     return normalized_img
 
 
 def create_mri_dataset(mri_path: str):
+    mri_target = (193, 229, 193)
     # mri_target = (160, 192, 192)
-    mri_target = (160 // 2, 192 // 2, 192 // 2)
-    num_imgs = 4608
+    # mri_target = (160 // 2, 192 // 2, 192 // 2)
+    num_imgs = 4572
     image_id_black_list = ['I32421', 'I32853']
     indices = list(range(num_imgs))
     random.shuffle(indices)
@@ -508,7 +522,7 @@ def create_mri_dataset(mri_path: str):
                         if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
                             # print(mri_image.shape)
                             continue
-                        preprocessed_mri = mri_image_preprocess(mri_image)
+                        preprocessed_mri = mri_preprocess(mri_image)
                         dataset_mri = resize_image(preprocessed_mri, mri_target)
                         label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
 
@@ -534,6 +548,17 @@ def create_mri_dataset(mri_path: str):
 affine = np.eye(4)
 
 
+def skull_stripping(img):
+    nifti_img = nib.Nifti1Image(img, affine)
+    nib.save(nifti_img, "temp.nii")
+    command = f'docker run --rm --gpus all -v .:/temp freesurfer/synthstrip:1.6 -i /temp/temp.nii -o /temp/stripped.nii'
+    proc = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc.wait()
+    if proc.returncode != 0:
+        print(f'stripping failed: {proc.returncode}')
+    # return nib.load("stripped.nii").get_fdata()
+
+
 def pet_dcm2nii(pet_path):
     subjects = os.listdir(pet_path)
     shapes = defaultdict(int)
@@ -548,7 +573,8 @@ def pet_dcm2nii(pet_path):
             pet_image = pet_image[::-1, ::-1, :]
             nifti_img = nib.Nifti1Image(pet_image, affine)
             # Save as NIfTI file
-            nib.save(nifti_img, "output_file.nii")
+            nib.save(nifti_img, "temp.nii")
+            skull_stripping()
             shapes[pet_image.shape] += 1
             # log_to_file_image(pet_image, img_id)
     print(shapes)
@@ -571,11 +597,8 @@ def mri_dcm2nii(mri_path):
                     mri_image = read_image(image_path)
                     if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
                         continue
-
-                    mri_image = np.transpose(mri_image, (0, 2, 1))
-                    mri_image = mri_image[::-1, ::-1, ::-1]
-                    nifti_img = nib.Nifti1Image(mri_image, affine)
-                    nib.save(nifti_img, "output_file.nii")
+                    mri_image = mri_preprocess(mri_image)
+                    log_to_file_image(mri_image, img_id)
                     count += 1
     print(count)
 
