@@ -195,7 +195,9 @@ def resize_image(image, target_size):
 
 # Load the MNI template and the subject's MRI scan
 pet_mni_template_path = "template/MNI152_PET_1mm.nii"
-pet_template = ants.image_read(pet_mni_template_path)
+
+
+# pet_template = ants.image_read(pet_mni_template_path)
 
 
 def pet_registration(moving_image_path):
@@ -476,13 +478,14 @@ def mri_preprocess(img: np.ndarray) -> np.ndarray:
     skull_stripping(img)
     img = mri_registration()
     # scaled_img = scale_image(img)
-    # cropped_img = crop_image(scaled_img)
+    # img = crop_image(img)
+    img = img[15:175, 17:217, :180]
     normalized_img = normalize_image(img)
     return normalized_img
 
 
 def create_mri_dataset(mri_path: str):
-    mri_target = (193, 229, 193)
+    mri_target = (160, 200, 180)
     # mri_target = (160, 192, 192)
     # mri_target = (160 // 2, 192 // 2, 192 // 2)
     num_imgs = 4572
@@ -581,7 +584,6 @@ def pet_dcm2nii(pet_path):
 
 
 def mri_dcm2nii(mri_path):
-    image_id_black_list = ['I32421', 'I32853']
     count = 0
     subjects = os.listdir(mri_path)
     for subject in tqdm(subjects, leave=False):
@@ -591,15 +593,15 @@ def mri_dcm2nii(mri_path):
             for date in tqdm(dates, leave=False):
                 img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
                 for img_id in img_ids:
-                    if img_id in image_id_black_list:
-                        continue
                     image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
-                    mri_image = read_image(image_path)
-                    if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
-                        continue
-                    mri_image = mri_preprocess(mri_image)
-                    log_to_file_image(mri_image, img_id)
-                    count += 1
+                    try:
+                        mri_image = read_image(image_path)
+                        mri_image = mri_preprocess(mri_image)
+                        log_to_file_image(mri_image, img_id)
+                        count += 1
+                    except Exception as e:
+                        print(e)
+                        print(f'failed on {img_id}')
     print(count)
 
 
