@@ -193,25 +193,6 @@ def resize_image(image, target_size):
     return resized_image
 
 
-# Load the MNI template and the subject's MRI scan
-pet_mni_template_path = "template/MNI152_PET_1mm.nii"
-
-
-# pet_template = ants.image_read(pet_mni_template_path)
-
-
-def pet_registration(moving_image_path):
-    # log_to_file_image(fixed_image.numpy(), "debug")
-    moving_image = ants.from_numpy(moving_image_path)
-    # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='Rigid')
-    # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='Affine')
-    # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image, type_of_transform='SyNRA')
-    affine_registration = ants.registration(fixed=pet_template, moving=moving_image, type_of_transform='TRSAA')
-    # affine_registration = ants.registration(fixed=fixed_image, moving=moving_image,
-    #                                         type_of_transform='antsRegistrationSyN[a]')
-    return affine_registration["warpedmovout"].numpy()
-
-
 mri_template = ants.image_read('template/icbm_avg_152_t1_tal_nlin_symmetric_VI_mask.nii')
 
 
