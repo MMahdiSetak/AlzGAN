@@ -34,7 +34,7 @@ def log_to_file_image(img, file_name):
 
     # Save the figure to a file
     # plt.show()
-    plt.savefig(f"log/mri/{file_name}.png")
+    plt.savefig(f"log/pet/{file_name}.png")
     plt.close(fig)
 
 
@@ -202,15 +202,16 @@ def mri_registration():
     return affine_registration["warpedmovout"].numpy()
 
 
-def pet_image_preprocess(img: np.ndarray) -> np.ndarray:
-    # scaled_img = scale_image(img)
-    # cropped_img = crop_image(scaled_img)
+def pet_preprocess(img: np.ndarray) -> np.ndarray:
+    img = np.transpose(img, (2, 1, 0))
+    img = img[::-1, ::-1, :]
+    skull_stripping(img)
+    img = nib.load('stripped.nii').get_fdata()
+    img = img[30:130, 10:150, :]
     normalized_img = normalize_image(img)
-    # normalized_img = np.transpose(normalized_img, (2, 1, 0))
-    # normalized_img = normalized_img[:, ::-1, ::-1]
-    # log_to_file_image(normalized_img, "debug")
-    registered_img = pet_registration(normalized_img)
-    return registered_img
+    # pet (160, 160, 96) -> (100, 140, 96)
+    # mri (160, 200, 180)
+    return normalized_img
 
 
 def mri_pet_label_info(mri_path, pet_path):
@@ -553,14 +554,9 @@ def pet_dcm2nii(pet_path):
             img_id = os.listdir(f"{sub_path}/{date}")[0]
             image_path = f"{sub_path}/{date}/{img_id}"
             pet_image = read_image(image_path)
-            pet_image = np.transpose(pet_image, (2, 1, 0))
-            pet_image = pet_image[::-1, ::-1, :]
-            nifti_img = nib.Nifti1Image(pet_image, affine)
-            # Save as NIfTI file
-            nib.save(nifti_img, "temp.nii")
-            skull_stripping()
+            pet_image = pet_preprocess(pet_image)
             shapes[pet_image.shape] += 1
-            # log_to_file_image(pet_image, img_id)
+            log_to_file_image(pet_image, img_id)
     print(shapes)
 
 
@@ -592,7 +588,8 @@ pet_data_path = "PET/ADNI/"
 # dataset_info(mri_data_paths)
 # create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
 # mri_pet_label_info(mri_data_paths, pet_data_path)
-mri_dcm2nii(mri_data_paths)
+# mri_dcm2nii(mri_data_paths)
+pet_dcm2nii(pet_data_path)
 
 # info_analyze('mri_info.csv')
 
