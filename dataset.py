@@ -214,8 +214,14 @@ def pet_preprocess(img: np.ndarray) -> np.ndarray:
     return normalized_img
 
 
+MRI_ID_BLACKLIST = ['I1589895', 'I1591048', 'I1594002', 'I1611628', 'I1528880', 'I1557275', 'I1582497', 'I1623763',
+                    'I1529590', 'I1340855', 'I297693', 'I368892', 'I421360', 'I377209', 'I313948', 'I1620655',
+                    'I1327480', 'I1589927', 'I1327456', 'I1593283', 'I317117', 'I341919', 'I274422', 'I308385',
+                    'I249403', 'I655568', 'I282005', 'I316545', 'I248517', 'I322057', 'I290413', 'I365244', 'I418180',
+                    'I336709', 'I312872', 'I296878', 'I32421', 'I32853', 'I74064', 'I88487', 'I124701']
+
+
 def mri_pet_label_info(mri_path, pet_path):
-    image_id_black_list = ['I32421', 'I32853']
     damaged_img = 0
     total = 0
     intersect = calculate_subject_intersect(mri_path, pet_path)
@@ -242,7 +248,7 @@ def mri_pet_label_info(mri_path, pet_path):
                 pet_img_path = f"{pet_dates_path[closest_pet_date]}/{pet_img_id}"
                 mri_img_path = f"{mri_path}/{subject}/{mri_desc}/{date}/{mri_img_id}"
 
-                if mri_img_id in image_id_black_list:
+                if mri_img_id in MRI_ID_BLACKLIST:
                     damaged_img += 1
                     continue
                 # analyzed = os.listdir("log/pet")
@@ -257,34 +263,32 @@ def mri_pet_label_info(mri_path, pet_path):
 
 def create_mri_pet_label_dataset(mri_path, pet_path):
     intersect = calculate_subject_intersect(mri_path, pet_path)
-    damaged_img = 0
-    mri_target = (160, 192, 192)
-    pet_target = (35, 128, 128)
-    num_imgs = 2656
-    # num_imgs = 80
+    mri_target = (160, 200, 180)
+    pet_target = (100, 140, 96)
+    # num_imgs = 2656
+    num_imgs = 2969
     indices = list(range(num_imgs))
     random.shuffle(indices)
     current_index = 0
-    # current_train_idx, current_val_idx, current_test_idx = 0, 0, 0
-    image_id_black_list = ['I32421', 'I32853']
-    # df = pd.read_csv("mri_labels.csv")
+    current_train_idx, current_val_idx, current_test_idx = 0, 0, 0
+    df = pd.read_csv("mri_labels.csv")
 
     # Split indices into train (80%), validation (10%), and test (10%) sets
-    # train_indices, temp_indices = train_test_split(indices, test_size=0.2, random_state=42)
-    # val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
+    train_indices, temp_indices = train_test_split(indices, test_size=0.2, random_state=42)
+    val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
 
-    with h5py.File('mri_pet_label_large_test.hdf5', 'w') as h5f:
-        # mri_train_ds = h5f.create_dataset('mri_train', (len(train_indices), *mri_target), dtype='uint8')
-        # mri_val_ds = h5f.create_dataset('mri_val', (len(val_indices), *mri_target), dtype='uint8')
-        # mri_test_ds = h5f.create_dataset('mri_test', (len(test_indices), *mri_target), dtype='uint8')
-        #
-        # pet_train_ds = h5f.create_dataset('pet_train', (len(train_indices), *pet_target), dtype='uint8')
-        # pet_val_ds = h5f.create_dataset('pet_val', (len(val_indices), *pet_target), dtype='uint8')
-        # pet_test_ds = h5f.create_dataset('pet_test', (len(test_indices), *pet_target), dtype='uint8')
-        #
-        # label_train_ds = h5f.create_dataset('label_train', (len(train_indices),), dtype='int')
-        # label_val_ds = h5f.create_dataset('label_val', (len(val_indices),), dtype='int')
-        # label_test_ds = h5f.create_dataset('label_test', (len(test_indices),), dtype='int')
+    with h5py.File('mri_pet_label.hdf5', 'w') as h5f:
+        mri_train_ds = h5f.create_dataset('mri_train', (len(train_indices), *mri_target), dtype='uint8')
+        mri_val_ds = h5f.create_dataset('mri_val', (len(val_indices), *mri_target), dtype='uint8')
+        mri_test_ds = h5f.create_dataset('mri_test', (len(test_indices), *mri_target), dtype='uint8')
+
+        pet_train_ds = h5f.create_dataset('pet_train', (len(train_indices), *pet_target), dtype='uint8')
+        pet_val_ds = h5f.create_dataset('pet_val', (len(val_indices), *pet_target), dtype='uint8')
+        pet_test_ds = h5f.create_dataset('pet_test', (len(test_indices), *pet_target), dtype='uint8')
+
+        label_train_ds = h5f.create_dataset('label_train', (len(train_indices),), dtype='int')
+        label_val_ds = h5f.create_dataset('label_val', (len(val_indices),), dtype='int')
+        label_test_ds = h5f.create_dataset('label_test', (len(test_indices),), dtype='int')
 
         for subject in tqdm(intersect, leave=True):
             pet_dates_path = {}
@@ -308,60 +312,44 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
 
                     pet_img_path = f"{pet_dates_path[closest_pet_date]}/{pet_img_id}"
                     mri_img_path = f"{mri_path}/{subject}/{mri_desc}/{date}/{mri_img_id}"
-                    # if pet_img_id != 'I202949':  # I1430127 I82843 -> flip I1295819 I1480309-> dont flip
-                    #     continue
 
-                    if mri_img_id in image_id_black_list:
+                    if mri_img_id in MRI_ID_BLACKLIST:
                         continue
-                    analyzed = os.listdir("log/pet")
-                    if f"{pet_img_id}.png" in analyzed:
-                        continue
-                    # mri_image = read_3d_image(mri_img_path)
-                    # if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
-                    #     damaged_img += 1
-                    #     continue
-                    # preprocessed_mri = mri_image_preprocess(mri_image)
+                    mri_image = read_image(mri_img_path)
+                    mri_image = mri_preprocess(mri_image)
                     # mri_image = resize_image(preprocessed_mri, mri_target)
-                    # pet_img_path = 'PET/ADNI//022_S_4266/ADNI_Brain_PET__Raw_FDG/2011-12-20_11_02_13.0/I274741'
-                    # pet_img_path = 'PET/ADNI//024_S_6033/Dy1_[F-18]FDG_4i_16s/2017-07-10_08_14_03.0/I872299' # ASC -> ACS
 
                     pet_image = read_image(pet_img_path)
-                    if pet_image is None:
-                        damaged_img += 1
-                        continue
-                    log_to_file_image(pet_image, pet_img_id)
-                    # pet_image = pet_image_preprocess(pet_image)
+                    pet_image = pet_preprocess(pet_image)
+                    # pair_log(mri_image, pet_image, f'{mri_img_id}_{pet_img_id}')
                     # log_to_file_image(pet_image, pet_img_id)
                     # pet_image = resize_image(pet_image, pet_target)
                     # log_to_file_image(pet_image, pet_img_id)
-                    # if pet_image.max() < 1:
-                    #     print("oh no empy pet")
 
-                    # label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
-                    # label = group_mapping[label]
+                    label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
+                    label = group_mapping[label]
 
-                    # if current_index in train_indices:
-                    #     mri_train_ds[current_train_idx] = mri_image
-                    #     pet_train_ds[current_train_idx] = pet_image
-                    #     label_train_ds[current_train_idx] = label
-                    #     current_train_idx += 1
-                    # elif current_index in val_indices:
-                    #     mri_val_ds[current_val_idx] = mri_image
-                    #     pet_val_ds[current_val_idx] = pet_image
-                    #     label_val_ds[current_val_idx] = label
-                    #     current_val_idx += 1
-                    # elif current_index in test_indices:
-                    #     mri_test_ds[current_test_idx] = mri_image
-                    #     pet_test_ds[current_test_idx] = pet_image
-                    #     label_test_ds[current_test_idx] = label
-                    #     current_test_idx += 1
+                    if current_index in train_indices:
+                        mri_train_ds[current_train_idx] = mri_image
+                        pet_train_ds[current_train_idx] = pet_image
+                        label_train_ds[current_train_idx] = label
+                        current_train_idx += 1
+                    elif current_index in val_indices:
+                        mri_val_ds[current_val_idx] = mri_image
+                        pet_val_ds[current_val_idx] = pet_image
+                        label_val_ds[current_val_idx] = label
+                        current_val_idx += 1
+                    elif current_index in test_indices:
+                        mri_test_ds[current_test_idx] = mri_image
+                        pet_test_ds[current_test_idx] = pet_image
+                        label_test_ds[current_test_idx] = label
+                        current_test_idx += 1
                     current_index += 1
                     # end = time.time()
                     # print(end - start)
             if current_index >= num_imgs:
                 break
 
-    print(damaged_img)
     print(current_index)
 
 
@@ -470,8 +458,7 @@ def create_mri_dataset(mri_path: str):
     mri_target = (160, 200, 180)
     # mri_target = (160, 192, 192)
     # mri_target = (160 // 2, 192 // 2, 192 // 2)
-    num_imgs = 4572
-    image_id_black_list = ['I32421', 'I32853']
+    num_imgs = 4575
     indices = list(range(num_imgs))
     random.shuffle(indices)
     current_train_idx, current_val_idx, current_test_idx = 0, 0, 0
@@ -498,19 +485,13 @@ def create_mri_dataset(mri_path: str):
                     img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
                     for img_id in img_ids:
                         # start = time.time()
-                        if img_id in image_id_black_list:
+                        if img_id in MRI_ID_BLACKLIST:
                             continue
                         image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
-                        # if os.path.exists(f"log/{img_id}.png"):
-                        #     continue
                         mri_image = read_image(image_path)
-                        if mri_image.shape[0] < 160 or mri_image.shape[1] not in (192, 256):
-                            # print(mri_image.shape)
-                            continue
-                        preprocessed_mri = mri_preprocess(mri_image)
-                        dataset_mri = resize_image(preprocessed_mri, mri_target)
+                        dataset_mri = mri_preprocess(mri_image)
+                        # dataset_mri = resize_image(preprocessed_mri, mri_target)
                         label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
-
                         if current_index in train_indices:
                             mri_train_ds[current_train_idx] = dataset_mri
                             label_train_ds[current_train_idx] = group_mapping[label]
@@ -523,11 +504,7 @@ def create_mri_dataset(mri_path: str):
                             mri_test_ds[current_test_idx] = dataset_mri
                             label_test_ds[current_test_idx] = group_mapping[label]
                             current_test_idx += 1
-                        # mri_ds[indices[current_index]] = dataset_mri
-                        # label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
-                        # label_ds[indices[current_index]] = group_mapping[label]
                         current_index += 1
-                        # log_to_file_image(preprocessed_mri, img_id)
 
 
 affine = np.eye(4)
@@ -586,10 +563,10 @@ mri_data_paths = "MRI/ADNI/"
 pet_data_path = "PET/ADNI/"
 
 # dataset_info(mri_data_paths)
-# create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
+create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
 # mri_pet_label_info(mri_data_paths, pet_data_path)
 # mri_dcm2nii(mri_data_paths)
-pet_dcm2nii(pet_data_path)
+# pet_dcm2nii(pet_data_path)
 
 # info_analyze('mri_info.csv')
 
