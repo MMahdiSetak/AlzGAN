@@ -15,7 +15,7 @@ from tqdm import tqdm
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
-mri_target_shape = (1, 160, 192, 192)
+mri_target_shape = (1, 160, 200, 180)
 
 
 def pair_data_generator(hdf5_file, batch_size, split):
@@ -55,39 +55,39 @@ class Generator(nn.Module):
             nn.Conv3d(1, 128, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm3d(128),
             nn.ReLU(inplace=True),
-            nn.Dropout3d(0.2),
+            nn.Dropout3d(0.1),
 
             nn.Conv3d(128, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm3d(256),
             nn.ReLU(inplace=True),
-            nn.Dropout3d(0.2),
+            nn.Dropout3d(0.1),
 
             nn.Conv3d(256, 512, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm3d(512),
             nn.ReLU(inplace=True),
-            nn.Dropout3d(0.2),
+            nn.Dropout3d(0.1),
 
             nn.Conv3d(512, 1024, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm3d(1024),
             nn.ReLU(inplace=True),
-            nn.Dropout3d(0.2),
+            nn.Dropout3d(0.1),
         )
 
         self.bottleneck = nn.Sequential(
             nn.Conv3d(1024, 1024, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm3d(1024),
             nn.LeakyReLU(0.2),
-            nn.Dropout3d(0.3),
+            nn.Dropout3d(0.2),
 
             nn.Conv3d(1024, 1024, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm3d(1024),
             nn.LeakyReLU(0.2),
-            nn.Dropout3d(0.3),
+            nn.Dropout3d(0.2),
 
             nn.Conv3d(1024, 1024, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm3d(1024),
             nn.LeakyReLU(0.2),
-            nn.Dropout3d(0.3),
+            nn.Dropout3d(0.2),
         )
 
         self.decoder = nn.Sequential(
@@ -123,22 +123,22 @@ class Classifier(nn.Module):
             nn.Conv3d(2048, 1024, kernel_size=3, stride=1, padding=1),
             nn.InstanceNorm3d(1024),
             nn.ReLU(),
-            nn.Dropout3d(0.3),
+            nn.Dropout3d(0.2),
 
             nn.Conv3d(1024, 512, kernel_size=3, stride=1, padding=1),
             nn.InstanceNorm3d(512),
             nn.ReLU(),
-            nn.Dropout3d(0.3),
+            nn.Dropout3d(0.2),
 
             nn.Conv3d(512, 256, kernel_size=3, stride=1, padding=1),
             nn.InstanceNorm3d(256),
             nn.ReLU(),
-            nn.Dropout3d(0.3),
+            nn.Dropout3d(0.1),
 
             nn.Conv3d(256, 128, kernel_size=3, stride=1, padding=1),
             nn.InstanceNorm3d(128),
             nn.ReLU(),
-            nn.Dropout3d(0.3),
+            nn.Dropout3d(0.1),
 
             nn.AdaptiveAvgPool3d((1, 1, 1)),
             nn.Flatten(),
@@ -157,11 +157,11 @@ class Classifier(nn.Module):
 
 
 generator = Generator().to(device)
-generator.load_state_dict(torch.load('model/GAN/best_generator.pth', weights_only=True))
+# generator.load_state_dict(torch.load('model/GAN/best_generator.pth', weights_only=True))
 classifier = Classifier().to(device)
 
-optimizer_g = optim.Adam(generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
-optimizer_c = optim.Adam(classifier.parameters(), lr=0.0002, betas=(0.5, 0.999))
+optimizer_g = optim.Adam(generator.parameters(), lr=0.00003, betas=(0.5, 0.999))
+optimizer_c = optim.Adam(classifier.parameters(), lr=0.00003, betas=(0.5, 0.999))
 
 classification_loss = nn.CrossEntropyLoss()
 
@@ -175,8 +175,10 @@ def train_gan_class(generator, classifier, data_generator, val_data_generator, e
     model_path = f"model/GAN_class/{time_stamp}"
     os.makedirs(model_path, exist_ok=True)
     best_acc = 0
+    scheduler_g = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_g, T_max=100, eta_min=1e-6)
+    scheduler_c = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_c, T_max=100, eta_min=1e-6)
 
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs), leave=False):
         generator.train()
         classifier.train()
         epoch_train_loss = 0.0
@@ -210,7 +212,8 @@ def train_gan_class(generator, classifier, data_generator, val_data_generator, e
 
                 pbar.set_postfix({"Train Loss": f"{cls_loss.item():.4f}", "Train Acc": f"{train_accuracy:.2f}"})
                 pbar.update(1)
-
+        scheduler_g.step()
+        scheduler_c.step()
         generator.eval()
         classifier.eval()
 
@@ -276,7 +279,7 @@ def save_model_metadata(model, input, name, batch_size):
         f.write(out)
 
 
-hdf5_file = 'dataset/mri_label_large.hdf5'
+hdf5_file = 'dataset/mri_label.hdf5'
 with h5py.File(hdf5_file, 'r') as file:
     train_size = len(file['label_train'])
     val_size = len(file['label_val'])
@@ -285,11 +288,11 @@ batch_size = 32
 summary(generator, mri_target_shape, batch_size=batch_size)
 
 save_model_metadata(generator, mri_target_shape, "generator", batch_size)
-save_model_metadata(classifier, (2 * 256, 10, 12, 12), "classifier", batch_size)
+save_model_metadata(classifier, (2 * 1024, 20, 25, 22), "classifier", batch_size)
 
 steps_per_epoch = train_size // batch_size
 steps_per_epoch_val = val_size // batch_size
 train_data_generator = pair_data_generator(hdf5_file, batch_size, "train")
 val_data_generator = pair_data_generator(hdf5_file, batch_size, "val")
-train_gan_class(generator, classifier, train_data_generator, val_data_generator, epochs=300,
+train_gan_class(generator, classifier, train_data_generator, val_data_generator, epochs=500,
                 steps_per_epoch=steps_per_epoch, steps_per_epoch_val=steps_per_epoch_val)
