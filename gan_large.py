@@ -68,7 +68,7 @@ class Generator(nn.Module):
             nn.ReLU(inplace=True),
             nn.Dropout3d(0.1),
 
-            nn.ConvTranspose3d(512, 256, kernel_size=4, stride=(1, 2, 2), padding=1),
+            nn.ConvTranspose3d(512, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm3d(256),
             nn.ReLU(inplace=True),
             nn.Dropout3d(0.1),
@@ -78,7 +78,7 @@ class Generator(nn.Module):
             nn.ReLU(inplace=True),
             nn.Dropout3d(0.1),
 
-            nn.ConvTranspose3d(128, 1, kernel_size=4, stride=(1, 2, 2), padding=1),
+            nn.ConvTranspose3d(128, 1, kernel_size=4, stride=2, padding=1),
             nn.Tanh()
         )
 
@@ -97,11 +97,11 @@ class Discriminator(nn.Module):
             nn.Conv3d(1, 64, kernel_size=4, stride=1, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv3d(64, 128, kernel_size=4, stride=(1, 2, 2), padding=1),
+            nn.Conv3d(64, 128, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm3d(128),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv3d(128, 256, kernel_size=4, stride=(1, 2, 2), padding=1),
+            nn.Conv3d(128, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm3d(256),
             nn.LeakyReLU(0.2, inplace=True),
 
@@ -230,12 +230,12 @@ def train_gan(generator, discriminator, data_generator, val_data_generator, epoc
         visualize_progress(real_pet[0][0].cpu().detach().numpy(), f"{epoch:03d}_real_pet")
 
 
-hdf5_file = 'dataset/mri_pet_label_large_v2.hdf5'
+hdf5_file = 'dataset/mri_pet_label.hdf5'
 with h5py.File(hdf5_file, 'r') as file:
     train_size = len(file['label_train'])
     val_size = len(file['label_val'])
     test_size = len(file['label_test'])
-batch_size = 20
+batch_size = 16
 
 logger.save_model_metadata(generator, mri_target_shape, "generator", batch_size)
 logger.save_model_metadata(discriminator, pet_target_shape, "discriminator", batch_size)
