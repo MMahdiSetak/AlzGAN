@@ -5,7 +5,7 @@ import torch
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def data_generator(hdf5_file, batch_size, split, pet=True, label=True):
+def data_generator(hdf5_file, batch_size, split, pet, label):
     split_dict = {
         'train': ('mri_train', 'pet_train', 'label_train'),
         'val': ('mri_val', 'pet_val', 'label_val'),
