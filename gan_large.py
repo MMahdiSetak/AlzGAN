@@ -1,7 +1,5 @@
-import math
 import os
 
-import h5py
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -10,7 +8,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchsummary import summary
 from tqdm import tqdm
 
-from model.dataloader import data_generator
+from model.dataloader import DataLoader
 from model.log import Logger
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -230,19 +228,13 @@ def train_gan(generator, discriminator, data_generator, val_data_generator, epoc
         visualize_progress(real_pet[0][0].cpu().detach().numpy(), f"{epoch:03d}_real_pet")
 
 
-hdf5_file = 'dataset/mri_pet_label.hdf5'
-with h5py.File(hdf5_file, 'r') as file:
-    train_size = len(file['label_train'])
-    val_size = len(file['label_val'])
-    test_size = len(file['label_test'])
 batch_size = 16
+data_loader = DataLoader('dataset/mri_pet_label.hdf5', batch_size)
 
 logger.save_model_metadata(generator, mri_target_shape, "generator", batch_size)
 logger.save_model_metadata(discriminator, pet_target_shape, "discriminator", batch_size)
 
-steps_per_epoch = math.ceil(train_size / batch_size)
-steps_per_epoch_val = math.ceil(val_size / batch_size)
-train_data_generator = data_generator(hdf5_file, batch_size, "train", pet=True, label=False)
-val_data_generator = data_generator(hdf5_file, batch_size, "val", pet=True, label=False)
+train_data_generator = data_loader.data_generator(batch_size, "train", pet=True, label=False)
+val_data_generator = data_loader.data_generator(batch_size, "val", pet=True, label=False)
 train_gan(generator, discriminator, train_data_generator, val_data_generator, epochs=500, batch_size=batch_size,
-          steps_per_epoch=steps_per_epoch, steps_per_epoch_val=steps_per_epoch_val)
+          steps_per_epoch=data_loader.steps_per_epoch_train, steps_per_epoch_val=data_loader.steps_per_epoch_train)
