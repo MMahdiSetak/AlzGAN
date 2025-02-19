@@ -169,6 +169,56 @@ def q_sample(x_0, t, config):
 # ---------------------------
 # 5) Training Loop (Skeleton)
 # ---------------------------
+@torch.no_grad()
+def generate_pet(model, mri, config):
+    """
+    Generates a PET volume from an input MRI using the reverse diffusion process.
+
+    Args:
+        model: Trained diffusion model (e.g. UNet3DConditionedAttention)
+        mri: MRI volume tensor of shape (1, 1, 160, 200, 180) on the correct device.
+        config: DiffusionConfig instance containing timesteps, beta, alpha, alpha_bar, etc.
+
+    Returns:
+        Generated PET volume tensor of shape (B, 1, 100, 140, 96).
+    """
+    model.eval()
+    # Initialize with pure Gaussian noise in the PET volume shape.
+    x_t = torch.randn(mri.shape[0], 1, 100, 140, 96, device=mri.device)
+    timesteps = config.timesteps
+
+    # Reverse diffusion loop: from t = T-1 down to 1
+    for t in reversed(range(1, timesteps)):
+        # Predict the noise using the trained model conditioned on MRI.
+        # Here, the model takes the current noisy PET (x_t) and the full MRI.
+        epsilon_pred = model(x_t, mri)
+
+        # Retrieve the precomputed alpha_bar and alpha for timestep t.
+        alpha_bar_t = config.alpha_bar[t]
+        alpha_t = config.alpha[t]
+
+        # Compute the prediction for the original PET image (x0_pred) from x_t.
+        # sqrt_alpha_bar_t = torch.sqrt(alpha_bar_t)
+        sqrt_one_minus_alpha_bar_t = torch.sqrt(1.0 - alpha_bar_t)
+        # x0_pred = (x_t - sqrt_one_minus_alpha_bar_t * epsilon_pred) / sqrt_alpha_bar_t
+
+        # Reverse diffusion update based on the DDPM update rule.
+        # The formula used is:
+        #    x_{t-1} = 1/sqrt(alpha_t) * ( x_t - ((1 - alpha_t)/sqrt(1 - alpha_bar_t)) * epsilon_pred )
+        #                + sigma_t * z,   with sigma_t = sqrt(beta_t) and z ~ N(0,I) (if t > 1)
+        beta_t = config.beta[t]
+        sqrt_recip_alpha_t = 1.0 / torch.sqrt(alpha_t)
+        coeff = (1.0 - alpha_t) / sqrt_one_minus_alpha_bar_t
+        mean = sqrt_recip_alpha_t * (x_t - coeff * epsilon_pred)
+
+        # At timestep t > 1, add a noise term; for the final step, no noise is added.
+        noise = torch.randn_like(x_t) if t > 1 else 0
+        sigma_t = torch.sqrt(beta_t)
+        x_t = mean + sigma_t * noise
+
+    return x_t
+
+
 def train_diffusion(model, config, data_generator, val_data_generator, epochs=100, batch_size=32,
                     steps_per_epoch=100, steps_per_epoch_val=50):
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
