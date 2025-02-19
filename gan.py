@@ -20,45 +20,6 @@ mri_target_shape = (1, 80, 96, 96)  # (channels, depth, height, width)
 pet_target_shape = (1, 35, 64, 64)
 
 
-# Data loader function  
-def pair_data_generator(hdf5_file, batch_size, split):
-    with h5py.File(hdf5_file, 'r') as file:
-        # mri_images = file['mri']
-        # pet_images = file['pet']
-        if split == 'train':
-            mri_images = file['mri_train']
-            pet_images = file['pet_train']
-            labels = file['label_train']
-        elif split == 'val':
-            mri_images = file['mri_val']
-            pet_images = file['pet_val']
-            labels = file['label_val']
-        else:
-            mri_images = file['mri_test']
-            pet_images = file['pet_test']
-            labels = file['label_test']
-        n = len(labels)
-        indices = np.arange(n)
-        while True:
-            for i in range(0, n, batch_size):
-                end = min(i + batch_size, n)
-                batch_indices = indices[i:end]  # Get batch indices
-
-                if len(batch_indices) < batch_size:
-                    # Randomly sample additional indices to pad the batch
-                    r = np.random.randint(0, n - batch_size)
-                    additional_indices = indices[r:r + (batch_size - len(batch_indices))]
-                    # additional_indices = np.random.choice(indices, batch_size - len(batch_indices), replace=False)
-                    batch_indices = np.concatenate((additional_indices, batch_indices))
-
-                # Retrieve data for the batch
-                batch_mri = mri_images[batch_indices]
-                batch_pet = pet_images[batch_indices]
-                batch_labels = labels[batch_indices]
-
-                batch_mri = torch.Tensor(batch_mri / 256).unsqueeze(1).to(device)  # Add channel dimension
-                batch_pet = torch.Tensor(batch_pet / 256).unsqueeze(1).to(device)
-                yield batch_mri, batch_pet
 
 
 # Define the Generator model

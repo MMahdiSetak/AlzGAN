@@ -20,31 +20,6 @@ mri_target_shape = (1, 80, 96, 96)  # (channels, depth, height, width)
 pet_target_shape = (1, 35, 64, 64)
 
 
-# Data loader function
-def pair_data_generator(hdf5_file, batch_size, split):
-    with h5py.File(hdf5_file, 'r') as file:
-        if split == 'train':
-            mri_images = file['mri_train']
-            labels = file['label_train']
-        elif split == 'val':
-            mri_images = file['mri_val']
-            labels = file['label_val']
-        else:
-            mri_images = file['mri_test']
-            labels = file['label_test']
-        while True:
-            for i in range(0, len(mri_images), batch_size):
-                end = min(i + batch_size, len(mri_images))
-                batch_mri = mri_images[i:end]
-                batch_label = labels[i:end]
-
-                if batch_mri.shape[0] != batch_size:  # TODO improve this
-                    continue
-
-                batch_mri = torch.Tensor(batch_mri / 256).unsqueeze(1).to(device)  # Add channel dimension
-                yield batch_mri, batch_label
-
-
 # Define the Generator model
 class Generator(nn.Module):
     def __init__(self):
