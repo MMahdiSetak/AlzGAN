@@ -421,7 +421,6 @@ def info_analyze(csv_file):
     # print(thickness)
     return old_unique, new_unique
 
-
 def scale_image(img: np.ndarray) -> np.ndarray | None:
     shape = img.shape
     # Determine slice zoom factor

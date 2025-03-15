@@ -4,10 +4,11 @@ import h5py
 import numpy as np
 import torch
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = 'cpu'
 
 
-# device = 'cpu'
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 class DataLoader:
     def __init__(self, data_path, batch_size):
@@ -61,3 +62,28 @@ class DataLoader:
                         batch_output.append(batch_label)
 
                     yield tuple(batch_output)
+
+    def pet_generator(self, batch_size, split):
+        split_dict = {
+            'train': 'pet_train',
+            'val': 'pet_val',
+            'test': 'pet_test'
+        }
+        with h5py.File(self.data_path, 'r') as file:
+            pet_images = file[split_dict[split]]
+            n = len(pet_images)
+            indices = np.arange(n)
+            while True:
+                for i in range(0, n, batch_size):
+                    end = min(i + batch_size, n)
+                    batch_indices = indices[i:end]  # Get batch indices
+
+                    if len(batch_indices) < batch_size:
+                        # Randomly sample additional indices to pad the batch
+                        r = np.random.randint(0, n - batch_size)
+                        additional_indices = indices[r:r + (batch_size - len(batch_indices))]
+                        batch_indices = np.concatenate((additional_indices, batch_indices))
+
+                    batch_pet = pet_images[batch_indices]
+                    batch_pet = torch.Tensor(batch_pet / 256).unsqueeze(1).to(device)
+                    yield batch_pet

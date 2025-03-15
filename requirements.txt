@@ -12,3 +12,8 @@ torchsummary
 antspyx
 
 scikit-learn
+requests
+torchvision
+pytorch-lightning
+hydra-core
+omegaconf

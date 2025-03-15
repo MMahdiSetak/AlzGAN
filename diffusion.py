@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,8 +8,8 @@ from tqdm import tqdm
 from model.dataloader import DataLoader
 from model.log import Logger
 
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = 'cpu'
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = 'cpu'
 print(device)
 logger = Logger("diffusion")
 
@@ -219,9 +221,27 @@ def generate_pet(model, mri, config):
     return x_t
 
 
+def calculate_psnr(fake_pet, real_pet):
+    mse_loss = nn.MSELoss()(fake_pet, real_pet)
+    if mse_loss == 0:
+        return float('inf')
+    psnr = 20 * torch.log10(1.0 / torch.sqrt(mse_loss))
+    return psnr.item()
+
+
+def evaluate(model, config, val_data_generator, steps_per_epoch_val):
+    total_psnr = 0
+    with torch.no_grad():
+        for _ in tqdm(range(steps_per_epoch_val)):
+            mri, pet = next(val_data_generator)
+            fake_pet = generate_pet(model, mri, config)
+            total_psnr += calculate_psnr(fake_pet, pet)
+    return total_psnr / steps_per_epoch_val
+
+
 def train_diffusion(model, config, data_generator, val_data_generator, epochs=100, batch_size=32,
                     steps_per_epoch=100, steps_per_epoch_val=50):
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
     model.train().to(device)
 
     for epoch in range(epochs):
@@ -244,28 +264,27 @@ def train_diffusion(model, config, data_generator, val_data_generator, epochs=10
         epoch_train_loss /= steps_per_epoch
 
         logger.writer.add_scalar("Loss", epoch_train_loss, epoch + 1)
-        # psnr = evaluate(generator, val_data_generator, steps_per_epoch_val)
-        # logger.writer.add_scalar("PSNR", psnr, epoch + 1)
+        if epoch % 50 == 0:
+            psnr = evaluate(model, config, val_data_generator, steps_per_epoch_val)
+            logger.writer.add_scalar("PSNR", psnr, epoch + 1)
 
-        # if psnr > best_psnr:
-        #     best_psnr = psnr
-        #     checkpoint = {
-        #         "epoch": epoch + 1,
-        #         "generator_state_dict": generator.state_dict(),
-        #         "discriminator_state_dict": discriminator.state_dict(),
-        #         "optimizer_g_state_dict": optimizer_g.state_dict(),
-        #         "optimizer_d_state_dict": optimizer_d.state_dict(),
-        #         "best_psnr": best_psnr,
-        #     }
-        #     torch.save(checkpoint, os.path.join(logger.log_dir, "gan.pth"))
-        #     print(f"Saved model with PSNR: {psnr:.2f}")
+            if psnr > best_psnr:
+                best_psnr = psnr
+                checkpoint = {
+                    "epoch": epoch + 1,
+                    "diffusion_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "best_psnr": best_psnr,
+                }
+                torch.save(checkpoint, os.path.join(logger.log_dir, "diffusion.pth"))
+                print(f"Saved model with PSNR: {psnr:.2f}")
         # visualize_progress(fake_pet[0][0].cpu().detach().numpy(), f"{epoch:03d}_fake_pet")
         # visualize_progress(real_mri[0][0].cpu().detach().numpy(), f"{epoch:03d}_real_mri")
         # visualize_progress(real_pet[0][0].cpu().detach().numpy(), f"{epoch:03d}_real_pet")
     print("Training Complete!")
 
 
-batch_size = 1
+batch_size = 2
 data_loader = DataLoader('dataset/mri_pet_label_v3.hdf5', batch_size)
 train_data_generator = data_loader.data_generator(batch_size, "train", pet=True, label=False)
 val_data_generator = data_loader.data_generator(batch_size, "val", pet=True, label=False)
