@@ -226,12 +226,12 @@ class VQGAN(pl.LightningModule):
         return recon_loss, x_recon, vq_output, perceptual_loss
 
     def training_step(self, batch, batch_idx):
-        x = batch['data']
+        # x = batch['data']
         opt_ae, opt_disc = self.optimizers()
 
         # --- Generator update ---
         # Compute generator losses
-        recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(x, optimizer_idx=0)
+        recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(batch, optimizer_idx=0)
         commitment_loss = vq_output['commitment_loss']
         loss_gen = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
 
@@ -242,7 +242,7 @@ class VQGAN(pl.LightningModule):
 
         # --- Discriminator update ---
         # Compute discriminator loss
-        discloss = self.forward(x, optimizer_idx=1)
+        discloss = self.forward(batch, optimizer_idx=1)
 
         # Zero gradients, backpropagate, and update discriminator parameters
         opt_disc.zero_grad()
@@ -276,9 +276,9 @@ class VQGAN(pl.LightningModule):
 
     def log_images(self, batch, **kwargs):
         log = dict()
-        x = batch['data']
-        x = x.to(self.device)
-        frames, frames_rec, _, _ = self(x, log_image=True)
+        # x = batch['data']
+        batch = batch.to(self.device)
+        frames, frames_rec, _, _ = self(batch, log_image=True)
         log["inputs"] = frames
         log["reconstructions"] = frames_rec
         # log['mean_org'] = batch['mean_org']
@@ -287,9 +287,9 @@ class VQGAN(pl.LightningModule):
 
     def log_videos(self, batch, **kwargs):
         log = dict()
-        x = batch['data']
-        _, _, x, x_rec = self(x, log_image=True)
-        log["inputs"] = x
+        # x = batch['data']
+        _, _, batch, x_rec = self(batch, log_image=True)
+        log["inputs"] = batch
         log["reconstructions"] = x_rec
         # log['mean_org'] = batch['mean_org']
         # log['std_org'] = batch['std_org']
