@@ -12,6 +12,8 @@ class Logger:
         self.time_stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         self.log_dir = os.path.join(f"log/{model_name}", self.time_stamp)
         self.writer = SummaryWriter(log_dir=self.log_dir)
+        self.mri_target_shape = (1, 160, 200, 180)
+        self.pet_target_shape = (1, 100, 140, 96)
 
     def save_model_metadata(self, model, input, name, batch_size):
         with open(f"{self.log_dir}/{name}.txt", "w") as f:
