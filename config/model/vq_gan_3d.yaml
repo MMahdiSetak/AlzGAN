@@ -4,12 +4,12 @@ num_workers: 30
 
 gpus: 1
 accumulate_grad_batches: 1
-default_root_dir: ./log/checkpoints/vq_gan/
+default_root_dir: ./log/checkpoints/vq_gan_mri/
 default_root_dir_postfix: ''
 resume_from_checkpoint:
 max_steps: -1
 max_epochs: -1
-precision: 16
+precision: 16-mixed
 gradient_clip_val: 1.0
 
 
