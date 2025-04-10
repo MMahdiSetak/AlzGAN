@@ -5,7 +5,6 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 
-from model.log import Logger
 from model.vq_gan_3d.vqgan import VQGAN
 from model.dataloader import DataLoader
 from train.callbacks import ImageLogger, VideoLogger
@@ -27,9 +26,6 @@ def run(cfg: DictConfig):
             cfg.model.lr, accumulate, ngpu / 8, bs / 4, base_lr))
 
     model = VQGAN(cfg)
-    # model.to("cuda")
-    # logger = Logger("vq_gan_3d")
-    # logger.save_model_metadata(model, logger.pet_target_shape, "vq_gan_3d", 2)
 
     callbacks = []
     callbacks.append(ModelCheckpoint(monitor='val/recon_loss',

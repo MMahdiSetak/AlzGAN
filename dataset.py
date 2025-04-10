@@ -580,7 +580,7 @@ mri_data_paths = "MRI/ADNI/"
 pet_data_path = "PET/ADNI/"
 
 # dataset_info(mri_data_paths)
-create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
+# create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
 # mri_pet_label_info(mri_data_paths, pet_data_path)
 # mri_dcm2nii(mri_data_paths)
 # pet_dcm2nii(pet_data_path)
