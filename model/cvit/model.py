@@ -5,6 +5,8 @@ from torchmetrics.classification import Accuracy
 
 from seg.patch import get_patch_indices
 
+torch.set_float32_matmul_precision('medium')
+
 
 class VoxelFCN(nn.Module):
     def __init__(self, input_size, output_size=128):
@@ -22,11 +24,12 @@ class VoxelFCN(nn.Module):
 
 
 class SegmentTransformer(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, batch_size):
         super(SegmentTransformer, self).__init__()
         self.classification_loss = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=3)
+        self.batch_size = batch_size
         self.labels = [
             2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 26, 28, 41, 42, 43, 44, 46, 47, 49, 50, 51, 52,
             53, 54, 58, 60
@@ -42,7 +45,8 @@ class SegmentTransformer(pl.LightningModule):
             d_model=128,  # This should match the size of the output of VoxelFCN
             nhead=4,  # Number of attention heads
             dim_feedforward=512,  # Feedforward layer size
-            dropout=0.1  # Dropout to prevent overfitting
+            dropout=0.1,  # Dropout to prevent overfitting
+            batch_first=True
         )
         self.transformer_encoder = nn.TransformerEncoder(
             self.transformer_encoder_layer, num_layers=4
@@ -61,7 +65,7 @@ class SegmentTransformer(pl.LightningModule):
         transformer_input = torch.stack([out[label] for label in self.labels], dim=1)  # Shape: (batch_size, 33, 128)
 
         # Transformer requires (seq_len, batch_size, d_model), so we need to permute the dimensions
-        transformer_input = transformer_input.permute(1, 0, 2)  # Shape: (33, batch_size, 128)
+        # transformer_input = transformer_input.permute(1, 0, 2)  # Shape: (33, batch_size, 128)
 
         # Pass through the transformer encoder
         transformer_output = self.transformer_encoder(transformer_input)
@@ -87,8 +91,8 @@ class SegmentTransformer(pl.LightningModule):
 
         # Update accuracy
         acc = self.train_accuracy(outputs, labels)
-        self.log('train_loss', loss)
-        self.log('train_accuracy', acc)
+        self.log('train_loss', loss, batch_size=self.batch_size)
+        self.log('train_accuracy', acc, batch_size=self.batch_size)
 
         return loss
 
@@ -105,8 +109,8 @@ class SegmentTransformer(pl.LightningModule):
 
         # Update accuracy
         acc = self.val_accuracy(outputs, labels)
-        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
+        self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
 
         return loss
 

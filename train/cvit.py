@@ -6,11 +6,11 @@ import pytorch_lightning as pl
 
 
 def run():
-    model = SegmentTransformer()
+    batch_size = 8
+    model = SegmentTransformer(batch_size)
     logger = TensorBoardLogger(save_dir="./log", name="cvit")
 
-    batch_size = 2
-    data_loader = DataLoader('dataset/mri_pet_label_v3.hdf5', batch_size)
+    data_loader = DataLoader('dataset/mri_label_v3.hdf5', batch_size)
     train_data_generator = data_loader.data_generator(batch_size, "train", pet=False, label=True)
     val_data_generator = data_loader.data_generator(batch_size, "val", pet=False, label=True)
 
