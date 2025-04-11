@@ -51,7 +51,8 @@ class DataLoader:
 
                     batch_output = []
                     batch_mri = mri_images[batch_indices]
-                    batch_mri = torch.Tensor(batch_mri / 256).unsqueeze(1).to(device)
+                    # batch_mri = torch.Tensor(batch_mri / 256).unsqueeze(1).to(device)
+                    batch_mri = torch.Tensor(batch_mri / 256).to(device)
                     batch_output.append(batch_mri)
                     if pet:
                         batch_pet = pet_images[batch_indices]
