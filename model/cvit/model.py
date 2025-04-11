@@ -91,8 +91,8 @@ class SegmentTransformer(pl.LightningModule):
 
         # Update accuracy
         acc = self.train_accuracy(outputs, labels)
-        self.log('train_loss', loss, batch_size=self.batch_size)
-        self.log('train_accuracy', acc, batch_size=self.batch_size)
+        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
+        self.log('train_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
 
         return loss
 
@@ -116,7 +116,7 @@ class SegmentTransformer(pl.LightningModule):
 
     def configure_optimizers(self):
         # Use Adam optimizer and learning rate scheduler (optional)
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-6)
         return optimizer
 
 
