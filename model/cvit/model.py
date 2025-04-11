@@ -77,7 +77,7 @@ class SegmentTransformer(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         # Get inputs and labels from the batch
         inputs, labels = batch
-        labels = torch.tensor(labels)
+        labels = torch.tensor(labels).to(self.device)
 
         # Perform a forward pass
         outputs = self(inputs)
@@ -95,7 +95,7 @@ class SegmentTransformer(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         # Get inputs and labels from the batch
         inputs, labels = batch
-        labels = torch.tensor(labels)
+        labels = torch.tensor(labels).to(self.device)
 
         # Perform a forward pass
         outputs = self(inputs)
