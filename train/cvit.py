@@ -17,7 +17,7 @@ def run():
     # Set up the PyTorch Lightning Trainer
     trainer = pl.Trainer(
         max_epochs=500,
-        accelerator="cpu",
+        accelerator="auto",
         logger=logger,
         val_check_interval=1.0,
     )
