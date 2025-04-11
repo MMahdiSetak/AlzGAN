@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
+import pytorch_lightning as pl
+from torchmetrics.classification import Accuracy
 
 from seg.patch import get_patch_indices
 
@@ -20,11 +21,14 @@ class VoxelFCN(nn.Module):
         return self.fc(x)
 
 
-class SegmentFCN(nn.Module):
+class SegmentTransformer(pl.LightningModule):
     def __init__(self):
-        super(SegmentFCN, self).__init__()
+        super(SegmentTransformer, self).__init__()
+        self.classification_loss = nn.CrossEntropyLoss()
+        self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
+        self.val_accuracy = Accuracy(task="multiclass", num_classes=3)
         self.labels = [
-            0, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 26, 28, 41, 42, 43, 44, 46, 47, 49, 50, 51, 52,
+            2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 26, 28, 41, 42, 43, 44, 46, 47, 49, 50, 51, 52,
             53, 54, 58, 60
         ]
         self.patches = get_patch_indices()
@@ -43,8 +47,6 @@ class SegmentFCN(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(
             self.transformer_encoder_layer, num_layers=4
         )
-
-        # Final classification output layer (3 classes)
         self.fc_out = nn.Linear(128, 3)  # 3 output classes for classification
 
     def forward(self, image):
@@ -72,10 +74,51 @@ class SegmentFCN(nn.Module):
 
         return final_output
 
+    def training_step(self, batch, batch_idx):
+        # Get inputs and labels from the batch
+        inputs, labels = batch
+        labels = torch.tensor(labels)
 
-def run():
+        # Perform a forward pass
+        outputs = self(inputs)
+
+        # Calculate the loss
+        loss = self.classification_loss(outputs, labels)
+
+        # Update accuracy
+        acc = self.train_accuracy(outputs, labels)
+        self.log('train_loss', loss)
+        self.log('train_accuracy', acc)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        # Get inputs and labels from the batch
+        inputs, labels = batch
+        labels = torch.tensor(labels)
+
+        # Perform a forward pass
+        outputs = self(inputs)
+
+        # Calculate the loss
+        loss = self.classification_loss(outputs, labels)
+
+        # Update accuracy
+        acc = self.val_accuracy(outputs, labels)
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True)
+
+        return loss
+
+    def configure_optimizers(self):
+        # Use Adam optimizer and learning rate scheduler (optional)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        return optimizer
+
+
+def test():
     image = torch.randn((2, 160, 200, 180))
-    model = SegmentFCN()
+    model = SegmentTransformer()
     outputs = model(image)
     for label, out_tensor in outputs.items():
         print(f"Label {label}: output shape {out_tensor.shape}")
