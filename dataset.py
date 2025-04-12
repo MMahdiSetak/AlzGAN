@@ -421,6 +421,7 @@ def info_analyze(csv_file):
     # print(thickness)
     return old_unique, new_unique
 
+
 def scale_image(img: np.ndarray) -> np.ndarray | None:
     shape = img.shape
     # Determine slice zoom factor
@@ -486,7 +487,7 @@ def create_mri_dataset(mri_path: str):
     train_indices, temp_indices = train_test_split(indices, test_size=0.2, random_state=42)
     val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
 
-    with h5py.File('mri_label.hdf5', 'w') as h5f:
+    with h5py.File('mri_label_v3.hdf5', 'w') as h5f:
         mri_train_ds = h5f.create_dataset('mri_train', (len(train_indices), *mri_target), dtype='uint8')
         mri_val_ds = h5f.create_dataset('mri_val', (len(val_indices), *mri_target), dtype='uint8')
         mri_test_ds = h5f.create_dataset('mri_test', (len(test_indices), *mri_target), dtype='uint8')
@@ -576,8 +577,8 @@ def mri_dcm2nii(mri_path):
     print(count)
 
 
-mri_data_paths = "MRI/ADNI/"
-pet_data_path = "PET/ADNI/"
+mri_data_paths = "dataset/MRI/ADNI/"
+pet_data_path = "dataset/PET/ADNI/"
 
 # dataset_info(mri_data_paths)
 # create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
