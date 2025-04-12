@@ -497,55 +497,45 @@ def count_subject_image(subjects, mri_path: str):
 
 def create_mri_dataset(mri_path: str):
     mri_target = (160, 200, 180)
-    # mri_target = (160, 192, 192)
-    # mri_target = (160 // 2, 192 // 2, 192 // 2)
-    num_imgs = 4575
-    indices = list(range(num_imgs))
-    random.shuffle(indices)
-    current_train_idx, current_val_idx, current_test_idx = 0, 0, 0
-    current_index = 0
+
+    train_subj, val_subj, test_subj = split_mri_subject(mri_path)
+    subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
+    split_num = {
+        'train': count_subject_image(train_subj, mri_path),
+        'val': count_subject_image(val_subj, mri_path),
+        'test': count_subject_image(test_subj, mri_path),
+    }
     df = pd.read_csv("mri_labels.csv")
 
-    # Split indices into train (80%), validation (10%), and test (10%) sets
-    train_indices, temp_indices = train_test_split(indices, test_size=0.2, random_state=42)
-    val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
-
-    with h5py.File('mri_label_v3.hdf5', 'w') as h5f:
-        mri_train_ds = h5f.create_dataset('mri_train', (len(train_indices), *mri_target), dtype='uint8')
-        mri_val_ds = h5f.create_dataset('mri_val', (len(val_indices), *mri_target), dtype='uint8')
-        mri_test_ds = h5f.create_dataset('mri_test', (len(test_indices), *mri_target), dtype='uint8')
-        label_train_ds = h5f.create_dataset('label_train', (len(train_indices),), dtype='int')
-        label_val_ds = h5f.create_dataset('label_val', (len(val_indices),), dtype='int')
-        label_test_ds = h5f.create_dataset('label_test', (len(test_indices),), dtype='int')
-        subjects = os.listdir(mri_path)
-        for subject in tqdm(subjects, leave=False):
-            descs = os.listdir(f"{mri_path}/{subject}")
-            for desc in tqdm(descs, leave=False):
-                dates = os.listdir(f"{mri_path}/{subject}/{desc}")
-                for date in tqdm(dates, leave=False):
-                    img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
-                    for img_id in img_ids:
-                        # start = time.time()
-                        if img_id in MRI_ID_BLACKLIST:
-                            continue
-                        image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
-                        mri_image = read_image(image_path)
-                        dataset_mri = mri_preprocess(mri_image)
-                        # dataset_mri = resize_image(preprocessed_mri, mri_target)
-                        label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
-                        if current_index in train_indices:
-                            mri_train_ds[current_train_idx] = dataset_mri
-                            label_train_ds[current_train_idx] = group_mapping[label]
-                            current_train_idx += 1
-                        elif current_index in val_indices:
-                            mri_val_ds[current_val_idx] = dataset_mri
-                            label_val_ds[current_val_idx] = group_mapping[label]
-                            current_val_idx += 1
-                        elif current_index in test_indices:
-                            mri_test_ds[current_test_idx] = dataset_mri
-                            label_test_ds[current_test_idx] = group_mapping[label]
-                            current_test_idx += 1
-                        current_index += 1
+    with h5py.File('mri_label_v4.hdf5', 'w') as h5f:
+        ds = {
+            'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
+            'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
+            'mri_test': h5f.create_dataset('mri_test', (split_num['test'], *mri_target), dtype='uint8'),
+            'label_train': h5f.create_dataset('label_train', (split_num['train'],), dtype='int'),
+            'label_val': h5f.create_dataset('label_val', (split_num['val'],), dtype='int'),
+            'label_test': h5f.create_dataset('label_test', (split_num['test'],), dtype='int')
+        }
+        for split, subjects in tqdm(subj_split.items(), leave=False):
+            indices = list(range(split_num[split]))
+            random.shuffle(indices)
+            current_index = 0
+            for subject in tqdm(subjects, leave=False):
+                descs = os.listdir(f"{mri_path}/{subject}")
+                for desc in tqdm(descs, leave=False):
+                    dates = os.listdir(f"{mri_path}/{subject}/{desc}")
+                    for date in tqdm(dates, leave=False):
+                        img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
+                        for img_id in img_ids:
+                            if img_id in MRI_ID_BLACKLIST:
+                                continue
+                            image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
+                            mri_image = read_image(image_path)
+                            dataset_mri = mri_preprocess(mri_image)
+                            label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
+                            ds[f'mri_{split}'][indices[current_index]] = dataset_mri
+                            ds[f'label_{split}'][indices[current_index]] = group_mapping[label]
+                            current_index += 1
 
 
 affine = np.eye(4)
