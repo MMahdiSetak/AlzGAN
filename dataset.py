@@ -472,6 +472,29 @@ def mri_preprocess(img: np.ndarray) -> np.ndarray:
     return normalized_img
 
 
+def split_mri_subject(mri_path: str):
+    subjects = os.listdir(mri_path)
+    # Split indices into train (80%), validation (10%), and test (10%) sets
+    train_indices, temp_indices = train_test_split(subjects, test_size=0.2, random_state=42)
+    val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
+    return train_indices, val_indices, test_indices
+
+
+def count_subject_image(subjects, mri_path: str):
+    count = 0
+    for subject in subjects:
+        descs = os.listdir(f"{mri_path}/{subject}")
+        for desc in descs:
+            dates = os.listdir(f"{mri_path}/{subject}/{desc}")
+            for date in dates:
+                img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
+                for img_id in img_ids:
+                    if img_id in MRI_ID_BLACKLIST:
+                        continue
+                    count += 1
+    return count
+
+
 def create_mri_dataset(mri_path: str):
     mri_target = (160, 200, 180)
     # mri_target = (160, 192, 192)
