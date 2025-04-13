@@ -60,28 +60,11 @@ class SegmentTransformer(pl.LightningModule):
         self.fc_out = nn.Linear(128, 3)  # 3 output classes for classification
 
     def forward(self, image):
-        out = {}
-        for label in self.labels:
-            indices = self.patches[label]
-            voxels = image[:, indices]
-            out[label] = self.lb_fcn[str(label)](voxels)
-
-        # Convert the outputs from the 33 labels into a single tensor for Transformer processing
-        # Each label has a 128-dimensional output (we are treating this as a sequence of 33 tokens)
-        transformer_input = torch.stack([out[label] for label in self.labels], dim=1)  # Shape: (batch_size, 33, 128)
-
-        # Transformer requires (seq_len, batch_size, d_model), so we need to permute the dimensions
-        # transformer_input = transformer_input.permute(1, 0, 2)  # Shape: (33, batch_size, 128)
-
-        # Pass through the transformer encoder
+        out = [self.lb_fcn[str(label)](image[:, self.patches[label]]) for label in self.labels]
+        transformer_input = torch.stack(out, dim=1)
         transformer_output = self.transformer_encoder(transformer_input)
-
-        # Optionally, you can pool the transformer output (e.g., mean, sum, etc.)
-        transformer_output = transformer_output.mean(dim=0)  # Shape: (batch_size, 128)
-
-        # Pass the transformer output through the final output layer for classification (3 classes)
-        final_output = self.fc_out(transformer_output)  # Shape: (batch_size, 3)
-
+        transformer_output = transformer_output.mean(dim=0)
+        final_output = self.fc_out(transformer_output)
         return final_output
 
     def training_step(self, batch, batch_idx):
