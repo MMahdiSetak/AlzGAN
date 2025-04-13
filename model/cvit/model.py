@@ -11,7 +11,7 @@ torch.set_float32_matmul_precision('medium')
 
 
 class VoxelFCN(nn.Module):
-    def __init__(self, input_size, output_size=256, dropout_rate=0.2):
+    def __init__(self, input_size, output_size=256, dropout_rate=0.4):
         super(VoxelFCN, self).__init__()
         # l1_size = max(output_size * 4, input_size // 2)
         # l2_size = max(output_size * 2, input_size // 4)
@@ -25,7 +25,7 @@ class VoxelFCN(nn.Module):
             nn.Linear(l1_size, l2_size),
             nn.ReLU(),
             nn.LayerNorm(l2_size),
-            nn.Dropout(dropout_rate),
+            nn.Dropout(dropout_rate / 2),
             nn.Linear(l2_size, output_size)
         )
 
@@ -34,7 +34,7 @@ class VoxelFCN(nn.Module):
 
 
 class SegmentTransformer(pl.LightningModule):
-    def __init__(self, embedding_size=256):
+    def __init__(self, embedding_size=256, dropout_rate=0.4):
         super(SegmentTransformer, self).__init__()
         self.classification_loss = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
@@ -55,7 +55,8 @@ class SegmentTransformer(pl.LightningModule):
         ]
         self.patches = get_patch_indices()
         self.lb_fcn = nn.ModuleDict({
-            str(label): VoxelFCN(input_size=self.patches[label].sum(), output_size=embedding_size)
+            str(label): VoxelFCN(input_size=self.patches[label].sum(), output_size=embedding_size,
+                                 dropout_rate=dropout_rate)
             for label in self.labels
         })
 
@@ -112,27 +113,28 @@ class SegmentTransformer(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         inputs, labels = batch
+        bs = len(labels)
         outputs = self(inputs)
 
         metrics = self.metrics(outputs, labels)
-        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
 
         return metrics
 
-    def test_epoch_end(self, outputs):
-        avg_acc = torch.stack([x['accuracy'] for x in outputs]).mean()
-        avg_precision = torch.stack([x['precision'] for x in outputs]).mean()
-        avg_recall = torch.stack([x['recall'] for x in outputs]).mean()
-        avg_f1_score = torch.stack([x['f1_score'] for x in outputs]).mean()
-        avg_auc = torch.stack([x['auc'] for x in outputs]).mean()
-        avg_spec = torch.stack([x['specificity'] for x in outputs]).mean()
-
-        self.log('avg_test_accuracy', avg_acc)
-        self.log('avg_test_precision', avg_precision)
-        self.log('avg_test_recall', avg_recall)
-        self.log('avg_test_f1_score', avg_f1_score)
-        self.log('avg_test_auc', avg_auc)
-        self.log('avg_test_specificity', avg_spec)
+    # def on_test_epoch_end(self, outputs):
+    #     avg_acc = torch.stack([x['accuracy'] for x in outputs]).mean()
+    #     avg_precision = torch.stack([x['precision'] for x in outputs]).mean()
+    #     avg_recall = torch.stack([x['recall'] for x in outputs]).mean()
+    #     avg_f1_score = torch.stack([x['f1_score'] for x in outputs]).mean()
+    #     avg_auc = torch.stack([x['auc'] for x in outputs]).mean()
+    #     avg_spec = torch.stack([x['specificity'] for x in outputs]).mean()
+    #
+    #     self.log('avg_test_accuracy', avg_acc)
+    #     self.log('avg_test_precision', avg_precision)
+    #     self.log('avg_test_recall', avg_recall)
+    #     self.log('avg_test_f1_score', avg_f1_score)
+    #     self.log('avg_test_auc', avg_auc)
+    #     self.log('avg_test_specificity', avg_spec)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
