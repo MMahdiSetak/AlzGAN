@@ -11,7 +11,7 @@ torch.set_float32_matmul_precision('medium')
 
 
 class VoxelFCN(nn.Module):
-    def __init__(self, input_size, output_size=256, dropout_rate=0.1):
+    def __init__(self, input_size, output_size=256, dropout_rate=0.2):
         super(VoxelFCN, self).__init__()
         # l1_size = max(output_size * 4, input_size // 2)
         # l2_size = max(output_size * 2, input_size // 4)
@@ -20,11 +20,11 @@ class VoxelFCN(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(input_size, l1_size),
             nn.ReLU(),
-            nn.BatchNorm1d(l1_size),
+            nn.LayerNorm(l1_size),
             nn.Dropout(dropout_rate),
             nn.Linear(l1_size, l2_size),
             nn.ReLU(),
-            nn.BatchNorm1d(l2_size),
+            nn.LayerNorm(l2_size),
             nn.Dropout(dropout_rate),
             nn.Linear(l2_size, output_size)
         )
@@ -62,8 +62,8 @@ class SegmentTransformer(pl.LightningModule):
         # Transformer-related layers
         self.transformer_encoder_layer = nn.TransformerEncoderLayer(
             d_model=embedding_size,
-            nhead=4,  # Number of attention heads
-            dim_feedforward=512,  # Feedforward layer size
+            nhead=8,  # Number of attention heads
+            dim_feedforward=1024,  # Feedforward layer size
             dropout=0.1,  # Dropout to prevent overfitting
             batch_first=True
         )
@@ -91,6 +91,8 @@ class SegmentTransformer(pl.LightningModule):
         loss = self.classification_loss(outputs, labels)
 
         acc = self.train_accuracy(outputs, labels)
+        lr = self.optimizers().param_groups[0]['lr']
+        self.log('learning_rate', lr, on_step=True, on_epoch=True, prog_bar=False)
         self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
         self.log('train_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
 

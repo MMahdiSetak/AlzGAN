@@ -41,6 +41,8 @@ def run():
         accelerator="auto",
         logger=logger,
         val_check_interval=1.0,
+        precision=16,
+        gradient_clip_val=1.0,
         callbacks=[checkpoint_callback, early_stop_callback],
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
