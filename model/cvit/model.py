@@ -80,7 +80,7 @@ class SegmentTransformer(pl.LightningModule):
         out = [self.lb_fcn[str(label)](image[:, self.patches[label]]) for label in self.labels]
         transformer_input = torch.stack(out, dim=1)
         transformer_output = self.transformer_encoder(transformer_input)
-        transformer_output = transformer_output.mean(dim=0)
+        transformer_output = transformer_output.mean(dim=1)
         final_output = self.fc_out(transformer_output)
         return final_output
 

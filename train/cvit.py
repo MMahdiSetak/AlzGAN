@@ -9,18 +9,18 @@ from torch.utils.data import DataLoader
 
 
 def run():
-    batch_size = 32
+    batch_size = 64
     num_workers = 4
-    model = SegmentTransformer(embedding_size=256)
+    model = SegmentTransformer(embedding_size=128)
     logger = TensorBoardLogger(save_dir="./log", name="cvit")
 
     train_loader = DataLoader(
         dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'train'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=True
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     val_loader = DataLoader(
         dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'val'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=True
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
 
     checkpoint_callback = ModelCheckpoint(
@@ -49,6 +49,6 @@ def run():
 
     test_loader = DataLoader(
         dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'test'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=True
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     trainer.test(model=model, dataloaders=test_loader)
