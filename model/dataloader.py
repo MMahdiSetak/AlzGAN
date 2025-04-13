@@ -7,8 +7,6 @@ from torch.utils.data import DataLoader
 
 
 # device = 'cpu'
-
-
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class CustomDataset(DataLoader):
@@ -18,7 +16,6 @@ class CustomDataset(DataLoader):
         self.pet = pet
         self.label = label
 
-        # Open the h5 file to read the data
         with h5py.File(self.data_path, 'r') as file:
             mri_images = file[f'mri_{split}']
             if pet:
@@ -33,27 +30,13 @@ class CustomDataset(DataLoader):
         return self.n
 
     def __getitem__(self, index):
-        # Get the index and return the data
-        # batch_indices = self.indices[index]
         with h5py.File(self.data_path, 'r') as file:
-            # MRI image
             mri_images = file[f'mri_{self.split}']
             batch_mri = torch.Tensor(mri_images[index] / 256)
-            # print(f"mri: {batch_indices}, {batch_mri.shape}")
 
-            # Optionally include PET image
-            # batch_pet = None
-            # if self.pet:
-            #     batch_pet = torch.Tensor(self.pet_images[batch_indices] / 256).unsqueeze(0)
-
-            # Optionally include label
-            # batch_label = None
-            # if self.label:
             labels = file[f'label_{self.split}']
             batch_label = labels[index]
-            # print(f"label: {batch_indices}, {batch_label.shape}")
 
-        # return {'mri': batch_mri, 'label': batch_label}
         return batch_mri, batch_label
 
 #
