@@ -9,35 +9,23 @@ from torch.utils.data import DataLoader
 # device = 'cpu'
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-class CustomDataset(DataLoader):
-    def __init__(self, data_path, split, pet=False, label=True):
+class MRIDataset(DataLoader):
+    def __init__(self, data_path, split):
         self.data_path = data_path
         self.split = split
-        self.pet = pet
-        self.label = label
-
-        with h5py.File(self.data_path, 'r') as file:
-            mri_images = file[f'mri_{split}']
-            if pet:
-                self.pet_images = file[f'pet_{split}']
-            if label:
-                self.labels = file[f'label_{split}']
-            self.n = len(mri_images)
-
+        self.file = h5py.File(self.data_path, 'r')
+        self.mri_images = self.file[f'mri_{split}']
+        self.labels = self.file[f'label_{split}']
+        self.n = len(self.mri_images)
         self.indices = np.arange(self.n)
 
     def __len__(self):
         return self.n
 
     def __getitem__(self, index):
-        with h5py.File(self.data_path, 'r') as file:
-            mri_images = file[f'mri_{self.split}']
-            batch_mri = torch.Tensor(mri_images[index] / 256)
-
-            labels = file[f'label_{self.split}']
-            batch_label = labels[index]
-
-        return batch_mri, batch_label
+        mri = torch.Tensor(self.mri_images[index] / 256)
+        label = self.labels[index]
+        return mri, label
 
 #
 # class DataLoader:
