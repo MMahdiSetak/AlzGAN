@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 def run():
     batch_size = 256
     num_workers = 4
-    model = SegmentTransformer(embedding_size=128, dropout_rate=0.4)
+    model = SegmentTransformer(embedding_size=128, dropout_rate=0.5)
     logger = TensorBoardLogger(save_dir="./log", name="cvit")
 
     train_loader = DataLoader(
@@ -31,7 +31,7 @@ def run():
     )
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
-        patience=10,
+        patience=50,
         verbose=True,
         mode='max'
     )
