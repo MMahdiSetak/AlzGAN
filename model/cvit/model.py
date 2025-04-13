@@ -79,17 +79,10 @@ class SegmentTransformer(pl.LightningModule):
         return final_output
 
     def training_step(self, batch, batch_idx):
-        # Get inputs and labels from the batch
         inputs, labels = batch
-        labels = torch.tensor(labels).to(self.device)
-
-        # Perform a forward pass
         outputs = self(inputs)
-
-        # Calculate the loss
         loss = self.classification_loss(outputs, labels)
 
-        # Update accuracy
         acc = self.train_accuracy(outputs, labels)
         self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
         self.log('train_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
@@ -97,17 +90,10 @@ class SegmentTransformer(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        # Get inputs and labels from the batch
         inputs, labels = batch
-        labels = torch.tensor(labels).to(self.device)
-
-        # Perform a forward pass
         outputs = self(inputs)
-
-        # Calculate the loss
         loss = self.classification_loss(outputs, labels)
 
-        # Update accuracy
         acc = self.val_accuracy(outputs, labels)
         self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
         self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
@@ -115,7 +101,6 @@ class SegmentTransformer(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        # Use Adam optimizer and learning rate scheduler (optional)
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-6)
         return optimizer
 
