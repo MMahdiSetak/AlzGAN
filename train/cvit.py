@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 def run():
     batch_size = 32
     num_workers = 4
-    model = SegmentTransformer(batch_size)
+    model = SegmentTransformer(embedding_size=256)
     logger = TensorBoardLogger(save_dir="./log", name="cvit")
 
     train_loader = DataLoader(
