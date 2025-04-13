@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+
 # device = 'cpu'
 
 
@@ -54,45 +55,6 @@ class CustomDataset(DataLoader):
 
         # return {'mri': batch_mri, 'label': batch_label}
         return batch_mri, batch_label
-
-
-class DataLoader:
-    def __init__(self, data_path, batch_size, num_workers=4):
-        self.data_path = data_path
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-
-        with h5py.File(self.data_path, 'r') as file:
-            self.train_size = len(file['label_train'])
-            self.val_size = len(file['label_val'])
-            self.test_size = len(file['label_test'])
-
-        self.steps_per_epoch_train = math.ceil(self.train_size / batch_size)
-        self.steps_per_epoch_val = math.ceil(self.val_size / batch_size)
-        self.steps_per_epoch_test = math.ceil(self.test_size / batch_size)
-
-    def data_loader(self, split, pet=False, label=True):
-        """Returns a PyTorch DataLoader for the given split."""
-        dataset = CustomDataset(self.data_path, split, pet, label)
-        loader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,  # Enable shuffling for training
-            drop_last=False  # Drop the last incomplete batch if it has fewer than batch_size samples
-        )
-        return loader
-
-    def get_steps_per_epoch(self, split):
-        """Returns the number of steps per epoch for a given split."""
-        if split == 'train':
-            return self.steps_per_epoch_train
-        elif split == 'val':
-            return self.steps_per_epoch_val
-        elif split == 'test':
-            return self.steps_per_epoch_test
-        else:
-            raise ValueError(f"Unknown split: {split}")
 
 #
 # class DataLoader:
