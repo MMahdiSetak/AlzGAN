@@ -11,14 +11,22 @@ torch.set_float32_matmul_precision('medium')
 
 
 class VoxelFCN(nn.Module):
-    def __init__(self, input_size, output_size=128):
+    def __init__(self, input_size, output_size=256, dropout_rate=0.1):
         super(VoxelFCN, self).__init__()
+        # l1_size = max(output_size * 4, input_size // 2)
+        # l2_size = max(output_size * 2, input_size // 4)
+        l1_size = output_size * 4
+        l2_size = output_size * 2
         self.fc = nn.Sequential(
-            nn.Linear(input_size, 512),
+            nn.Linear(input_size, l1_size),
             nn.ReLU(),
-            nn.Linear(512, 256),
+            nn.BatchNorm1d(l1_size),
+            nn.Dropout(dropout_rate),
+            nn.Linear(l1_size, l2_size),
             nn.ReLU(),
-            nn.Linear(256, output_size)
+            nn.BatchNorm1d(l2_size),
+            nn.Dropout(dropout_rate),
+            nn.Linear(l2_size, output_size)
         )
 
     def forward(self, x):
@@ -26,7 +34,7 @@ class VoxelFCN(nn.Module):
 
 
 class SegmentTransformer(pl.LightningModule):
-    def __init__(self, batch_size):
+    def __init__(self, embedding_size=256):
         super(SegmentTransformer, self).__init__()
         self.classification_loss = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
@@ -41,20 +49,19 @@ class SegmentTransformer(pl.LightningModule):
             "specificity": Specificity(task="multiclass", num_classes=3),
         })
         self.metrics = metrics
-        self.batch_size = batch_size
         self.labels = [
             2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 26, 28, 41, 42, 43, 44, 46, 47, 49, 50, 51, 52,
             53, 54, 58, 60
         ]
         self.patches = get_patch_indices()
         self.lb_fcn = nn.ModuleDict({
-            str(label): VoxelFCN(input_size=self.patches[label].sum())
+            str(label): VoxelFCN(input_size=self.patches[label].sum(), output_size=embedding_size)
             for label in self.labels
         })
 
         # Transformer-related layers
         self.transformer_encoder_layer = nn.TransformerEncoderLayer(
-            d_model=128,  # This should match the size of the output of VoxelFCN
+            d_model=embedding_size,
             nhead=4,  # Number of attention heads
             dim_feedforward=512,  # Feedforward layer size
             dropout=0.1,  # Dropout to prevent overfitting
@@ -63,7 +70,11 @@ class SegmentTransformer(pl.LightningModule):
         self.transformer_encoder = nn.TransformerEncoder(
             self.transformer_encoder_layer, num_layers=4
         )
-        self.fc_out = nn.Linear(128, 3)  # 3 output classes for classification
+        self.fc_out = nn.Sequential(
+            nn.Linear(embedding_size, 64),
+            nn.ReLU(),
+            nn.Linear(64, 3)
+        )
 
     def forward(self, image):
         out = [self.lb_fcn[str(label)](image[:, self.patches[label]]) for label in self.labels]
@@ -75,23 +86,25 @@ class SegmentTransformer(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
+        bs = len(labels)
         outputs = self(inputs)
         loss = self.classification_loss(outputs, labels)
 
         acc = self.train_accuracy(outputs, labels)
-        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
-        self.log('train_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
+        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        self.log('train_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
 
         return loss
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
+        bs = len(labels)
         outputs = self(inputs)
         loss = self.classification_loss(outputs, labels)
 
         acc = self.val_accuracy(outputs, labels)
-        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
-        self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
 
         return loss
 
