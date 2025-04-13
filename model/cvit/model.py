@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from torchmetrics.classification import Accuracy
+from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 
 from seg.patch import get_patch_indices
 
@@ -29,6 +29,12 @@ class SegmentTransformer(pl.LightningModule):
         self.classification_loss = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=3)
+        self.test_accuracy = Accuracy(task="multiclass", num_classes=3)
+        self.precision = Precision(task="multiclass", num_classes=3)
+        self.recall = Recall(task="multiclass", num_classes=3)
+        self.f1_score = F1Score(task="multiclass", num_classes=3)
+        self.auc = AUROC(task="multiclass", num_classes=3)
+        self.spec = Specificity(task="multiclass", num_classes=3)
         self.batch_size = batch_size
         self.labels = [
             2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 26, 28, 41, 42, 43, 44, 46, 47, 49, 50, 51, 52,
@@ -99,6 +105,41 @@ class SegmentTransformer(pl.LightningModule):
         self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=self.batch_size)
 
         return loss
+
+    def test_step(self, batch, batch_idx):
+        inputs, labels = batch
+        outputs = self(inputs)
+
+        acc = self.test_accuracy(outputs, labels)
+        precision = self.precision(outputs, labels)
+        recall = self.recall(outputs, labels)
+        f1 = self.f1_score(outputs, labels)
+        auc = self.auc(outputs, labels)
+        spec = self.spec(outputs, labels)
+
+        self.log('test_accuracy', acc)
+        self.log('test_precision', precision)
+        self.log('test_recall', recall)
+        self.log('test_f1_score', f1)
+        self.log('test_auc', auc)
+        self.log('test_specificity', spec)
+
+        return {"acc": acc, "precision": precision, "recall": recall, "f1_score": f1, "auc": auc, "specificity": spec}
+
+    def test_epoch_end(self, outputs):
+        avg_acc = torch.stack([x['acc'] for x in outputs]).mean()
+        avg_precision = torch.stack([x['precision'] for x in outputs]).mean()
+        avg_recall = torch.stack([x['recall'] for x in outputs]).mean()
+        avg_f1_score = torch.stack([x['f1_score'] for x in outputs]).mean()
+        avg_auc = torch.stack([x['auc'] for x in outputs]).mean()
+        avg_spec = torch.stack([x['specificity'] for x in outputs]).mean()
+
+        self.log('avg_test_accuracy', avg_acc)
+        self.log('avg_test_precision', avg_precision)
+        self.log('avg_test_recall', avg_recall)
+        self.log('avg_test_f1_score', avg_f1_score)
+        self.log('avg_test_auc', avg_auc)
+        self.log('avg_test_specificity', avg_spec)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-6)
