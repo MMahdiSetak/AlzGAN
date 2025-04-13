@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 
 from seg.patch import get_patch_indices
@@ -125,8 +126,17 @@ class SegmentTransformer(pl.LightningModule):
         self.log('avg_test_specificity', avg_spec)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-6)
-        return optimizer
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3)
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': scheduler,
+                'monitor': 'train_loss',  # Monitor validation loss for plateau
+                'interval': 'epoch',
+                'frequency': 1,
+            }
+        }
 
 
 def test():
