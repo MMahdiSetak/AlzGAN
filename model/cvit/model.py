@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 
 from seg.patch import get_patch_indices
@@ -31,11 +32,15 @@ class SegmentTransformer(pl.LightningModule):
         self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=3)
         self.test_accuracy = Accuracy(task="multiclass", num_classes=3)
-        self.precision = Precision(task="multiclass", num_classes=3)
-        self.recall = Recall(task="multiclass", num_classes=3)
-        self.f1_score = F1Score(task="multiclass", num_classes=3)
-        self.auc = AUROC(task="multiclass", num_classes=3)
-        self.spec = Specificity(task="multiclass", num_classes=3)
+        metrics = MetricCollection({
+            "accuracy": Accuracy(task="multiclass", num_classes=3),
+            "precision": Precision(task="multiclass", num_classes=3),
+            "recall": Recall(task="multiclass", num_classes=3),
+            "f1_score": F1Score(task="multiclass", num_classes=3),
+            "auc": AUROC(task="multiclass", num_classes=3),
+            "specificity": Specificity(task="multiclass", num_classes=3),
+        })
+        self.metrics = metrics
         self.batch_size = batch_size
         self.labels = [
             2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 26, 28, 41, 42, 43, 44, 46, 47, 49, 50, 51, 52,
@@ -94,24 +99,13 @@ class SegmentTransformer(pl.LightningModule):
         inputs, labels = batch
         outputs = self(inputs)
 
-        acc = self.test_accuracy(outputs, labels)
-        precision = self.precision(outputs, labels)
-        recall = self.recall(outputs, labels)
-        f1 = self.f1_score(outputs, labels)
-        auc = self.auc(outputs, labels)
-        spec = self.spec(outputs, labels)
+        metrics = self.metrics(outputs, labels)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True)
 
-        self.log('test_accuracy', acc)
-        self.log('test_precision', precision)
-        self.log('test_recall', recall)
-        self.log('test_f1_score', f1)
-        self.log('test_auc', auc)
-        self.log('test_specificity', spec)
-
-        return {"acc": acc, "precision": precision, "recall": recall, "f1_score": f1, "auc": auc, "specificity": spec}
+        return metrics
 
     def test_epoch_end(self, outputs):
-        avg_acc = torch.stack([x['acc'] for x in outputs]).mean()
+        avg_acc = torch.stack([x['accuracy'] for x in outputs]).mean()
         avg_precision = torch.stack([x['precision'] for x in outputs]).mean()
         avg_recall = torch.stack([x['recall'] for x in outputs]).mean()
         avg_f1_score = torch.stack([x['f1_score'] for x in outputs]).mean()
@@ -132,7 +126,7 @@ class SegmentTransformer(pl.LightningModule):
             'optimizer': optimizer,
             'lr_scheduler': {
                 'scheduler': scheduler,
-                'monitor': 'train_loss',  # Monitor validation loss for plateau
+                'monitor': 'train_loss',
                 'interval': 'epoch',
                 'frequency': 1,
             }
