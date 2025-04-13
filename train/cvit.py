@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 
 def run():
-    batch_size = 64
+    batch_size = 256
     num_workers = 4
     model = SegmentTransformer(embedding_size=128)
     logger = TensorBoardLogger(save_dir="./log", name="cvit")
@@ -41,8 +41,9 @@ def run():
         accelerator="auto",
         logger=logger,
         val_check_interval=1.0,
-        precision=16,
+        precision='16-mixed',
         gradient_clip_val=1.0,
+        log_every_n_steps=5,
         callbacks=[checkpoint_callback, early_stop_callback],
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
