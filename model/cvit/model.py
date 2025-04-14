@@ -18,15 +18,15 @@ class VoxelFCN(nn.Module):
         l1_size = output_size * 4
         l2_size = output_size * 2
         self.fc = nn.Sequential(
-            nn.Linear(input_size, l1_size),
+            nn.Linear(input_size, output_size),
             nn.ReLU(),
-            nn.LayerNorm(l1_size),
+            nn.LayerNorm(output_size),
             nn.Dropout(dropout_rate),
-            nn.Linear(l1_size, l2_size),
-            nn.ReLU(),
-            nn.LayerNorm(l2_size),
-            nn.Dropout(dropout_rate / 2),
-            nn.Linear(l2_size, output_size)
+            # nn.Linear(l1_size, l2_size),
+            # nn.ReLU(),
+            # nn.LayerNorm(l2_size),
+            # nn.Dropout(dropout_rate / 2),
+            nn.Linear(output_size, output_size)
         )
 
     def forward(self, x):
@@ -63,9 +63,9 @@ class SegmentTransformer(pl.LightningModule):
         # Transformer-related layers
         self.transformer_encoder_layer = nn.TransformerEncoderLayer(
             d_model=embedding_size,
-            nhead=8,  # Number of attention heads
-            dim_feedforward=1024,  # Feedforward layer size
-            dropout=0.1,  # Dropout to prevent overfitting
+            nhead=4,  # Number of attention heads
+            dim_feedforward=512,  # Feedforward layer size
+            dropout=0.2,  # Dropout to prevent overfitting
             batch_first=True
         )
         self.transformer_encoder = nn.TransformerEncoder(
@@ -137,13 +137,13 @@ class SegmentTransformer(pl.LightningModule):
     #     self.log('avg_test_specificity', avg_spec)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
-        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
         return {
             'optimizer': optimizer,
             'lr_scheduler': {
                 'scheduler': scheduler,
-                'monitor': 'train_loss',
+                'monitor': 'val_loss',
                 'interval': 'epoch',
                 'frequency': 1,
             }
