@@ -39,7 +39,7 @@ def run(cfg: DictConfig):
         mode='max'
     )
     trainer = pl.Trainer(
-        max_epochs=cfg.model.max_epochs,
+        max_epochs=cfg.model.max_epoch,
         accelerator="auto",
         logger=logger,
         val_check_interval=1.0,
