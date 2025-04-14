@@ -6,20 +6,23 @@ from model.dataloader import MRIDataset
 from pytorch_lightning.loggers import TensorBoardLogger
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
+import hydra
+from omegaconf import DictConfig
 
 
-def run():
-    batch_size = 256
-    num_workers = 4
-    model = SegmentTransformer(embedding_size=128, dropout_rate=0.75)
+@hydra.main(config_path='../config', config_name='base_cfg', version_base=None)
+def run(cfg: DictConfig):
+    batch_size = cfg.model.batch_size
+    num_workers = cfg.model.num_workers
+    model = SegmentTransformer(cfg)
     logger = TensorBoardLogger(save_dir="./log", name="cvit")
 
     train_loader = DataLoader(
-        dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'train'),
+        dataset=MRIDataset(cfg.model.dataset, 'train'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     val_loader = DataLoader(
-        dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'val'),
+        dataset=MRIDataset(cfg.model.dataset, 'val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
 
@@ -31,12 +34,12 @@ def run():
     )
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
-        patience=100,
+        patience=cfg.model.early_stop,
         verbose=True,
         mode='max'
     )
     trainer = pl.Trainer(
-        max_epochs=500,
+        max_epochs=cfg.model.max_epochs,
         accelerator="auto",
         logger=logger,
         val_check_interval=1.0,

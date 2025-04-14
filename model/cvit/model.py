@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+from omegaconf import DictConfig
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
@@ -11,8 +12,9 @@ torch.set_float32_matmul_precision('medium')
 
 
 class VoxelFCN(nn.Module):
-    def __init__(self, input_size, output_size=256, dropout_rate=0.4):
+    def __init__(self, input_size, config: DictConfig):
         super(VoxelFCN, self).__init__()
+        output_size = config.model.embedding_size
         # l1_size = max(output_size * 4, input_size // 2)
         # l2_size = max(output_size * 2, input_size // 4)
         l1_size = output_size * 4
@@ -21,7 +23,7 @@ class VoxelFCN(nn.Module):
             nn.Linear(input_size, output_size),
             nn.ReLU(),
             nn.LayerNorm(output_size),
-            nn.Dropout(dropout_rate),
+            nn.Dropout(config.model.dropout_rate),
             # nn.Linear(l1_size, l2_size),
             # nn.ReLU(),
             # nn.LayerNorm(l2_size),
@@ -34,8 +36,9 @@ class VoxelFCN(nn.Module):
 
 
 class SegmentTransformer(pl.LightningModule):
-    def __init__(self, embedding_size=256, dropout_rate=0.4):
+    def __init__(self, config: DictConfig):
         super(SegmentTransformer, self).__init__()
+        self.config = config
         self.classification_loss = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=3)
@@ -55,14 +58,13 @@ class SegmentTransformer(pl.LightningModule):
         ]
         self.patches = get_patch_indices()
         self.lb_fcn = nn.ModuleDict({
-            str(label): VoxelFCN(input_size=self.patches[label].sum(), output_size=embedding_size,
-                                 dropout_rate=dropout_rate)
+            str(label): VoxelFCN(input_size=self.patches[label].sum(), config=config)
             for label in self.labels
         })
 
         # Transformer-related layers
         self.transformer_encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embedding_size,
+            d_model=config.model.embedding_size,
             nhead=4,  # Number of attention heads
             dim_feedforward=512,  # Feedforward layer size
             dropout=0.2,  # Dropout to prevent overfitting
@@ -72,7 +74,7 @@ class SegmentTransformer(pl.LightningModule):
             self.transformer_encoder_layer, num_layers=4
         )
         self.fc_out = nn.Sequential(
-            nn.Linear(embedding_size, 64),
+            nn.Linear(config.model.embedding_size, 64),
             nn.ReLU(),
             nn.Linear(64, 3)
         )
@@ -121,29 +123,14 @@ class SegmentTransformer(pl.LightningModule):
 
         return metrics
 
-    # def on_test_epoch_end(self, outputs):
-    #     avg_acc = torch.stack([x['accuracy'] for x in outputs]).mean()
-    #     avg_precision = torch.stack([x['precision'] for x in outputs]).mean()
-    #     avg_recall = torch.stack([x['recall'] for x in outputs]).mean()
-    #     avg_f1_score = torch.stack([x['f1_score'] for x in outputs]).mean()
-    #     avg_auc = torch.stack([x['auc'] for x in outputs]).mean()
-    #     avg_spec = torch.stack([x['specificity'] for x in outputs]).mean()
-    #
-    #     self.log('avg_test_accuracy', avg_acc)
-    #     self.log('avg_test_precision', avg_precision)
-    #     self.log('avg_test_recall', avg_recall)
-    #     self.log('avg_test_f1_score', avg_f1_score)
-    #     self.log('avg_test_auc', avg_auc)
-    #     self.log('avg_test_specificity', avg_spec)
-
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.config.model.lr)
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
         return {
             'optimizer': optimizer,
             'lr_scheduler': {
                 'scheduler': scheduler,
-                'monitor': 'val_loss',
+                'monitor': 'train_loss',
                 'interval': 'epoch',
                 'frequency': 1,
             }

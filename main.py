@@ -10,10 +10,10 @@
 #
 # run()
 
-# from train.cvit import run
+from train.cvit import run
+
+run()
+
+# from dataset import mri_data_paths, create_mri_pet_label_dataset, pet_data_path
 #
-# run()
-
-from dataset import mri_data_paths, create_mri_pet_label_dataset, pet_data_path
-
-create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
+# create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
