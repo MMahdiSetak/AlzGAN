@@ -279,94 +279,100 @@ def mri_pet_label_info(mri_path, pet_path):
     print(damaged_img)
 
 
+def count_pair_images(subjects, mri_path, pet_path):
+    count = 0
+    date_distance = []
+    for subject in subjects:
+        pet_dates_path = {}
+        pet_descs = os.listdir(f"{pet_path}/{subject}")
+        for pet_desc in pet_descs:
+            pet_dates = os.listdir(f"{pet_path}/{subject}/{pet_desc}")
+            for date in pet_dates:
+                pet_dates_path[datetime.strptime(date,
+                                                 '%Y-%m-%d_%H_%M_%S.%f')] = f"{pet_path}/{subject}/{pet_desc}/{date}"
+        mri_descs = os.listdir(f"{mri_path}/{subject}")
+        for mri_desc in mri_descs:
+            mri_dates = os.listdir(f"{mri_path}/{subject}/{mri_desc}")
+            for date in mri_dates:
+                mri_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
+                closest_pet_date = min(pet_dates_path.keys(), key=lambda x: abs(x - mri_date))
+                date_distance.append((mri_date, closest_pet_date))
+
+                mri_img_id = os.listdir(f"{mri_path}/{subject}/{mri_desc}/{date}")[0]
+                if mri_img_id in MRI_ID_BLACKLIST:
+                    continue
+                count += 1
+    return count
+
+
 def create_mri_pet_label_dataset(mri_path, pet_path):
     intersect = calculate_subject_intersect(mri_path, pet_path)
+    train_subj, val_subj, test_subj = split_subject(list(intersect))
     mri_target = (160, 200, 180)
     pet_target = (100, 140, 96)
-    # num_imgs = 2656
-    num_imgs = 2969
-    indices = list(range(num_imgs))
-    random.shuffle(indices)
-    current_index = 0
-    current_train_idx, current_val_idx, current_test_idx = 0, 0, 0
+    subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
+    split_num = {
+        'train': count_pair_images(train_subj, mri_path, pet_path),
+        'val': count_pair_images(val_subj, mri_path, pet_path),
+        'test': count_pair_images(test_subj, mri_path, pet_path),
+    }
     df = pd.read_csv("mri_labels.csv")
 
-    # Split indices into train (80%), validation (10%), and test (10%) sets
-    train_indices, temp_indices = train_test_split(indices, test_size=0.2, random_state=42)
-    val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
+    with h5py.File('mri_pet_label_v4.hdf5', 'w') as h5f:
+        ds = {
+            'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
+            'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
+            'mri_test': h5f.create_dataset('mri_test', (split_num['test'], *mri_target), dtype='uint8'),
 
-    with h5py.File('mri_pet_label.hdf5', 'w') as h5f:
-        mri_train_ds = h5f.create_dataset('mri_train', (len(train_indices), *mri_target), dtype='uint8')
-        mri_val_ds = h5f.create_dataset('mri_val', (len(val_indices), *mri_target), dtype='uint8')
-        mri_test_ds = h5f.create_dataset('mri_test', (len(test_indices), *mri_target), dtype='uint8')
+            'pet_train': h5f.create_dataset('pet_train', (split_num['train'], *pet_target), dtype='uint8'),
+            'pet_val': h5f.create_dataset('pet_val', (split_num['val'], *pet_target), dtype='uint8'),
+            'pet_test': h5f.create_dataset('pet_test', (split_num['test'], *pet_target), dtype='uint8'),
 
-        pet_train_ds = h5f.create_dataset('pet_train', (len(train_indices), *pet_target), dtype='uint8')
-        pet_val_ds = h5f.create_dataset('pet_val', (len(val_indices), *pet_target), dtype='uint8')
-        pet_test_ds = h5f.create_dataset('pet_test', (len(test_indices), *pet_target), dtype='uint8')
+            'label_train': h5f.create_dataset('label_train', (split_num['train'],), dtype='int'),
+            'label_val': h5f.create_dataset('label_val', (split_num['val'],), dtype='int'),
+            'label_test': h5f.create_dataset('label_test', (split_num['test'],), dtype='int'),
+        }
 
-        label_train_ds = h5f.create_dataset('label_train', (len(train_indices),), dtype='int')
-        label_val_ds = h5f.create_dataset('label_val', (len(val_indices),), dtype='int')
-        label_test_ds = h5f.create_dataset('label_test', (len(test_indices),), dtype='int')
+        for split, subjects in tqdm(subj_split.items(), leave=False):
+            indices = list(range(split_num[split]))
+            random.shuffle(indices)
+            current_index = 0
+            for subject in tqdm(intersect, leave=True):
+                pet_dates_path = {}
+                pet_descs = os.listdir(f"{pet_path}/{subject}")
+                for pet_desc in pet_descs:
+                    pet_dates = os.listdir(f"{pet_path}/{subject}/{pet_desc}")
+                    for date in pet_dates:
+                        pet_dates_path[datetime.strptime(date,
+                                                         '%Y-%m-%d_%H_%M_%S.%f')] = f"{pet_path}/{subject}/{pet_desc}/{date}"
 
-        for subject in tqdm(intersect, leave=True):
-            pet_dates_path = {}
-            pet_descs = os.listdir(f"{pet_path}/{subject}")
-            for pet_desc in pet_descs:
-                pet_dates = os.listdir(f"{pet_path}/{subject}/{pet_desc}")
-                for date in pet_dates:
-                    pet_dates_path[datetime.strptime(date,
-                                                     '%Y-%m-%d_%H_%M_%S.%f')] = f"{pet_path}/{subject}/{pet_desc}/{date}"
+                mri_descs = os.listdir(f"{mri_path}/{subject}")
+                for mri_desc in tqdm(mri_descs, leave=False):
+                    mri_dates = os.listdir(f"{mri_path}/{subject}/{mri_desc}")
+                    for date in tqdm(mri_dates, leave=False):
+                        mri_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
+                        closest_pet_date = min(pet_dates_path.keys(), key=lambda x: abs(x - mri_date))
 
-            mri_descs = os.listdir(f"{mri_path}/{subject}")
-            for mri_desc in tqdm(mri_descs, leave=False):
-                mri_dates = os.listdir(f"{mri_path}/{subject}/{mri_desc}")
-                for date in tqdm(mri_dates, leave=False):
-                    # start = time.time()
-                    mri_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
-                    closest_pet_date = min(pet_dates_path.keys(), key=lambda x: abs(x - mri_date))
+                        pet_img_id = os.listdir(pet_dates_path[closest_pet_date])[0]
+                        mri_img_id = os.listdir(f"{mri_path}/{subject}/{mri_desc}/{date}")[0]
 
-                    pet_img_id = os.listdir(pet_dates_path[closest_pet_date])[0]
-                    mri_img_id = os.listdir(f"{mri_path}/{subject}/{mri_desc}/{date}")[0]
+                        pet_img_path = f"{pet_dates_path[closest_pet_date]}/{pet_img_id}"
+                        mri_img_path = f"{mri_path}/{subject}/{mri_desc}/{date}/{mri_img_id}"
 
-                    pet_img_path = f"{pet_dates_path[closest_pet_date]}/{pet_img_id}"
-                    mri_img_path = f"{mri_path}/{subject}/{mri_desc}/{date}/{mri_img_id}"
+                        if mri_img_id in MRI_ID_BLACKLIST:
+                            continue
 
-                    if mri_img_id in MRI_ID_BLACKLIST:
-                        continue
-                    mri_image = read_image(mri_img_path)
-                    mri_image = mri_preprocess(mri_image)
-                    # mri_image = resize_image(preprocessed_mri, mri_target)
+                        mri_image = read_image(mri_img_path)
+                        mri_image = mri_preprocess(mri_image)
 
-                    pet_image = read_image(pet_img_path)
-                    pet_image = pet_preprocess(pet_image)
-                    # pair_log(mri_image, pet_image, f'{mri_img_id}_{pet_img_id}')
-                    # log_to_file_image(pet_image, pet_img_id)
-                    # pet_image = resize_image(pet_image, pet_target)
-                    # log_to_file_image(pet_image, pet_img_id)
+                        pet_image = read_image(pet_img_path)
+                        pet_image = pet_preprocess(pet_image)
 
-                    label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
-                    label = group_mapping[label]
-
-                    if current_index in train_indices:
-                        mri_train_ds[current_train_idx] = mri_image
-                        pet_train_ds[current_train_idx] = pet_image
-                        label_train_ds[current_train_idx] = label
-                        current_train_idx += 1
-                    elif current_index in val_indices:
-                        mri_val_ds[current_val_idx] = mri_image
-                        pet_val_ds[current_val_idx] = pet_image
-                        label_val_ds[current_val_idx] = label
-                        current_val_idx += 1
-                    elif current_index in test_indices:
-                        mri_test_ds[current_test_idx] = mri_image
-                        pet_test_ds[current_test_idx] = pet_image
-                        label_test_ds[current_test_idx] = label
-                        current_test_idx += 1
-                    current_index += 1
-                    # end = time.time()
-                    # print(end - start)
-            if current_index >= num_imgs:
-                break
+                        label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
+                        ds[f'mri_{split}'][indices[current_index]] = mri_image
+                        ds[f'pet_{split}'][indices[current_index]] = pet_image
+                        ds[f'label_{split}'][indices[current_index]] = group_mapping[label]
+                        current_index += 1
 
     print(current_index)
 
@@ -472,8 +478,7 @@ def mri_preprocess(img: np.ndarray) -> np.ndarray:
     return normalized_img
 
 
-def split_mri_subject(mri_path: str):
-    subjects = os.listdir(mri_path)
+def split_subject(subjects: [str]):
     # Split indices into train (80%), validation (10%), and test (10%) sets
     train_indices, temp_indices = train_test_split(subjects, test_size=0.2, random_state=42)
     val_indices, test_indices = train_test_split(temp_indices, test_size=0.5, random_state=42)
@@ -497,8 +502,8 @@ def count_subject_image(subjects, mri_path: str):
 
 def create_mri_dataset(mri_path: str):
     mri_target = (160, 200, 180)
-
-    train_subj, val_subj, test_subj = split_mri_subject(mri_path)
+    subjects = os.listdir(mri_path)
+    train_subj, val_subj, test_subj = split_subject(subjects)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
     split_num = {
         'train': count_subject_image(train_subj, mri_path),
