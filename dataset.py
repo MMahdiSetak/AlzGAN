@@ -306,15 +306,15 @@ def count_pair_images(subjects, mri_path, pet_path):
 
 
 def create_mri_pet_label_dataset(mri_path, pet_path):
-    intersect = calculate_subject_intersect(mri_path, pet_path)
+    intersect = calculate_subject_intersect(mri=mri_path, pet=pet_path)
     train_subj, val_subj, test_subj = split_subject(list(intersect))
     mri_target = (160, 200, 180)
     pet_target = (100, 140, 96)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
     split_num = {
-        'train': count_pair_images(train_subj, mri_path, pet_path),
-        'val': count_pair_images(val_subj, mri_path, pet_path),
-        'test': count_pair_images(test_subj, mri_path, pet_path),
+        'train': count_pair_images(train_subj, mri_path=mri_path, pet_path=pet_path),
+        'val': count_pair_images(val_subj, mri_path=mri_path, pet_path=pet_path),
+        'test': count_pair_images(test_subj, mri_path=mri_path, pet_path=pet_path),
     }
     df = pd.read_csv("mri_labels.csv")
 
@@ -337,7 +337,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
             indices = list(range(split_num[split]))
             random.shuffle(indices)
             current_index = 0
-            for subject in tqdm(intersect, leave=True):
+            for subject in tqdm(subjects, leave=True):
                 pet_dates_path = {}
                 pet_descs = os.listdir(f"{pet_path}/{subject}")
                 for pet_desc in pet_descs:
