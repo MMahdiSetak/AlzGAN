@@ -20,15 +20,15 @@ class VoxelFCN(nn.Module):
         l1_size = output_size * 4
         l2_size = output_size * 2
         self.fc = nn.Sequential(
-            nn.Linear(input_size, output_size),
+            nn.Linear(input_size, l2_size),
             nn.ReLU(),
-            nn.LayerNorm(output_size),
+            nn.LayerNorm(l2_size),
             nn.Dropout(config.model.dropout_rate),
-            # nn.Linear(l1_size, l2_size),
-            # nn.ReLU(),
-            # nn.LayerNorm(l2_size),
-            # nn.Dropout(dropout_rate / 2),
-            nn.Linear(output_size, output_size)
+            nn.Linear(l2_size, l2_size),
+            nn.ReLU(),
+            nn.LayerNorm(l2_size),
+            nn.Dropout(config.model.dropout_rate),
+            nn.Linear(l2_size, output_size)
         )
 
     def forward(self, x):
