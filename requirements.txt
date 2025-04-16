@@ -17,3 +17,4 @@ torchvision
 pytorch-lightning
 hydra-core
 omegaconf
+optuna
