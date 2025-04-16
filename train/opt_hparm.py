@@ -16,7 +16,7 @@ def objective(trial):
     num_workers = 3
 
     # Define the model with the suggested hyperparameters
-    model = SegmentTransformer(embedding_size=embedding_size, dropout=dropout_rate)
+    model = SegmentTransformer(embedding_size=embedding_size, dropout=dropout_rate, lr=1e-3)
     model.classification_loss = nn.CrossEntropyLoss()
 
     # Define trainer

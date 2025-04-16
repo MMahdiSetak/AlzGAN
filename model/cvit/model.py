@@ -34,8 +34,9 @@ class VoxelFCN(nn.Module):
 
 
 class SegmentTransformer(pl.LightningModule):
-    def __init__(self, embedding_size=128, dropout=0.2):
+    def __init__(self, embedding_size=128, dropout=0.2, lr=1e-3):
         super(SegmentTransformer, self).__init__()
+        self.lr = lr
         self.classification_loss = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=3)
@@ -121,7 +122,7 @@ class SegmentTransformer(pl.LightningModule):
         return metrics
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.config.model.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
         return {
             'optimizer': optimizer,
