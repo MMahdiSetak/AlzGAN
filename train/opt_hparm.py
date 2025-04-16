@@ -27,16 +27,17 @@ def objective(trial):
         val_check_interval=1.0,
         precision='16-mixed',
         gradient_clip_val=1.0,
+        log_every_n_steps=5,
     )
 
     # Set up the DataLoader objects for train, val, and test sets
     train_loader = DataLoader(
         dataset=MRIDataset('dataset/mri_label_v3.hdf5', 'train'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=True
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     val_loader = DataLoader(
         dataset=MRIDataset('dataset/mri_label_v3.hdf5', 'val'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=True
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
 
     # Train the model
