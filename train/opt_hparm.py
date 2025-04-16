@@ -13,7 +13,7 @@ def objective(trial):
     embedding_size = trial.suggest_int('embedding_size', 64, 512, step=4)
     dropout_rate = trial.suggest_float('dropout_rate', 0.1, 0.9)
     batch_size = 256
-    num_workers = 3
+    num_workers = 2
 
     # Define the model with the suggested hyperparameters
     model = SegmentTransformer(embedding_size=embedding_size, dropout=dropout_rate, lr=1e-3)
@@ -21,7 +21,7 @@ def objective(trial):
 
     # Define trainer
     trainer = pl.Trainer(
-        max_epochs=3,
+        max_epochs=50,
         accelerator="auto",
         logger=TensorBoardLogger(save_dir="./log", name="cvit_optuna"),
         val_check_interval=1.0,
@@ -44,6 +44,5 @@ def objective(trial):
     trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
     # Return the validation accuracy as the objective to maximize
-    val_accuracy = trainer.callback_metrics['val_accuracy'].item()
-    print(val_accuracy)
+    val_accuracy = trainer.callback_metrics['val_accuracy'].max()
     return val_accuracy
