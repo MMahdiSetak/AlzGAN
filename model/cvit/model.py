@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from omegaconf import DictConfig
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
@@ -12,22 +11,21 @@ torch.set_float32_matmul_precision('medium')
 
 
 class VoxelFCN(nn.Module):
-    def __init__(self, input_size, config: DictConfig):
+    def __init__(self, input_size, output_size=128, dropout=0.2):
         super(VoxelFCN, self).__init__()
-        output_size = config.model.embedding_size
         # l1_size = max(output_size * 4, input_size // 2)
         # l2_size = max(output_size * 2, input_size // 4)
-        l1_size = output_size * 4
-        l2_size = output_size * 2
+        l1_size = output_size
+        l2_size = output_size
         self.fc = nn.Sequential(
-            nn.Linear(input_size, l2_size),
+            nn.Linear(input_size, l1_size),
+            nn.ReLU(),
+            nn.LayerNorm(l1_size),
+            nn.Dropout(dropout),
+            nn.Linear(l1_size, l2_size),
             nn.ReLU(),
             nn.LayerNorm(l2_size),
-            nn.Dropout(config.model.dropout_rate),
-            nn.Linear(l2_size, l2_size),
-            nn.ReLU(),
-            nn.LayerNorm(l2_size),
-            nn.Dropout(config.model.dropout_rate),
+            nn.Dropout(dropout),
             nn.Linear(l2_size, output_size)
         )
 
@@ -36,9 +34,8 @@ class VoxelFCN(nn.Module):
 
 
 class SegmentTransformer(pl.LightningModule):
-    def __init__(self, config: DictConfig):
+    def __init__(self, embedding_size=128, dropout=0.2):
         super(SegmentTransformer, self).__init__()
-        self.config = config
         self.classification_loss = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass", num_classes=3)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=3)
@@ -58,13 +55,13 @@ class SegmentTransformer(pl.LightningModule):
         ]
         self.patches = get_patch_indices()
         self.lb_fcn = nn.ModuleDict({
-            str(label): VoxelFCN(input_size=self.patches[label].sum(), config=config)
+            str(label): VoxelFCN(input_size=self.patches[label].sum(), output_size=embedding_size, dropout=dropout)
             for label in self.labels
         })
 
         # Transformer-related layers
         self.transformer_encoder_layer = nn.TransformerEncoderLayer(
-            d_model=config.model.embedding_size,
+            d_model=embedding_size,
             nhead=4,  # Number of attention heads
             dim_feedforward=512,  # Feedforward layer size
             dropout=0.2,  # Dropout to prevent overfitting
@@ -74,7 +71,7 @@ class SegmentTransformer(pl.LightningModule):
             self.transformer_encoder_layer, num_layers=4
         )
         self.fc_out = nn.Sequential(
-            nn.Linear(config.model.embedding_size, 64),
+            nn.Linear(embedding_size, 64),
             nn.ReLU(),
             nn.Linear(64, 3)
         )

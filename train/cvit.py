@@ -14,7 +14,7 @@ from omegaconf import DictConfig
 def run(cfg: DictConfig):
     batch_size = cfg.model.batch_size
     num_workers = cfg.model.num_workers
-    model = SegmentTransformer(cfg)
+    model = SegmentTransformer(embedding_size=cfg.model.embedding_size, dropout=cfg.model.dropout_rate)
     logger = TensorBoardLogger(save_dir="./log", name="cvit")
 
     train_loader = DataLoader(
