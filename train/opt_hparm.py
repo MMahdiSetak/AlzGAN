@@ -12,7 +12,7 @@ def objective(trial):
     # Suggest hyperparameters
     embedding_size = trial.suggest_int('embedding_size', 64, 512, step=4)
     dropout_rate = trial.suggest_float('dropout_rate', 0.1, 0.9)
-    batch_size = 256
+    batch_size = 128
     num_workers = 2
 
     # Define the model with the suggested hyperparameters
