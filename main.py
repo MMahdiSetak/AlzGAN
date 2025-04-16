@@ -24,8 +24,8 @@ import optuna
 from train.opt_hparm import objective
 
 # Create the Optuna study and run the optimization
-study = optuna.create_study(direction="maximize", n_jobs=2, storage="sqlite:///cvit_study.db", load_if_exists=True)
-study.optimize(objective, n_trials=50)
+study = optuna.create_study(direction="maximize", storage="sqlite:///cvit_study.db", load_if_exists=True)
+study.optimize(objective, n_trials=50, n_jobs=2)
 
 # Get the best hyperparameters
 best_params = study.best_params
