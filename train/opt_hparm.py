@@ -9,28 +9,26 @@ from model.dataloader import MRIDataset
 
 
 def objective(trial):
-    # Suggest hyperparameters
+    norm = trial.suggest_categorical('normalization', ['batch', 'instance', 'layer'])
     embedding_size = trial.suggest_int('embedding_size', 64, 512, step=4)
     dropout_rate = trial.suggest_float('dropout_rate', 0.1, 0.9)
     batch_size = 256
     num_workers = 2
 
-    # Define the model with the suggested hyperparameters
-    model = SegmentTransformer(embedding_size=embedding_size, dropout=dropout_rate, lr=1e-3)
+    model = SegmentTransformer(embedding_size=embedding_size, dropout=dropout_rate, norm=norm, lr=1e-3)
     model.classification_loss = nn.CrossEntropyLoss()
 
-    # Define trainer
     trainer = pl.Trainer(
-        max_epochs=50,
+        max_epochs=30,
         accelerator="auto",
         logger=TensorBoardLogger(save_dir="./log", name="cvit_optuna"),
         val_check_interval=1.0,
         precision='16-mixed',
         gradient_clip_val=1.0,
         log_every_n_steps=5,
+        enable_checkpointing=False
     )
 
-    # Set up the DataLoader objects for train, val, and test sets
     train_loader = DataLoader(
         dataset=MRIDataset('dataset/mri_label_v3.hdf5', 'train'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
@@ -40,9 +38,7 @@ def objective(trial):
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
 
-    # Train the model
     trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
-    # Return the validation accuracy as the objective to maximize
     val_accuracy = trainer.callback_metrics['val_accuracy'].max()
     return val_accuracy
