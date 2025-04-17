@@ -15,8 +15,8 @@ class VoxelFCN(nn.Module):
         super(VoxelFCN, self).__init__()
         # l1_size = max(output_size * 4, input_size // 2)
         # l2_size = max(output_size * 2, input_size // 4)
-        l1_size = output_size
-        l2_size = output_size
+        l1_size = output_size * 4
+        l2_size = output_size * 2
         self.fc = nn.Sequential(
             nn.Linear(input_size, l1_size),
             nn.ReLU(),
@@ -124,17 +124,18 @@ class SegmentTransformer(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
-        # return {
-        #     'optimizer': optimizer,
-        #     'lr_scheduler': {
-        #         'scheduler': scheduler,
-        #         'monitor': 'train_loss',
-        #         'interval': 'epoch',
-        #         'frequency': 1,
-        #     }
-        # }
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': scheduler,
+                'monitor': 'train_loss',
+                'interval': 'epoch',
+                'frequency': 1,
+            }
+        }
 
-        return [optimizer]#, [{"scheduler": scheduler, "interval": "epoch"}]
+        # return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
+        # return optimizer
 
 
 def test():
