@@ -53,7 +53,7 @@ def run(cfg: DictConfig):
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
     test_loader = DataLoader(
-        dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'test'),
+        dataset=MRIDataset(cfg.model.dataset, 'test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     trainer.test(model=model, dataloaders=test_loader)

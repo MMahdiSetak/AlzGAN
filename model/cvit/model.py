@@ -144,9 +144,6 @@ class SegmentTransformer(pl.LightningModule):
             }
         }
 
-        # return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
-        # return optimizer
-
 
 def test():
     image = torch.randn((2, 160, 200, 180))

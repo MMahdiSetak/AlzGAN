@@ -23,7 +23,8 @@ import optuna
 
 from train.opt_hparm import objective
 
-study = optuna.create_study(direction="maximize", storage="sqlite:///cvit_study.db", load_if_exists=True)
+study = optuna.create_study(study_name='cvit', direction="maximize", storage="sqlite:///cvit_study.db",
+                            load_if_exists=True)
 study.optimize(objective, n_trials=50)
 
 best_params = study.best_params
