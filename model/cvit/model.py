@@ -124,15 +124,17 @@ class SegmentTransformer(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
-        return {
-            'optimizer': optimizer,
-            'lr_scheduler': {
-                'scheduler': scheduler,
-                'monitor': 'train_loss',
-                'interval': 'epoch',
-                'frequency': 1,
-            }
-        }
+        # return {
+        #     'optimizer': optimizer,
+        #     'lr_scheduler': {
+        #         'scheduler': scheduler,
+        #         'monitor': 'train_loss',
+        #         'interval': 'epoch',
+        #         'frequency': 1,
+        #     }
+        # }
+
+        return [optimizer]#, [{"scheduler": scheduler, "interval": "epoch"}]
 
 
 def test():
