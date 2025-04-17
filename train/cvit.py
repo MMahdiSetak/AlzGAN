@@ -46,7 +46,7 @@ def run(cfg: DictConfig):
         precision='16-mixed',
         gradient_clip_val=1.0,
         log_every_n_steps=5,
-        callbacks=[checkpoint_callback, early_stop_callback],
+        callbacks=[early_stop_callback],
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
