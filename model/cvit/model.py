@@ -11,20 +11,29 @@ torch.set_float32_matmul_precision('medium')
 
 
 class VoxelFCN(nn.Module):
-    def __init__(self, input_size, output_size=128, dropout=0.2):
+    def __init__(self, input_size, output_size=128, dropout=0.2, norm='batch'):
         super(VoxelFCN, self).__init__()
         # l1_size = max(output_size * 4, input_size // 2)
         # l2_size = max(output_size * 2, input_size // 4)
         l1_size = output_size * 4
         l2_size = output_size * 2
+        if norm == 'batch':
+            l1_norm = nn.BatchNorm1d(l1_size)
+            l2_norm = nn.BatchNorm1d(l2_size)
+        elif norm == 'instance':
+            l1_norm = nn.InstanceNorm1d(l1_size)
+            l2_norm = nn.InstanceNorm1d(l2_size)
+        else:
+            l1_norm = nn.LayerNorm(l1_size)
+            l2_norm = nn.LayerNorm(l2_size)
         self.fc = nn.Sequential(
             nn.Linear(input_size, l1_size),
             nn.ReLU(),
-            nn.LayerNorm(l1_size),
+            l1_norm,
             nn.Dropout(dropout),
             nn.Linear(l1_size, l2_size),
             nn.ReLU(),
-            nn.LayerNorm(l2_size),
+            l2_norm,
             nn.Dropout(dropout),
             nn.Linear(l2_size, output_size)
         )
@@ -34,7 +43,7 @@ class VoxelFCN(nn.Module):
 
 
 class SegmentTransformer(pl.LightningModule):
-    def __init__(self, embedding_size=128, dropout=0.2, lr=1e-3):
+    def __init__(self, embedding_size=128, dropout=0.2, lr=1e-3, norm='batch'):
         super(SegmentTransformer, self).__init__()
         self.lr = lr
         self.classification_loss = nn.CrossEntropyLoss()
@@ -56,7 +65,8 @@ class SegmentTransformer(pl.LightningModule):
         ]
         self.patches = get_patch_indices()
         self.lb_fcn = nn.ModuleDict({
-            str(label): VoxelFCN(input_size=self.patches[label].sum(), output_size=embedding_size, dropout=dropout)
+            str(label): VoxelFCN(input_size=self.patches[label].sum(), output_size=embedding_size, dropout=dropout,
+                                 norm=norm)
             for label in self.labels
         })
 
