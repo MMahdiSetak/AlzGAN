@@ -41,8 +41,8 @@ class PairDataset(DataLoader):
         return self.n
 
     def __getitem__(self, index):
-        mri = torch.Tensor(self.mri_images[index] / 256)
-        pet = torch.Tensor(self.pet_images[index] / 256)
+        mri = torch.Tensor(self.mri_images[index] / 256).unsqueeze(1)
+        pet = torch.Tensor(self.pet_images[index] / 256).unsqueeze(1)
         label = self.labels[index]
         return mri, pet, label
 

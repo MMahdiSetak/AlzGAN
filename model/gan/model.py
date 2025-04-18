@@ -9,7 +9,7 @@ from torchmetrics import MeanSquaredError, MeanAbsoluteError, MetricCollection
 from torchmetrics.image import PeakSignalNoiseRatio
 
 
-class GANLightningModule(pl.LightningModule):
+class GAN(pl.LightningModule):
     def __init__(self, lr=1e-5):
         super().__init__()
         self.automatic_optimization = False
