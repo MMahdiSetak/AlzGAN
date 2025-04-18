@@ -10,17 +10,45 @@ from torchmetrics.image import PeakSignalNoiseRatio
 
 
 class GAN(pl.LightningModule):
-    def __init__(self, lr=1e-5):
+    def __init__(
+            self,
+            gen_base_nf=128,
+            gen_enc_dropout=0.1,
+            gen_bottle_dropout=0.2,
+            gen_dec_dropout=0.1,
+            gen_n_bottleneck=3,
+            gen_lr=1e-5,
+            dis_base_nf=64,
+            dis_n_layers=5,
+            dis_kernel_size=4,
+            dis_stride=2,
+            dis_use_bn=True,
+            dis_dropout=0.1,
+            dis_lr=1e-4,
+    ):
         super().__init__()
         self.automatic_optimization = False
 
-        self.generator = Generator()
-        self.discriminator = Discriminator()
-
+        self.generator = Generator(
+            base_nf=gen_base_nf,
+            enc_dropout=gen_enc_dropout,
+            bottle_dropout=gen_bottle_dropout,
+            dec_dropout=gen_dec_dropout,
+            n_bottleneck=gen_n_bottleneck
+        )
+        self.discriminator = Discriminator(
+            base_nf=dis_base_nf,
+            n_layers=dis_n_layers,
+            kernel_size=dis_kernel_size,
+            stride=dis_stride,
+            use_bn=dis_use_bn,
+            dropout=dis_dropout
+        )
         self.criterion = nn.BCELoss()
         self.pixelwise_loss = nn.MSELoss()
 
-        self.lr = lr
+        self.gen_lr = gen_lr
+        self.dis_lr = dis_lr
 
         self.metrics = MetricCollection({
             "MAE": MeanAbsoluteError(),
@@ -73,8 +101,8 @@ class GAN(pl.LightningModule):
         return self.validation_test(batch, batch_idx)
 
     def configure_optimizers(self):
-        opt_g = optim.Adam(self.generator.parameters(), lr=self.lr, betas=(0.5, 0.999))
-        opt_d = optim.Adam(self.discriminator.parameters(), lr=self.lr, betas=(0.5, 0.999))
+        opt_g = optim.Adam(self.generator.parameters(), lr=self.gen_lr, betas=(0.5, 0.999))
+        opt_d = optim.Adam(self.discriminator.parameters(), lr=self.dis_lr, betas=(0.5, 0.999))
         # scheduler = {
         #     'scheduler': ReduceLROnPlateau(opt_g, mode='min', patience=3, factor=0.5),
         #     'monitor': 'train_g_loss',

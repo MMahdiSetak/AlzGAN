@@ -7,14 +7,13 @@ class Discriminator(nn.Module):
                  n_layers: int = 5,
                  kernel_size: int = 4,
                  stride: int = 2,
-                 padding: int = 1,
                  use_bn: bool = True,
-                 dropout: float = 0.1, ):
+                 dropout: float = 0.1):
         super(Discriminator, self).__init__()
         layers = []
         # first conv: no down‐sampling
         layers += [
-            nn.Conv3d(1, base_nf, kernel_size=kernel_size, stride=1, padding=padding),
+            nn.Conv3d(1, base_nf, kernel_size=kernel_size, stride=1, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Dropout3d(dropout),
         ]
@@ -24,7 +23,7 @@ class Discriminator(nn.Module):
             in_ch = base_nf * (2 ** (i - 1))
             out_ch = base_nf * (2 ** i)
             layers += [
-                nn.Conv3d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding),
+                nn.Conv3d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=1),
             ]
             if use_bn:
                 layers.append(nn.BatchNorm3d(out_ch))
