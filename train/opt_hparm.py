@@ -12,7 +12,8 @@ batch_size = 256
 num_workers = 2
 train_loader = DataLoader(
     dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'train'),
-    batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+    batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+    pin_memory=True, persistent_workers=True, pin_memory_device="cuda"
 )
 val_loader = DataLoader(
     dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'val'),
