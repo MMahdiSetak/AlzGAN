@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from torch.utils.data import DataLoader
@@ -8,7 +9,7 @@ from model.cvit.model import SegmentTransformer
 from model.dataloader import MRIDataset
 
 batch_size = 256
-num_workers = 3
+num_workers = 2
 train_loader = DataLoader(
     dataset=MRIDataset('dataset/mri_label_v4.hdf5', 'train'),
     batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
@@ -26,6 +27,13 @@ def objective(trial):
 
     model = SegmentTransformer(embedding_size=embedding_size, dropout=dropout_rate, norm=norm, lr=1e-3)
 
+    early_stop_callback = EarlyStopping(
+        monitor='train_accuracy',
+        patience=5,
+        verbose=True,
+        mode='max'
+    )
+
     trainer = pl.Trainer(
         max_epochs=30,
         accelerator="auto",
@@ -34,7 +42,8 @@ def objective(trial):
         precision='16-mixed',
         gradient_clip_val=1.0,
         log_every_n_steps=5,
-        enable_checkpointing=False
+        enable_checkpointing=False,
+        callbacks=[early_stop_callback]
     )
 
     trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
