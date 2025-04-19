@@ -58,7 +58,7 @@ class GAN(pl.LightningModule):
         })
 
     def training_step(self, batch, batch_idx):
-        real_mri, real_pet = batch
+        real_mri, real_pet, label = batch
         bs = real_pet.shape[0]
 
         opt_g, opt_d = self.optimizers()
@@ -87,7 +87,7 @@ class GAN(pl.LightningModule):
         return {"g_loss": g_loss, "d_loss": d_loss}
 
     def validation_test(self, batch, batch_idx):
-        real_mri, real_pet = batch
+        real_mri, real_pet, label = batch
         bs = real_pet.shape[0]
         fake_pet = self.generator(real_mri)
         metrics = self.metrics(fake_pet, real_pet)
