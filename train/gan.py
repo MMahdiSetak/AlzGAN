@@ -44,7 +44,6 @@ def run(cfg: DictConfig):
         logger=logger,
         val_check_interval=1.0,
         precision='16-mixed',
-        gradient_clip_val=1.0,
         log_every_n_steps=5,
         enable_checkpointing=False,
         # callbacks=[early_stop_callback],
