@@ -1,9 +1,11 @@
+import torch
+
 from model.ddpm.diffusion_model.trainer import GaussianDiffusion, Trainer
 from model.ddpm.diffusion_model.unet import create_model
 from model.dataloader import DDPMPairDataset
 
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-device = "cpu"
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = "cpu"
 
 input_size = 128
 depth_size = 128

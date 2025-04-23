@@ -392,8 +392,8 @@ class Trainer(object):
             for i in range(self.gradient_accumulate_every):
                 if self.with_condition:
                     data = next(iter(self.dl))
-                    input_tensors = data[0].to('cpu')
-                    target_tensors = data[1].to('cpu')
+                    input_tensors = data[0].to('cuda')
+                    target_tensors = data[1].to('cuda')
                     loss = self.model(target_tensors, condition_tensors=input_tensors)
                 else:
                     data = next(iter(self.dl)).cuda()
