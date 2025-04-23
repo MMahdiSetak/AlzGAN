@@ -44,7 +44,7 @@ class GAN(pl.LightningModule):
             use_bn=dis_use_bn,
             dropout=dis_dropout
         )
-        self.criterion = nn.BCELoss()
+        self.criterion = nn.BCEWithLogitsLoss()
         self.pixelwise_loss = nn.MSELoss()
 
         self.gen_lr = gen_lr

@@ -36,7 +36,8 @@ class Discriminator(nn.Module):
         last_ch = base_nf * (2 ** (n_layers - 1))
         layers += [
             nn.Conv3d(last_ch, 1, kernel_size=kernel_size, stride=1, padding=0),
-            nn.Sigmoid(),
+            nn.AdaptiveAvgPool3d(1),
+            nn.Flatten(1, -1),
         ]
 
         self.model = nn.Sequential(*layers)

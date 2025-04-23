@@ -59,4 +59,4 @@ class Generator(nn.Module):
         x = self.bottleneck(x)
         x = self.decoder(x)
 
-        return x[:, :, :100, :140, :96]
+        return x[:, :, :100, :140, :96].contiguous()
