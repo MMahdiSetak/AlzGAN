@@ -2,23 +2,18 @@
 #
 # *Main part of the code is adopted from the following repository: https://github.com/lucidrains/denoising-diffusion-pytorch
 
-
-import math
 import copy
 import torch
-from torch import nn, einsum
+from torch import nn
 import torch.nn.functional as F
 from inspect import isfunction
 from functools import partial
 from torch.utils import data
 from pathlib import Path
 from torch.optim import Adam
-from torchvision import transforms, utils
-from PIL import Image
 import nibabel as nib
 import numpy as np
 from tqdm import tqdm
-from einops import rearrange
 from torch.utils.tensorboard import SummaryWriter
 import datetime
 import time
