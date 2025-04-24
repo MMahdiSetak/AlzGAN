@@ -1,28 +1,16 @@
-vqgan_ckpt: ??? 
+batch_size: 32
+num_workers: 3
+lr: 1e-5
+dataset: 'dataset/mri_pet_label_v4.hdf5'
+early_stop: 100
+max_epoch: 500
 
-# Have to be derived from VQ-GAN Latent space dimensions
-diffusion_img_size: ???
-diffusion_depth_size: ???
-diffusion_num_channels: ???
-dim_mults: ???
-results_folder: ./log/checkpoints/ddpm/
-results_folder_postfix: ''
-load_milestone: False
 
-batch_size: 40
-num_workers: 20
-logger: wandb
-objective: pred_x0
+input_size: 128
+depth_size: 128
+num_channels: 128
+num_res_blocks: 1
 save_and_sample_every: 1000
-denoising_fn: Unet3D
-train_lr: 1e-4
-timesteps: 300 # number of steps
-sampling_timesteps: 250 # number of sampling timesteps (using ddim for faster inference [see citation for ddim paper])
-loss_type: l1 # L1 or L2
-train_num_steps: 700000 # total training steps
-gradient_accumulate_every: 2 # gradient accumulation steps
-ema_decay: 0.995 # exponential moving average decay
-amp: False # turn on mixed precision
-num_sample_rows: 1
-gpus: 0
-
+timesteps: 250
+in_channels: 2
+out_channels: 1
