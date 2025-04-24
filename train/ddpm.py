@@ -10,7 +10,7 @@ from model.ddpm.unet import create_model
 from model.dataloader import DDPMPairDataset
 
 
-@hydra.main(config_path='../config/model', config_name='ddpm')
+@hydra.main(config_path='../config/model', config_name='ddpm', version_base=None)
 def run(cfg: DictConfig):
     batch_size = cfg.batch_size
     num_workers = cfg.num_workers
