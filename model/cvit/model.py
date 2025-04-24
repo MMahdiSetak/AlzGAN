@@ -7,8 +7,6 @@ from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AU
 
 from seg.patch import get_patch_indices
 
-torch.set_float32_matmul_precision('medium')
-
 
 class VoxelFCN(nn.Module):
     def __init__(self, input_size, output_size=128, dropout=0.2, norm='batch'):
