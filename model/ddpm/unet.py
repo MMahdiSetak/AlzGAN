@@ -243,8 +243,8 @@ class UNetModel(nn.Module):
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)
 
-        # h = x.type(self.dtype)
-        h = x
+        h = x.type(self.dtype)
+        # h = x
         for module in self.input_blocks:
             h = module(h, emb)
             hs.append(h)
@@ -252,7 +252,7 @@ class UNetModel(nn.Module):
         for module in self.output_blocks:
             h = th.cat([h, hs.pop()], dim=1)
             h = module(h, emb)
-        # h = h.type(x.dtype)
+        h = h.type(x.dtype)
         return self.out(h)
 
 
