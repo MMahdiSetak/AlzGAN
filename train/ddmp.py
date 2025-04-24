@@ -1,30 +1,43 @@
-import torch
+import hydra
+import pytorch_lightning as pl
+from omegaconf import DictConfig
+from pytorch_lightning.loggers import TensorBoardLogger
+from torch.utils.data import DataLoader
 
-from model.ddpm.diffusion_model.trainer import GaussianDiffusion, Trainer
-from model.ddpm.diffusion_model.unet import create_model
+from model.ddpm.diffusion import Diffusion
+from model.ddpm.trainer import GaussianDiffusion
+from model.ddpm.unet import create_model
 from model.dataloader import DDPMPairDataset
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# device = "cpu"
 
-input_size = 128
-depth_size = 128
-num_channels = 128
-num_res_blocks = 1
-save_and_sample_every = 1000
-with_condition = True
-train_lr = 1e-5
-timesteps = 250
-batchsize = 1
-epochs = 50000
+@hydra.main(config_path='../config/model', config_name='ddpm')
+def run(cfg: DictConfig):
+    batch_size = cfg.batch_size
+    num_workers = cfg.num_workers
+    datapath = cfg.dataset
+    input_size = cfg.input_size
+    depth_size = cfg.depth_size
+    num_channels = cfg.num_channels
+    num_res_blocks = cfg.num_res_blocks
+    save_and_sample_every = cfg.save_and_sample_every
+    lr = cfg.lr
+    timesteps = cfg.timesteps
+    epochs = cfg.max_epoch
+    in_channels = cfg.in_channels
+    out_channels = cfg.out_channels
 
-in_channels = 2
-out_channels = 1
+    logger = TensorBoardLogger(save_dir="./log", name="ddpm")
 
-
-def run():
+    train_loader = DataLoader(
+        dataset=DDPMPairDataset(datapath, 'train'),
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+    )
+    val_loader = DataLoader(
+        dataset=DDPMPairDataset(datapath, 'val'),
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+    )
     model = create_model(input_size, num_channels, num_res_blocks, in_channels=in_channels,
-                         out_channels=out_channels).to(device)
+                         out_channels=out_channels)
 
     diffusion = GaussianDiffusion(
         model,
@@ -32,25 +45,27 @@ def run():
         depth_size=depth_size,
         timesteps=timesteps,  # number of steps
         loss_type='l1',  # L1 or L2
-        with_condition=with_condition,
         channels=out_channels
-    ).to(device)
-
-    dataset = DDPMPairDataset('dataset/mri_pet_label_v3.hdf5', 'train')
-
-    trainer = Trainer(
-        diffusion,
-        dataset,
-        image_size=input_size,
-        depth_size=depth_size,
-        train_batch_size=batchsize,
-        train_lr=train_lr,
-        train_num_steps=epochs,  # total training steps
-        gradient_accumulate_every=2,  # gradient accumulation steps
-        ema_decay=0.995,  # exponential moving average decay
-        fp16=False,  # True,                       # turn on mixed precision training with apex
-        with_condition=with_condition,
-        save_and_sample_every=save_and_sample_every,
     )
 
-    trainer.train()
+    lit_model = Diffusion(
+        diffusion_model=diffusion,
+        train_lr=2e-6,
+        ema_decay=0.995,
+        step_start_ema=2000,
+        update_ema_every=10,
+        with_condition=False
+    )
+    trainer = pl.Trainer(
+        max_epochs=epochs,
+        accelerator="auto",
+        logger=logger,
+        # gradient_clip_val=0,
+        precision='16-mixed',
+        # callbacks=[EMACallback()],
+        accumulate_grad_batches=2,
+        log_every_n_steps=5,
+        enable_checkpointing=False,
+
+    )
+    trainer.fit(model=lit_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
