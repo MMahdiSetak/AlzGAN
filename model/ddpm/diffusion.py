@@ -26,7 +26,7 @@ class Diffusion(pl.LightningModule):
         return self.model(x, condition_tensors=condition_tensors)
 
     def training_step(self, batch, batch_idx):
-        x, cond = batch
+        x, cond, _ = batch
         loss = self.model(x, condition_tensors=cond)
         loss = loss.mean()
         self.log('train_loss', loss, on_step=True, prog_bar=True)
