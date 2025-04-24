@@ -36,8 +36,7 @@ def run(cfg: DictConfig):
         dataset=DDPMPairDataset(datapath, 'val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
-    model = create_model(input_size, num_channels, num_res_blocks, in_channels=in_channels,
-                         out_channels=out_channels)
+    model = create_model(input_size, num_channels, num_res_blocks, in_channels=in_channels, out_channels=out_channels)
 
     diffusion = GaussianDiffusion(
         model,
@@ -53,8 +52,7 @@ def run(cfg: DictConfig):
         train_lr=2e-6,
         ema_decay=0.995,
         step_start_ema=2000,
-        update_ema_every=10,
-        with_condition=False
+        update_ema_every=10
     )
     trainer = pl.Trainer(
         max_epochs=epochs,

@@ -32,10 +32,9 @@ class Diffusion(pl.LightningModule):
         self.log('train_loss', loss, on_step=True, prog_bar=True)
         return loss
 
-
-def configure_optimizers(self):
-    opt = Adam(self.model.parameters(), lr=self.hparams.train_lr)
-    return opt
+    def configure_optimizers(self):
+        opt = Adam(self.model.parameters(), lr=self.hparams.train_lr)
+        return opt
 
 
 class EMACallback(pl.Callback):
