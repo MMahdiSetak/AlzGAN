@@ -2,7 +2,7 @@
 #
 # get_patch_indices()
 
-from train.ddmp import run
+from train.ddpm import run
 
 run()
 
