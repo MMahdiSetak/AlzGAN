@@ -22,30 +22,11 @@ import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
-try:
-    from apex import amp
-
-    APEX_AVAILABLE = True
-    print("APEX: ON")
-except:
-    APEX_AVAILABLE = False
-    print("APEX: OFF")
-
-
-def exists(x):
-    return x is not None
-
 
 def default(val, d):
-    if exists(val):
+    if val is not None:
         return val
     return d() if isfunction(d) else d
-
-
-def cycle(dl):
-    while True:
-        for data in dl:
-            yield data
 
 
 def num_to_groups(num, divisor):
@@ -121,7 +102,6 @@ class GaussianDiffusion(nn.Module):
             timesteps=1000,
             loss_type='l1',
             betas=None,
-            with_condition=False,
             with_pairwised=False,
             apply_bce=False,
             lambda_bce=0.0
@@ -131,12 +111,11 @@ class GaussianDiffusion(nn.Module):
         self.image_size = image_size
         self.depth_size = depth_size
         self.denoise_fn = denoise_fn
-        self.with_condition = with_condition
         self.with_pairwised = with_pairwised
         self.apply_bce = apply_bce
         self.lambda_bce = lambda_bce
 
-        if exists(betas):
+        if betas is not None:
             betas = betas.detach().cpu().numpy() if isinstance(betas, torch.Tensor) else betas
         else:
             betas = cosine_beta_schedule(timesteps)
@@ -203,10 +182,8 @@ class GaussianDiffusion(nn.Module):
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
     def p_mean_variance(self, x, t, clip_denoised: bool, c=None):
-        if self.with_condition:
-            x_recon = self.predict_start_from_noise(x, t=t, noise=self.denoise_fn(torch.cat([x, c], 1), t))
-        else:
-            x_recon = self.predict_start_from_noise(x, t=t, noise=self.denoise_fn(x, t))
+        x_recon = self.predict_start_from_noise(x, t=t, noise=self.denoise_fn(torch.cat([x, c], 1), t))
+        # x_recon = self.predict_start_from_noise(x, t=t, noise=self.denoise_fn(x, t))
 
         if clip_denoised:
             x_recon.clamp_(-1., 1.)
@@ -231,11 +208,9 @@ class GaussianDiffusion(nn.Module):
         img = torch.randn(shape, device=device)
 
         for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
-            if self.with_condition:
-                t = torch.full((b,), i, device=device, dtype=torch.long)
-                img = self.p_sample(img, t, condition_tensors=condition_tensors)
-            else:
-                img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long))
+            t = torch.full((b,), i, device=device, dtype=torch.long)
+            img = self.p_sample(img, t, condition_tensors=condition_tensors)
+            # img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long))
         return img
 
     @torch.no_grad()
@@ -273,12 +248,10 @@ class GaussianDiffusion(nn.Module):
         b, c, h, w, d = x_start.shape
         noise = default(noise, lambda: torch.randn_like(x_start))
 
-        if self.with_condition:
-            x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-            x_recon = self.denoise_fn(torch.cat([x_noisy, condition_tensors], 1), t)
-        else:
-            x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-            x_recon = self.denoise_fn(x_noisy, t)
+        x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+        x_recon = self.denoise_fn(torch.cat([x_noisy, condition_tensors], 1), t)
+        # x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+        # x_recon = self.denoise_fn(x_noisy, t)
 
         if self.loss_type == 'l1':
             loss = (noise - x_recon).abs().mean()
@@ -337,7 +310,6 @@ class Trainer(object):
         self.opt = Adam(diffusion_model.parameters(), lr=train_lr)
         self.train_lr = train_lr
         self.train_batch_size = train_batch_size
-        self.with_condition = with_condition
 
         self.step = 0
 
@@ -390,14 +362,10 @@ class Trainer(object):
         while self.step < self.train_num_steps:
             accumulated_loss = []
             for i in range(self.gradient_accumulate_every):
-                if self.with_condition:
-                    data = next(iter(self.dl))
-                    input_tensors = data[0].to('cuda')
-                    target_tensors = data[1].to('cuda')
-                    loss = self.model(target_tensors, condition_tensors=input_tensors)
-                else:
-                    data = next(iter(self.dl)).cuda()
-                    loss = self.model(data)
+                data = next(iter(self.dl))
+                input_tensors = data[0].to('cuda')
+                target_tensors = data[1].to('cuda')
+                loss = self.model(target_tensors, condition_tensors=input_tensors)
                 loss = loss.sum() / self.batch_size
                 print(f'{self.step}: {loss.item()}')
                 backwards(loss / self.gradient_accumulate_every, self.opt)
@@ -405,7 +373,6 @@ class Trainer(object):
 
             # Record here
             average_loss = np.mean(accumulated_loss)
-            end_time = time.time()
             self.writer.add_scalar("training_loss", average_loss, self.step)
 
             self.opt.step()
@@ -418,14 +385,12 @@ class Trainer(object):
                 milestone = self.step // self.save_and_sample_every
                 batches = num_to_groups(1, self.batch_size)
 
-                if self.with_condition:
-                    all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n,
-                                                                               condition_tensors=self.ds.sample_conditions(
-                                                                                   batch_size=n)), batches))
-                    all_images = torch.cat(all_images_list, dim=0)
-                else:
-                    all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n), batches))
-                    all_images = torch.cat(all_images_list, dim=0)
+                all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n,
+                                                                           condition_tensors=self.ds.sample_conditions(
+                                                                               batch_size=n)), batches))
+                all_images = torch.cat(all_images_list, dim=0)
+                # all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n), batches))
+                # all_images = torch.cat(all_images_list, dim=0)
 
                 all_images = all_images.transpose(4, 2)
                 sampleImage = all_images.cpu().numpy()
