@@ -1,4 +1,8 @@
-from .modules import *
+# from .modules import *
+import torch
+from torch import nn
+from modules import TimestepEmbedSequential, ResBlock, AttentionBlock, Downsample, Upsample, normalization, \
+    timestep_embedding, zero_module
 
 NUM_CLASSES = 1
 
@@ -44,7 +48,6 @@ class UNetModel(nn.Module):
             dropout=0,
             channel_mult=(1, 2, 4, 8),
             conv_resample=True,
-            dims=3,
             num_classes=None,
             use_checkpoint=False,
             use_fp16=False,
@@ -71,16 +74,16 @@ class UNetModel(nn.Module):
         self.conv_resample = conv_resample
         self.num_classes = num_classes
         self.use_checkpoint = use_checkpoint
-        self.dtype = th.float16 if use_fp16 else th.float32
+        # self.dtype = th.float16 if use_fp16 else th.float32
         self.num_heads = num_heads
         self.num_head_channels = num_head_channels
         self.num_heads_upsample = num_heads_upsample
 
         time_embed_dim = model_channels * 4
         self.time_embed = nn.Sequential(
-            linear(model_channels, time_embed_dim),
+            nn.Linear(model_channels, time_embed_dim),
             nn.SiLU(),
-            linear(time_embed_dim, time_embed_dim),
+            nn.Linear(time_embed_dim, time_embed_dim),
         )
 
         if self.num_classes is not None:
@@ -88,7 +91,7 @@ class UNetModel(nn.Module):
 
         ch = input_ch = int(channel_mult[0] * model_channels)
         self.input_blocks = nn.ModuleList(
-            [TimestepEmbedSequential(conv_nd(dims, in_channels, ch, 3, padding=1))]
+            [TimestepEmbedSequential(nn.Conv3d(in_channels, ch, 3, padding=1))]
         )
         self._feature_size = ch
         input_block_chans = [ch]
@@ -101,7 +104,6 @@ class UNetModel(nn.Module):
                         time_embed_dim,
                         dropout,
                         out_channels=int(mult * model_channels),
-                        dims=dims,
                         use_checkpoint=use_checkpoint,
                         use_scale_shift_norm=use_scale_shift_norm,
                     )
@@ -129,14 +131,13 @@ class UNetModel(nn.Module):
                             time_embed_dim,
                             dropout,
                             out_channels=out_ch,
-                            dims=dims,
                             use_checkpoint=use_checkpoint,
                             use_scale_shift_norm=use_scale_shift_norm,
                             down=True,
                         )
                         if resblock_updown
                         else Downsample(
-                            ch, conv_resample, dims=dims, out_channels=out_ch
+                            ch, conv_resample, out_channels=out_ch
                         )
                     )
                 )
@@ -150,7 +151,6 @@ class UNetModel(nn.Module):
                 ch,
                 time_embed_dim,
                 dropout,
-                dims=dims,
                 use_checkpoint=use_checkpoint,
                 use_scale_shift_norm=use_scale_shift_norm,
             ),
@@ -165,7 +165,6 @@ class UNetModel(nn.Module):
                 ch,
                 time_embed_dim,
                 dropout,
-                dims=dims,
                 use_checkpoint=use_checkpoint,
                 use_scale_shift_norm=use_scale_shift_norm,
             ),
@@ -182,7 +181,6 @@ class UNetModel(nn.Module):
                         time_embed_dim,
                         dropout,
                         out_channels=int(model_channels * mult),
-                        dims=dims,
                         use_checkpoint=use_checkpoint,
                         use_scale_shift_norm=use_scale_shift_norm,
                     )
@@ -206,13 +204,12 @@ class UNetModel(nn.Module):
                             time_embed_dim,
                             dropout,
                             out_channels=out_ch,
-                            dims=dims,
                             use_checkpoint=use_checkpoint,
                             use_scale_shift_norm=use_scale_shift_norm,
                             up=True,
                         )
                         if resblock_updown
-                        else Upsample(ch, conv_resample, dims=dims, out_channels=out_ch)
+                        else Upsample(ch, conv_resample, out_channels=out_ch)
                     )
                     ds //= 2
                 self.output_blocks.append(TimestepEmbedSequential(*layers))
@@ -221,7 +218,7 @@ class UNetModel(nn.Module):
         self.out = nn.Sequential(
             normalization(ch),
             nn.SiLU(),
-            zero_module(conv_nd(dims, input_ch, out_channels, 3, padding=1)),
+            zero_module(nn.Conv3d(input_ch, out_channels, 3, padding=1)),
         )
 
     def forward(self, x, timesteps, y=None):
@@ -250,7 +247,7 @@ class UNetModel(nn.Module):
             hs.append(h)
         h = self.middle_block(h, emb)
         for module in self.output_blocks:
-            h = th.cat([h, hs.pop()], dim=1)
+            h = torch.cat([h, hs.pop()], dim=1)
             h = module(h, emb)
         h = h.type(x.dtype)
         return self.out(h)
