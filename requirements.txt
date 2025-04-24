@@ -13,6 +13,7 @@ antspyx
 
 scikit-learn
 requests
+torch
 torchvision
 pytorch-lightning
 hydra-core
