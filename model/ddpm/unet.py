@@ -1,7 +1,7 @@
 # from .modules import *
 import torch
 from torch import nn
-from modules import TimestepEmbedSequential, ResBlock, AttentionBlock, Downsample, Upsample, normalization, \
+from .modules import TimestepEmbedSequential, ResBlock, AttentionBlock, Downsample, Upsample, normalization, \
     timestep_embedding, zero_module
 
 NUM_CLASSES = 1

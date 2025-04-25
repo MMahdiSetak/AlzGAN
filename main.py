@@ -5,7 +5,7 @@ import torch
 
 from train.ddpm import run
 
-torch.set_float32_matmul_precision('high')
+torch.set_float32_matmul_precision('medium')
 run()
 
 # from dataset import mri_data_paths, create_mri_pet_label_dataset, pet_data_path
