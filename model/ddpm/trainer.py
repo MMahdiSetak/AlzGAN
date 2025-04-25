@@ -2,22 +2,22 @@
 #
 # *Main part of the code is adopted from the following repository: https://github.com/lucidrains/denoising-diffusion-pytorch
 
-import copy
+# import copy
 import torch
 from torch import nn
 import torch.nn.functional as F
 from inspect import isfunction
 from functools import partial
-from torch.utils import data
-from pathlib import Path
-from torch.optim import Adam
-import nibabel as nib
+# from torch.utils import data
+# from pathlib import Path
+# from torch.optim import Adam
+# import nibabel as nib
 import numpy as np
 from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
-import datetime
-import time
-import os
+# from torch.utils.tensorboard import SummaryWriter
+# import datetime
+# import time
+# import os
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -38,12 +38,12 @@ def num_to_groups(num, divisor):
     return arr
 
 
-def loss_backwards(fp16, loss, optimizer, **kwargs):
-    if fp16:
-        with amp.scale_loss(loss, optimizer) as scaled_loss:
-            scaled_loss.backward(**kwargs)
-    else:
-        loss.backward(**kwargs)
+# def loss_backwards(fp16, loss, optimizer, **kwargs):
+#     if fp16:
+#         with amp.scale_loss(loss, optimizer) as scaled_loss:
+#             scaled_loss.backward(**kwargs)
+#     else:
+#         loss.backward(**kwargs)
 
 
 # small helper modules
@@ -263,7 +263,6 @@ class GaussianDiffusion(nn.Module):
         return loss
 
     def forward(self, x, condition_tensors=None, *args, **kwargs):
-        print("on diffusion forward")
         b, c, d, h, w, device, img_size, depth_size = *x.shape, x.device, self.image_size, self.depth_size
         assert h == img_size and w == img_size and d == depth_size, f'Expected dimensions: height={img_size}, width={img_size}, depth={depth_size}. Actual: height={h}, width={w}, depth={d}.'
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()

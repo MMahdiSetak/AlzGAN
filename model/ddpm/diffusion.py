@@ -16,6 +16,7 @@ class Diffusion(pl.LightningModule):
     ):
         super().__init__()
         self.model = diffusion_model
+        self.lr = train_lr
         # self.save_hyperparameters()
 
         # EMA model
@@ -23,11 +24,9 @@ class Diffusion(pl.LightningModule):
         # self.ema_model = copy.deepcopy(self.model)
 
     def forward(self, x, condition_tensors=None):
-        print("on lit diffusion forward")
         return self.model(x, condition_tensors=condition_tensors)
 
     def training_step(self, batch, batch_idx):
-        print("training stated")
         x, cond, _ = batch
         loss = self.model(x, condition_tensors=cond)
         loss = loss.mean()
@@ -35,8 +34,7 @@ class Diffusion(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        print("on configure optimizers")
-        opt = Adam(self.model.parameters(), lr=self.hparams.train_lr)
+        opt = Adam(self.model.parameters(), lr=self.lr)
         return opt
 
 
