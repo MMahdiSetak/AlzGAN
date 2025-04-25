@@ -1,9 +1,7 @@
-import logging
 import hydra
 import pytorch_lightning as pl
 from omegaconf import DictConfig
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.profilers import SimpleProfiler
 from torch.utils.data import DataLoader
 
 from model.ddpm.diffusion import Diffusion
@@ -11,20 +9,6 @@ from model.ddpm.trainer import GaussianDiffusion
 from model.ddpm.unet import create_model
 from model.dataloader import DDPMPairDataset
 
-
-# class DebugCallback(pl.Callback):
-#     def on_fit_start(self, trainer, pl_module):       print(">> on_fit_start")
-#
-#     def on_sanity_check_start(self, trainer, pl_module):  print(">> sanity start")
-#
-#     def on_sanity_check_end(self, trainer, pl_module):    print(">> sanity end")
-#
-#     def on_train_start(self, trainer, pl_module):    print(">> on_train_start")
-#
-#     def on_train_epoch_start(self, trainer, pl_module):  print(">> on_epoch_start")
-#
-#     def on_train_batch_start(self, trainer, pl_module, batch, batch_idx): print(f">> batch_start {batch_idx}")
-#
 
 @hydra.main(config_path='../config/model', config_name='ddpm', version_base=None)
 def run(cfg: DictConfig):
@@ -68,16 +52,13 @@ def run(cfg: DictConfig):
         step_start_ema=2000,
         update_ema_every=10
     )
-    logging.getLogger("pytorch_lightning").setLevel(logging.DEBUG)
     trainer = pl.Trainer(
-        # profiler=SimpleProfiler(dirpath="logs/profiler", filename="profile"),
         max_epochs=epochs,
         accelerator="auto",
         logger=logger,
         # gradient_clip_val=0,
-        precision='16-mixed',
+        precision='32',
         # callbacks=[EMACallback()],
-        # callbacks=[DebugCallback()],
         accumulate_grad_batches=2,
         log_every_n_steps=5,
         enable_checkpointing=False,
