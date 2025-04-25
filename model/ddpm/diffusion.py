@@ -19,13 +19,14 @@ class Diffusion(pl.LightningModule):
         self.save_hyperparameters()
 
         # EMA model
-        self.ema = EMA(self.hparams.ema_decay)
-        self.ema_model = copy.deepcopy(self.model)
+        # self.ema = EMA(self.hparams.ema_decay)
+        # self.ema_model = copy.deepcopy(self.model)
 
     def forward(self, x, condition_tensors=None):
         return self.model(x, condition_tensors=condition_tensors)
 
     def training_step(self, batch, batch_idx):
+        print("training stated")
         x, cond, _ = batch
         loss = self.model(x, condition_tensors=cond)
         loss = loss.mean()
