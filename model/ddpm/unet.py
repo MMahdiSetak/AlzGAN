@@ -1,8 +1,8 @@
 # from .modules import *
 import torch
 from torch import nn
-from .modules import TimestepEmbedSequential, ResBlock, AttentionBlock, Downsample, Upsample, normalization, \
-    timestep_embedding, zero_module
+from .modules import TimestepEmbedSequential, ResBlock, AttentionBlock, Downsample, Upsample, timestep_embedding, \
+    zero_module
 
 NUM_CLASSES = 1
 
@@ -216,7 +216,7 @@ class UNetModel(nn.Module):
                 self._feature_size += ch
 
         self.out = nn.Sequential(
-            normalization(ch),
+            nn.GroupNorm(32, ch),
             nn.SiLU(),
             zero_module(nn.Conv3d(input_ch, out_channels, 3, padding=1)),
         )

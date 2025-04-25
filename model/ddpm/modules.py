@@ -99,15 +99,6 @@ def mean_flat(tensor):
     return tensor.mean(dim=list(range(1, len(tensor.shape))))
 
 
-def normalization(channels):
-    """
-    Make a standard normalization layer.
-    :param channels: number of input channels.
-    :return: an nn.Module for normalization.
-    """
-    return GroupNorm32(32, channels)
-
-
 def timestep_embedding(timesteps, dim, max_period=1000):
     """
     Create sinusoidal timestep embeddings.
@@ -126,11 +117,6 @@ def timestep_embedding(timesteps, dim, max_period=1000):
     if dim % 2:
         embedding = th.cat([embedding, th.zeros_like(embedding[:, :1])], dim=-1)
     return embedding
-
-
-class GroupNorm32(nn.GroupNorm):
-    def forward(self, x):
-        return super().forward(x.float()).type(x.dtype)
 
 
 class AttentionPool2d(nn.Module):
@@ -197,8 +183,6 @@ class Upsample(nn.Module):
     An upsampling layer with an optional convolution.
     :param channels: channels in the inputs and outputs.
     :param use_conv: a bool determining if a convolution is applied.
-    :param dims: determines if the signal is 1D, 2D, or 3D. If 3D, then
-                 upsampling occurs in the inner-two dimensions.
     """
 
     def __init__(self, channels, use_conv, out_channels=None):
@@ -222,8 +206,6 @@ class Downsample(nn.Module):
     A downsampling layer with an optional convolution.
     :param channels: channels in the inputs and outputs.
     :param use_conv: a bool determining if a convolution is applied.
-    :param dims: determines if the signal is 1D, 2D, or 3D. If 3D, then
-                 downsampling occurs in the inner-two dimensions.
     """
 
     def __init__(self, channels, use_conv, out_channels=None):
@@ -253,7 +235,6 @@ class ResBlock(TimestepBlock):
     :param use_conv: if True and out_channels is specified, use a spatial
         convolution instead of a smaller 1x1 convolution to change the
         channels in the skip connection.
-    :param dims: determines if the signal is 1D, 2D, or 3D.
     :param use_checkpoint: if True, use gradient checkpointing on this module.
     :param up: if True, use this block for upsampling.
     :param down: if True, use this block for downsampling.
@@ -281,7 +262,7 @@ class ResBlock(TimestepBlock):
         self.use_scale_shift_norm = use_scale_shift_norm
 
         self.in_layers = nn.Sequential(
-            normalization(channels),
+            nn.GroupNorm(32, channels),
             nn.SiLU(),
             nn.Conv3d(channels, self.out_channels, 3, padding=1),
         )
@@ -305,7 +286,7 @@ class ResBlock(TimestepBlock):
             ),
         )
         self.out_layers = nn.Sequential(
-            normalization(self.out_channels),
+            nn.GroupNorm(32, self.out_channels),
             nn.SiLU(),
             nn.Dropout(p=dropout),
             zero_module(
@@ -379,7 +360,7 @@ class AttentionBlock(nn.Module):
             ), f"q,k,v channels {channels} is not divisible by num_head_channels {num_head_channels}"
             self.num_heads = channels // num_head_channels
         self.use_checkpoint = use_checkpoint
-        self.norm = normalization(channels)
+        self.norm = nn.GroupNorm(32, channels)
         self.qkv = conv_nd(1, channels, channels * 3, 1)
         if use_new_attention_order:
             # split qkv before split heads
