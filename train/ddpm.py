@@ -76,4 +76,4 @@ def run(cfg: DictConfig):
         enable_checkpointing=False,
 
     )
-    trainer.fit(model=lit_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    trainer.fit(model=lit_model, train_dataloaders=[train_loader], val_dataloaders=[val_loader])

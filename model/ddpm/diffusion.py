@@ -2,7 +2,7 @@ import copy
 from torch.optim import Adam
 import pytorch_lightning as pl
 
-from model.ddpm.trainer import EMA, GaussianDiffusion
+from model.ddpm.trainer import GaussianDiffusion
 
 
 class Diffusion(pl.LightningModule):
@@ -16,13 +16,14 @@ class Diffusion(pl.LightningModule):
     ):
         super().__init__()
         self.model = diffusion_model
-        self.save_hyperparameters()
+        # self.save_hyperparameters()
 
         # EMA model
         # self.ema = EMA(self.hparams.ema_decay)
         # self.ema_model = copy.deepcopy(self.model)
 
     def forward(self, x, condition_tensors=None):
+        print("on lit diffusion forward")
         return self.model(x, condition_tensors=condition_tensors)
 
     def training_step(self, batch, batch_idx):
@@ -34,6 +35,7 @@ class Diffusion(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
+        print("on configure optimizers")
         opt = Adam(self.model.parameters(), lr=self.hparams.train_lr)
         return opt
 

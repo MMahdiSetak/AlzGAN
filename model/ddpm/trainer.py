@@ -263,156 +263,156 @@ class GaussianDiffusion(nn.Module):
         return loss
 
     def forward(self, x, condition_tensors=None, *args, **kwargs):
+        print("on diffusion forward")
         b, c, d, h, w, device, img_size, depth_size = *x.shape, x.device, self.image_size, self.depth_size
         assert h == img_size and w == img_size and d == depth_size, f'Expected dimensions: height={img_size}, width={img_size}, depth={depth_size}. Actual: height={h}, width={w}, depth={d}.'
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
         return self.p_losses(x, t, condition_tensors=condition_tensors, *args, **kwargs)
 
-
 # trainer class
 
-class Trainer(object):
-    def __init__(
-            self,
-            diffusion_model,
-            dataset,
-            ema_decay=0.995,
-            image_size=128,
-            depth_size=128,
-            train_batch_size=2,
-            train_lr=2e-6,
-            train_num_steps=100000,
-            gradient_accumulate_every=2,
-            fp16=False,
-            step_start_ema=2000,
-            update_ema_every=10,
-            save_and_sample_every=1000,
-            results_folder='./results',
-            with_condition=False,
-            with_pairwised=False):
-        super().__init__()
-        self.model = diffusion_model
-        self.ema = EMA(ema_decay)
-        self.ema_model = copy.deepcopy(self.model)
-        self.update_ema_every = update_ema_every
-
-        self.step_start_ema = step_start_ema
-        self.save_and_sample_every = save_and_sample_every
-
-        self.batch_size = train_batch_size
-        self.image_size = diffusion_model.image_size
-        self.depth_size = depth_size
-        self.gradient_accumulate_every = gradient_accumulate_every
-        self.train_num_steps = train_num_steps
-
-        self.ds = dataset
-        self.dl = data.DataLoader(self.ds, batch_size=train_batch_size, shuffle=True, num_workers=4, pin_memory=True)
-        self.opt = Adam(diffusion_model.parameters(), lr=train_lr)
-        self.train_lr = train_lr
-        self.train_batch_size = train_batch_size
-
-        self.step = 0
-
-        # assert not fp16 or fp16 and APEX_AVAILABLE, 'Apex must be installed in order for mixed precision training to be turned on'
-        self.fp16 = fp16
-        if fp16:
-            (self.model, self.ema_model), self.opt = amp.initialize([self.model, self.ema_model], self.opt,
-                                                                    opt_level='O1')
-
-        self.results_folder = Path(results_folder)
-        self.results_folder.mkdir(exist_ok=True)
-        self.log_dir = self.create_log_dir()
-        self.writer = SummaryWriter(log_dir=self.log_dir)  # "./logs")
-        self.reset_parameters()
-
-    def create_log_dir(self):
-        now = datetime.datetime.now().strftime("%y-%m-%dT%H%M%S")
-        log_dir = os.path.join("./logs", now)
-        os.makedirs(log_dir, exist_ok=True)
-        return log_dir
-
-    def reset_parameters(self):
-        self.ema_model.load_state_dict(self.model.state_dict())
-
-    def step_ema(self):
-        if self.step < self.step_start_ema:
-            self.reset_parameters()
-            return
-        self.ema.update_model_average(self.ema_model, self.model)
-
-    def save(self, milestone):
-        data = {
-            'step': self.step,
-            'model': self.model.state_dict(),
-            'ema': self.ema_model.state_dict()
-        }
-        torch.save(data, str(self.results_folder / f'model-{milestone}.pt'))
-
-    def load(self, milestone):
-        data = torch.load(str(self.results_folder / f'model-{milestone}.pt'))
-
-        self.step = data['step']
-        self.model.load_state_dict(data['model'])
-        self.ema_model.load_state_dict(data['ema'])
-
-    def train(self):
-        backwards = partial(loss_backwards, self.fp16)
-        start_time = time.time()
-
-        while self.step < self.train_num_steps:
-            accumulated_loss = []
-            for i in range(self.gradient_accumulate_every):
-                data = next(iter(self.dl))
-                input_tensors = data[0].to('cuda')
-                target_tensors = data[1].to('cuda')
-                loss = self.model(target_tensors, condition_tensors=input_tensors)
-                loss = loss.sum() / self.batch_size
-                print(f'{self.step}: {loss.item()}')
-                backwards(loss / self.gradient_accumulate_every, self.opt)
-                accumulated_loss.append(loss.item())
-
-            # Record here
-            average_loss = np.mean(accumulated_loss)
-            self.writer.add_scalar("training_loss", average_loss, self.step)
-
-            self.opt.step()
-            self.opt.zero_grad()
-
-            if self.step % self.update_ema_every == 0:
-                self.step_ema()
-
-            if self.step != 0 and self.step % self.save_and_sample_every == 0:
-                milestone = self.step // self.save_and_sample_every
-                batches = num_to_groups(1, self.batch_size)
-
-                all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n,
-                                                                           condition_tensors=self.ds.sample_conditions(
-                                                                               batch_size=n)), batches))
-                all_images = torch.cat(all_images_list, dim=0)
-                # all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n), batches))
-                # all_images = torch.cat(all_images_list, dim=0)
-
-                all_images = all_images.transpose(4, 2)
-                sampleImage = all_images.cpu().numpy()
-                sampleImage = sampleImage.reshape([self.image_size, self.image_size, self.depth_size])
-                nifti_img = nib.Nifti1Image(sampleImage, affine=np.eye(4))
-                nib.save(nifti_img, str(self.results_folder / f'sample-{milestone}.nii.gz'))
-
-                self.save(milestone)
-
-            self.step += 1
-
-        print('training completed')
-        end_time = time.time()
-        execution_time = (end_time - start_time) / 3600
-        self.writer.add_hparams(
-            {
-                "lr": self.train_lr,
-                "batchsize": self.train_batch_size,
-                "image_size": self.image_size,
-                "depth_size": self.depth_size,
-                "execution_time (hour)": execution_time
-            },
-            {"last_loss": average_loss}
-        )
-        self.writer.close()
+# class Trainer(object):
+#     def __init__(
+#             self,
+#             diffusion_model,
+#             dataset,
+#             ema_decay=0.995,
+#             image_size=128,
+#             depth_size=128,
+#             train_batch_size=2,
+#             train_lr=2e-6,
+#             train_num_steps=100000,
+#             gradient_accumulate_every=2,
+#             fp16=False,
+#             step_start_ema=2000,
+#             update_ema_every=10,
+#             save_and_sample_every=1000,
+#             results_folder='./results',
+#             with_condition=False,
+#             with_pairwised=False):
+#         super().__init__()
+#         self.model = diffusion_model
+#         self.ema = EMA(ema_decay)
+#         self.ema_model = copy.deepcopy(self.model)
+#         self.update_ema_every = update_ema_every
+#
+#         self.step_start_ema = step_start_ema
+#         self.save_and_sample_every = save_and_sample_every
+#
+#         self.batch_size = train_batch_size
+#         self.image_size = diffusion_model.image_size
+#         self.depth_size = depth_size
+#         self.gradient_accumulate_every = gradient_accumulate_every
+#         self.train_num_steps = train_num_steps
+#
+#         self.ds = dataset
+#         self.dl = data.DataLoader(self.ds, batch_size=train_batch_size, shuffle=True, num_workers=4, pin_memory=True)
+#         self.opt = Adam(diffusion_model.parameters(), lr=train_lr)
+#         self.train_lr = train_lr
+#         self.train_batch_size = train_batch_size
+#
+#         self.step = 0
+#
+#         # assert not fp16 or fp16 and APEX_AVAILABLE, 'Apex must be installed in order for mixed precision training to be turned on'
+#         self.fp16 = fp16
+#         if fp16:
+#             (self.model, self.ema_model), self.opt = amp.initialize([self.model, self.ema_model], self.opt,
+#                                                                     opt_level='O1')
+#
+#         self.results_folder = Path(results_folder)
+#         self.results_folder.mkdir(exist_ok=True)
+#         self.log_dir = self.create_log_dir()
+#         self.writer = SummaryWriter(log_dir=self.log_dir)  # "./logs")
+#         self.reset_parameters()
+#
+#     def create_log_dir(self):
+#         now = datetime.datetime.now().strftime("%y-%m-%dT%H%M%S")
+#         log_dir = os.path.join("./logs", now)
+#         os.makedirs(log_dir, exist_ok=True)
+#         return log_dir
+#
+#     def reset_parameters(self):
+#         self.ema_model.load_state_dict(self.model.state_dict())
+#
+#     def step_ema(self):
+#         if self.step < self.step_start_ema:
+#             self.reset_parameters()
+#             return
+#         self.ema.update_model_average(self.ema_model, self.model)
+#
+#     def save(self, milestone):
+#         data = {
+#             'step': self.step,
+#             'model': self.model.state_dict(),
+#             'ema': self.ema_model.state_dict()
+#         }
+#         torch.save(data, str(self.results_folder / f'model-{milestone}.pt'))
+#
+#     def load(self, milestone):
+#         data = torch.load(str(self.results_folder / f'model-{milestone}.pt'))
+#
+#         self.step = data['step']
+#         self.model.load_state_dict(data['model'])
+#         self.ema_model.load_state_dict(data['ema'])
+#
+#     def train(self):
+#         backwards = partial(loss_backwards, self.fp16)
+#         start_time = time.time()
+#
+#         while self.step < self.train_num_steps:
+#             accumulated_loss = []
+#             for i in range(self.gradient_accumulate_every):
+#                 data = next(iter(self.dl))
+#                 input_tensors = data[0].to('cuda')
+#                 target_tensors = data[1].to('cuda')
+#                 loss = self.model(target_tensors, condition_tensors=input_tensors)
+#                 loss = loss.sum() / self.batch_size
+#                 print(f'{self.step}: {loss.item()}')
+#                 backwards(loss / self.gradient_accumulate_every, self.opt)
+#                 accumulated_loss.append(loss.item())
+#
+#             # Record here
+#             average_loss = np.mean(accumulated_loss)
+#             self.writer.add_scalar("training_loss", average_loss, self.step)
+#
+#             self.opt.step()
+#             self.opt.zero_grad()
+#
+#             if self.step % self.update_ema_every == 0:
+#                 self.step_ema()
+#
+#             if self.step != 0 and self.step % self.save_and_sample_every == 0:
+#                 milestone = self.step // self.save_and_sample_every
+#                 batches = num_to_groups(1, self.batch_size)
+#
+#                 all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n,
+#                                                                            condition_tensors=self.ds.sample_conditions(
+#                                                                                batch_size=n)), batches))
+#                 all_images = torch.cat(all_images_list, dim=0)
+#                 # all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n), batches))
+#                 # all_images = torch.cat(all_images_list, dim=0)
+#
+#                 all_images = all_images.transpose(4, 2)
+#                 sampleImage = all_images.cpu().numpy()
+#                 sampleImage = sampleImage.reshape([self.image_size, self.image_size, self.depth_size])
+#                 nifti_img = nib.Nifti1Image(sampleImage, affine=np.eye(4))
+#                 nib.save(nifti_img, str(self.results_folder / f'sample-{milestone}.nii.gz'))
+#
+#                 self.save(milestone)
+#
+#             self.step += 1
+#
+#         print('training completed')
+#         end_time = time.time()
+#         execution_time = (end_time - start_time) / 3600
+#         self.writer.add_hparams(
+#             {
+#                 "lr": self.train_lr,
+#                 "batchsize": self.train_batch_size,
+#                 "image_size": self.image_size,
+#                 "depth_size": self.depth_size,
+#                 "execution_time (hour)": execution_time
+#             },
+#             {"last_loss": average_loss}
+#         )
+#         self.writer.close()
