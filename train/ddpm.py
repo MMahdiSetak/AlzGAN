@@ -12,6 +12,7 @@ from model.dataloader import DDPMPairDataset
 
 @hydra.main(config_path='../config/model', config_name='ddpm', version_base=None)
 def run(cfg: DictConfig):
+    print("run begins")
     batch_size = cfg.batch_size
     num_workers = cfg.num_workers
     datapath = cfg.dataset
@@ -27,7 +28,7 @@ def run(cfg: DictConfig):
     out_channels = cfg.out_channels
 
     logger = TensorBoardLogger(save_dir="./log", name="ddpm")
-
+    print("before loaders")
     train_loader = DataLoader(
         dataset=DDPMPairDataset(datapath, 'train'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
@@ -36,9 +37,10 @@ def run(cfg: DictConfig):
         dataset=DDPMPairDataset(datapath, 'val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
+    print("after loaders")
     model = create_model(input_size, num_channels, num_res_blocks, in_channels=in_channels, out_channels=out_channels,
                          use_fp16=True)
-
+    print("after unet")
     diffusion = GaussianDiffusion(
         model,
         image_size=input_size,
@@ -47,6 +49,7 @@ def run(cfg: DictConfig):
         loss_type='l1',  # L1 or L2
         channels=out_channels
     )
+    print("after diffusion")
 
     lit_model = Diffusion(
         diffusion_model=diffusion,
@@ -55,6 +58,7 @@ def run(cfg: DictConfig):
         step_start_ema=2000,
         update_ema_every=10
     )
+    print("after lightning model")
     trainer = pl.Trainer(
         max_epochs=epochs,
         accelerator="auto",
@@ -67,4 +71,5 @@ def run(cfg: DictConfig):
         enable_checkpointing=False,
 
     )
+    print("after trainer")
     trainer.fit(model=lit_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
