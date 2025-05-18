@@ -1,6 +1,10 @@
 import copy
+
+import torch
 from torch.optim import Adam
 import pytorch_lightning as pl
+from torchmetrics import MeanSquaredError, MeanAbsoluteError, MetricCollection
+from torchmetrics.image import PeakSignalNoiseRatio
 
 from model.ddpm.trainer import GaussianDiffusion
 
@@ -22,20 +26,59 @@ class Diffusion(pl.LightningModule):
         # EMA model
         # self.ema = EMA(self.hparams.ema_decay)
         # self.ema_model = copy.deepcopy(self.model)
+        self.metrics = MetricCollection({
+            "MAE": MeanAbsoluteError(),
+            "MSE": MeanSquaredError(),
+            "PSNR": PeakSignalNoiseRatio(data_range=1),
+            # "SSIM": StructuralSimilarityIndexMeasure(),
+        })
 
     def forward(self, x, condition_tensors=None):
         return self.model(x, condition_tensors=condition_tensors)
 
     def training_step(self, batch, batch_idx):
-        x, cond, _ = batch
-        loss = self.model(x, condition_tensors=cond)
+        mri, pet, _ = batch
+        loss = self.model(pet, condition_tensors=mri)
         loss = loss.mean()
         self.log('train_loss', loss, on_step=True, prog_bar=True)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        mri, real_pet, _ = batch
+        device = real_pet.device
+        bs = real_pet.size(0)
+
+        # Start from random noise with same shape as x_gt
+        shape = real_pet.shape  # (batch, channels, depth, height, width)
+
+        # Initialize noisy images (random noise)
+        fake_pet = torch.randn(shape, device=device)
+
+        # Perform iterative sampling using p_sample
+        for i in reversed(range(self.model.num_timesteps)):
+            t = torch.full((bs,), i, device=device, dtype=torch.long)
+            fake_pet = self.model.p_sample(fake_pet, t, condition_tensors=mri)
+
+        # img now contains generated images conditioned on cond
+
+        # Calculate PSNR between generated images and ground truth
+        # PSNR expects images scaled in [0, 1], so scale img and x_gt accordingly:
+        # Assuming your images are in [-1, 1], rescale to [0, 1]
+        fake_pet = rescale(fake_pet)
+        real_pet = rescale(real_pet)
+
+        metrics = self.metrics(fake_pet, real_pet)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        return metrics
+
+
     def configure_optimizers(self):
         opt = Adam(self.model.parameters(), lr=self.lr)
         return opt
+
+
+def rescale(im):
+    return (im.clamp(-1, 1) + 1) / 2
 
 
 class EMACallback(pl.Callback):
