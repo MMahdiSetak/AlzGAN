@@ -45,23 +45,9 @@ class Diffusion(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         mri, real_pet, _ = batch
-        device = real_pet.device
         bs = real_pet.size(0)
+        fake_pet = self.model.sample(bs, mri)
 
-        # Start from random noise with same shape as x_gt
-        shape = real_pet.shape  # (batch, channels, depth, height, width)
-
-        # Initialize noisy images (random noise)
-        fake_pet = torch.randn(shape, device=device)
-
-        # Perform iterative sampling using p_sample
-        for i in reversed(range(self.model.num_timesteps)):
-            t = torch.full((bs,), i, device=device, dtype=torch.long)
-            fake_pet = self.model.p_sample(fake_pet, t, condition_tensors=mri)
-
-        # img now contains generated images conditioned on cond
-
-        # Calculate PSNR between generated images and ground truth
         # PSNR expects images scaled in [0, 1], so scale img and x_gt accordingly:
         # Assuming your images are in [-1, 1], rescale to [0, 1]
         fake_pet = rescale(fake_pet)
@@ -70,7 +56,6 @@ class Diffusion(pl.LightningModule):
         metrics = self.metrics(fake_pet, real_pet)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
         return metrics
-
 
     def configure_optimizers(self):
         opt = Adam(self.model.parameters(), lr=self.lr)

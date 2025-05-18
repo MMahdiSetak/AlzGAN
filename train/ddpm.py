@@ -8,6 +8,7 @@ from model.ddpm.diffusion import Diffusion
 from model.ddpm.trainer import GaussianDiffusion
 from model.ddpm.unet import create_model
 from model.dataloader import DDPMPairDataset
+from train.callbacks import ImageLogger, VideoLogger
 
 
 @hydra.main(config_path='../config/model', config_name='ddpm', version_base=None)
@@ -52,12 +53,18 @@ def run(cfg: DictConfig):
         step_start_ema=2000,
         update_ema_every=10
     )
+    # callbacks = []
+    # callbacks.append(ImageLogger(
+    #     batch_frequency=750, max_images=4, clamp=True))
+    # callbacks.append(VideoLogger(
+    #     batch_frequency=1500, max_videos=4, clamp=True))
     trainer = pl.Trainer(
         max_epochs=epochs,
         accelerator="auto",
+        val_check_interval=5000,
         logger=logger,
         # gradient_clip_val=0,
-        precision='32',
+        precision='16-mixed',
         # callbacks=[EMACallback()],
         accumulate_grad_batches=2,
         log_every_n_steps=5,
