@@ -8,7 +8,7 @@ from model.ddpm.diffusion import Diffusion
 from model.ddpm.trainer import GaussianDiffusion
 from model.ddpm.unet import create_model
 from model.dataloader import DDPMPairDataset
-from train.callbacks import ImageLogger, VideoLogger
+# from train.callbacks import ImageLogger, VideoLogger
 
 
 @hydra.main(config_path='../config/model', config_name='ddpm', version_base=None)
