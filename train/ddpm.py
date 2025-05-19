@@ -78,6 +78,8 @@ def run(cfg: DictConfig):
         accelerator="auto",
         # val_check_interval=5000,
         # check_val_every_n_epoch=10,
+        overfit_batches=20,
+        limit_val_batches=10,
         logger=logger,
         # gradient_clip_val=0,
         check_val_every_n_epoch=None,

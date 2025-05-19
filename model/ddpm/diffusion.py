@@ -43,19 +43,19 @@ class Diffusion(pl.LightningModule):
         self.log('train_loss', loss, on_step=True, prog_bar=True)
         return loss
 
-    # def validation_step(self, batch, batch_idx):
-    #     mri, real_pet, _ = batch
-    #     bs = real_pet.size(0)
-    #     fake_pet = self.model.sample(bs, mri)
-    #
-    #     # PSNR expects images scaled in [0, 1], so scale img and x_gt accordingly:
-    #     # Assuming your images are in [-1, 1], rescale to [0, 1]
-    #     fake_pet = rescale(fake_pet)
-    #     real_pet = rescale(real_pet)
-    #
-    #     metrics = self.metrics(fake_pet, real_pet)
-    #     self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
-    #     return metrics
+    def validation_step(self, batch, batch_idx):
+        mri, real_pet, _ = batch
+        bs = real_pet.size(0)
+        fake_pet = self.model.sample(bs, mri)
+
+        # PSNR expects images scaled in [0, 1], so scale img and x_gt accordingly:
+        # Assuming your images are in [-1, 1], rescale to [0, 1]
+        fake_pet = rescale(fake_pet)
+        real_pet = rescale(real_pet)
+
+        metrics = self.metrics(fake_pet, real_pet)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        return metrics
 
     def configure_optimizers(self):
         opt = Adam(self.model.parameters(), lr=self.lr)
