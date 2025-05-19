@@ -1,6 +1,7 @@
 import hydra
 import pytorch_lightning as pl
 from omegaconf import DictConfig
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
@@ -8,6 +9,8 @@ from model.ddpm.diffusion import Diffusion
 from model.ddpm.trainer import GaussianDiffusion
 from model.ddpm.unet import create_model
 from model.dataloader import DDPMPairDataset
+
+
 # from train.callbacks import ImageLogger, VideoLogger
 
 
@@ -53,22 +56,36 @@ def run(cfg: DictConfig):
         step_start_ema=2000,
         update_ema_every=10
     )
-    # callbacks = []
+    callbacks = []
     # callbacks.append(ImageLogger(
     #     batch_frequency=750, max_images=4, clamp=True))
     # callbacks.append(VideoLogger(
     #     batch_frequency=1500, max_videos=4, clamp=True))
+    callbacks.append(
+        ModelCheckpoint(
+            # dirpath="my_checkpoints/",  # custom folder
+            # filename="{epoch}-{val_loss:.4f}",  # custom filename pattern
+            monitor="train_loss",  # metric to monitor
+            mode="min",  # "min" for loss, "max" for accuracy, etc.
+            save_top_k=1,  # save top 3 models instead of just 1
+            # save_last=True,  # also save last epoch checkpoint
+            verbose=True,
+        )
+    )
     trainer = pl.Trainer(
         max_epochs=epochs,
+        num_sanity_val_steps=0,
         accelerator="auto",
-        val_check_interval=5000,
+        # val_check_interval=5000,
+        # check_val_every_n_epoch=10,
         logger=logger,
         # gradient_clip_val=0,
         check_val_every_n_epoch=None,
         precision='32',
         # callbacks=[EMACallback()],
+        callbacks=callbacks,
         accumulate_grad_batches=2,
         log_every_n_steps=5,
-        enable_checkpointing=False,
+        enable_checkpointing=True,
     )
     trainer.fit(model=lit_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
