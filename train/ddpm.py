@@ -64,7 +64,7 @@ def run(cfg: DictConfig):
     callbacks.append(
         ModelCheckpoint(
             # dirpath="my_checkpoints/",  # custom folder
-            # filename="{epoch}-{val_loss:.4f}",  # custom filename pattern
+            filename="ddpm_best_model",  # custom filename pattern
             monitor="train_loss",  # metric to monitor
             mode="min",  # "min" for loss, "max" for accuracy, etc.
             save_top_k=1,  # save top 3 models instead of just 1
