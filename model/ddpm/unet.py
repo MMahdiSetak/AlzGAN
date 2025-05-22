@@ -50,7 +50,6 @@ class UNetModel(nn.Module):
             conv_resample=True,
             num_classes=None,
             use_checkpoint=False,
-            use_fp16=False,
             num_heads=1,
             num_head_channels=-1,
             num_heads_upsample=-1,
@@ -239,7 +238,6 @@ class UNetModel(nn.Module):
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)
 
-        # h = x.type(self.dtype)
         h = x
         for module in self.input_blocks:
             h = module(h, emb)
@@ -248,7 +246,6 @@ class UNetModel(nn.Module):
         for module in self.output_blocks:
             h = torch.cat([h, hs.pop()], dim=1)
             h = module(h, emb)
-        # h = h.type(x.dtype)
         return self.out(h)
 
 
@@ -267,7 +264,6 @@ def create_model(
         use_scale_shift_norm=False,
         dropout=0,
         resblock_updown=False,
-        use_fp16=False,
         use_new_attention_order=False,
         in_channels=1,
         out_channels=1,
@@ -301,7 +297,6 @@ def create_model(
         channel_mult=channel_mult,
         num_classes=(NUM_CLASSES if class_cond else None),
         use_checkpoint=use_checkpoint,
-        use_fp16=use_fp16,
         num_heads=num_heads,
         num_head_channels=num_head_channels,
         num_heads_upsample=num_heads_upsample,

@@ -39,8 +39,7 @@ def run(cfg: DictConfig):
         dataset=DDPMPairDataset(datapath, 'val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
-    model = create_model(input_size, num_channels, num_res_blocks, in_channels=in_channels, out_channels=out_channels,
-                         use_fp16=True)
+    model = create_model(input_size, num_channels, num_res_blocks, in_channels=in_channels, out_channels=out_channels)
     diffusion = GaussianDiffusion(
         model,
         image_size=input_size,
@@ -82,7 +81,7 @@ def run(cfg: DictConfig):
         limit_val_batches=10,
         logger=logger,
         # gradient_clip_val=0,
-        precision='32',
+        precision='16-mixed',
         # callbacks=[EMACallback()],
         callbacks=callbacks,
         accumulate_grad_batches=2,
