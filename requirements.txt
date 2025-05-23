@@ -19,3 +19,5 @@ pytorch-lightning
 hydra-core
 omegaconf
 optuna
+
+imageio
