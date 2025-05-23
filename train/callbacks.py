@@ -168,3 +168,20 @@ class VideoLogger(Callback):
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=None):
         self.log_vid(pl_module, batch, batch_idx, split="val")
+
+
+class MetricsLogger(Callback):
+    def __init__(self, batch_frequency):
+        self.batch_frequency = batch_frequency
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        if batch_idx % self.batch_frequency == 0:
+            mri, real_pet, _ = batch
+            bs = real_pet.size(0)
+            fake_pet = pl_module.model.sample(bs, mri)
+
+            fake_pet = (fake_pet.clamp(-1, 1) + 1) / 2
+            real_pet = (real_pet.clamp(-1, 1) + 1) / 2
+
+            metrics = pl_module.metrics(fake_pet, real_pet)
+            pl_module.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)

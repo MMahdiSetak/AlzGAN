@@ -9,9 +9,7 @@ from model.ddpm.diffusion import Diffusion
 from model.ddpm.trainer import GaussianDiffusion
 from model.ddpm.unet import create_model
 from model.dataloader import DDPMPairDataset
-
-
-# from train.callbacks import ImageLogger, VideoLogger
+from train.callbacks import ImageLogger, VideoLogger, MetricsLogger
 
 
 @hydra.main(config_path='../config/model', config_name='ddpm', version_base=None)
@@ -60,6 +58,7 @@ def run(cfg: DictConfig):
     #     batch_frequency=750, max_images=4, clamp=True))
     # callbacks.append(VideoLogger(
     #     batch_frequency=1500, max_videos=4, clamp=True))
+    callbacks.append(MetricsLogger(batch_frequency=20))
     callbacks.append(
         ModelCheckpoint(
             # dirpath="my_checkpoints/",  # custom folder
