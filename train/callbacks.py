@@ -183,5 +183,5 @@ class MetricsLogger(Callback):
             fake_pet = (fake_pet.clamp(-1, 1) + 1) / 2
             real_pet = (real_pet.clamp(-1, 1) + 1) / 2
 
-            metrics = pl_module.metrics(fake_pet, real_pet)
+            metrics = pl_module.train_metrics(fake_pet, real_pet)
             pl_module.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)

@@ -3,6 +3,7 @@ import copy
 import torch
 from torch.optim import Adam
 import pytorch_lightning as pl
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import MeanSquaredError, MeanAbsoluteError, MetricCollection
 from torchmetrics.image import PeakSignalNoiseRatio
 
@@ -26,12 +27,14 @@ class Diffusion(pl.LightningModule):
         # EMA model
         # self.ema = EMA(self.hparams.ema_decay)
         # self.ema_model = copy.deepcopy(self.model)
-        self.metrics = MetricCollection({
+        metrics = {
             "MAE": MeanAbsoluteError(),
             "MSE": MeanSquaredError(),
             "PSNR": PeakSignalNoiseRatio(data_range=1),
             # "SSIM": StructuralSimilarityIndexMeasure(),
-        })
+        }
+        self.train_metrics = MetricCollection(metrics, prefix="train_")
+        self.val_metrics = MetricCollection(metrics, prefix="val_")
 
     def forward(self, x, condition_tensors=None):
         return self.model(x, condition_tensors=condition_tensors)
@@ -40,6 +43,8 @@ class Diffusion(pl.LightningModule):
         mri, pet, _ = batch
         loss = self.model(pet, condition_tensors=mri)
         loss = loss.mean()
+        lr = self.optimizers().param_groups[0]['lr']
+        self.log('learning_rate', lr, on_step=True, on_epoch=True, prog_bar=False)
         self.log('train_loss', loss, on_step=True, prog_bar=True)
         return loss
 
@@ -53,13 +58,22 @@ class Diffusion(pl.LightningModule):
         fake_pet = rescale(fake_pet)
         real_pet = rescale(real_pet)
 
-        metrics = self.metrics(fake_pet, real_pet)
+        metrics = self.val_metrics(fake_pet, real_pet)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
         return metrics
 
     def configure_optimizers(self):
-        opt = Adam(self.model.parameters(), lr=self.lr)
-        return opt
+        optimizer = Adam(self.model.parameters(), lr=self.lr)
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.1)
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': scheduler,
+                'monitor': 'train_loss',
+                'interval': 'epoch',
+                'frequency': 1,
+            }
+        }
 
 
 def rescale(im):
