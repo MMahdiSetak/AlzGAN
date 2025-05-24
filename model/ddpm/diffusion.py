@@ -40,7 +40,8 @@ class Diffusion(pl.LightningModule):
         return self.model(x, condition_tensors=condition_tensors)
 
     def training_step(self, batch, batch_idx):
-        mri, pet, _ = batch
+        # mri, pet, _ = batch
+        pet, mri, _ = batch
         loss = self.model(pet, condition_tensors=mri)
         loss = loss.mean()
         lr = self.optimizers().param_groups[0]['lr']
@@ -49,7 +50,8 @@ class Diffusion(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        mri, real_pet, _ = batch
+        # mri, real_pet, _ = batch
+        real_pet, mri, _ = batch
         bs = real_pet.size(0)
         fake_pet = self.model.sample(bs, mri)
 
