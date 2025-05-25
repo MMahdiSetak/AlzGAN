@@ -32,7 +32,7 @@ diffusion = GaussianDiffusion(
     loss_type='l1',  # L1 or L2
     channels=out_channels
 )
-lit_model = Diffusion.load_from_checkpoint(checkpoint_path)
+lit_model = Diffusion.load_from_checkpoint(checkpoint_path, diffusion_model=diffusion)
 
 # ----- DATA LOADING -----
 test_dataset = DDPMPairDataset(datapath, 'test')
