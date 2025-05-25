@@ -26,16 +26,16 @@ class DiffClass(pl.LightningModule):
         })
 
         self.unet = create_model(128, 128, 1, in_channels=2, out_channels=1)
-        self.mri_proj = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(unet_size, embedding_size),
-            nn.ReLU(),
-        )
-        self.pet_proj = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(unet_size, embedding_size),
-            nn.ReLU(),
-        )
+        # self.mri_proj = nn.Sequential(
+        #     nn.Flatten(),
+        #     nn.Linear(unet_size, embedding_size),
+        #     nn.ReLU(),
+        # )
+        # self.pet_proj = nn.Sequential(
+        #     nn.Flatten(),
+        #     nn.Linear(unet_size, embedding_size),
+        #     nn.ReLU(),
+        # )
         self.transformer_encoder_layer = nn.TransformerEncoderLayer(
             d_model=embedding_size,
             nhead=4,
@@ -55,8 +55,10 @@ class DiffClass(pl.LightningModule):
     def forward(self, image):
         noise = torch.randn_like(image)
         mri_features, pet_features = self.unet(torch.cat([noise, image]), 0)
-        mri_features = self.mri_proj(mri_features)
-        pet_features = self.pet_proj(pet_features)
+        print("mri: ", mri_features.shape)
+        print("pet: ", pet_features.shape)
+        # mri_features = self.mri_proj(mri_features)
+        # pet_features = self.pet_proj(pet_features)
         transformer_input = torch.stack([mri_features, pet_features], dim=1)
         transformer_output = self.transformer_encoder(transformer_input)
         transformer_output = transformer_output.mean(dim=1)
@@ -71,7 +73,7 @@ class DiffClass(pl.LightningModule):
 
         acc = self.train_accuracy(outputs, labels)
         lr = self.optimizers().param_groups[0]['lr']
-        self.log('learning_rate', lr, on_step=True, on_epoch=True, prog_bar=False)
+        self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False)
         self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
         self.log('train_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
 
