@@ -19,7 +19,7 @@ def run(cfg: DictConfig):
 
     train_loader = DataLoader(
         dataset=PairDataset(cfg.model.dataset, 'train'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, pin_memory=True
     )
     val_loader = DataLoader(
         dataset=PairDataset(cfg.model.dataset, 'val'),
