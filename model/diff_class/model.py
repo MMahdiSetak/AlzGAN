@@ -25,17 +25,17 @@ class DiffClass(pl.LightningModule):
             "specificity": Specificity(task="multiclass", num_classes=3),
         })
 
-        self.unet = create_model(128, 128, 1, in_channels=2, out_channels=1)
-        self.mri_proj = nn.Sequential(
-            nn.AdaptiveAvgPool3d(1),
-            nn.Flatten(),
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout),
-            nn.Linear(256, embedding_size),
-            nn.ReLU(inplace=True)
-        )
+        self.unet = create_model(128, 128, 1, in_channels=1, out_channels=1)
+        # self.mri_proj = nn.Sequential(
+        #     nn.AdaptiveAvgPool3d(1),
+        #     nn.Flatten(),
+        #     nn.Linear(512, 256),
+        #     nn.BatchNorm1d(256),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(256, embedding_size),
+        #     nn.ReLU(inplace=True)
+        # )
         self.pet_proj = nn.Sequential(
             nn.AdaptiveAvgPool3d(1),
             nn.Flatten(),
@@ -46,16 +46,16 @@ class DiffClass(pl.LightningModule):
             nn.Linear(256, embedding_size),
             nn.ReLU(inplace=True)
         )
-        self.transformer_encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embedding_size,
-            nhead=4,
-            dim_feedforward=512,
-            dropout=dropout,
-            batch_first=True
-        )
-        self.transformer_encoder = nn.TransformerEncoder(
-            self.transformer_encoder_layer, num_layers=4
-        )
+        # self.transformer_encoder_layer = nn.TransformerEncoderLayer(
+        #     d_model=embedding_size,
+        #     nhead=4,
+        #     dim_feedforward=512,
+        #     dropout=dropout,
+        #     batch_first=True
+        # )
+        # self.transformer_encoder = nn.TransformerEncoder(
+        #     self.transformer_encoder_layer, num_layers=4
+        # )
         self.fc_out = nn.Sequential(
             nn.Linear(embedding_size, 64),
             nn.ReLU(),
@@ -64,18 +64,20 @@ class DiffClass(pl.LightningModule):
 
     def forward(self, image):
         # print(image.shape)
-        noise = torch.randn_like(image)
+        # noise = torch.randn_like(image)
         bs = image.shape[0]
         t = torch.full((bs,), 0, device=self.device, dtype=torch.long)
-        mri_features, pet_features = self.unet(torch.cat([noise, image], 1), t)
+        # mri_features, pet_features = self.unet(torch.cat([noise, image], 1), t)
+        mri_features, pet_features = self.unet(image, t)
         # print("mri: ", mri_features.shape)
         # print("pet: ", pet_features.shape)
-        mri_features = self.mri_proj(mri_features)
+        # mri_features = self.mri_proj(mri_features)
         pet_features = self.pet_proj(pet_features)
-        transformer_input = torch.stack([mri_features, pet_features], dim=1)
-        transformer_output = self.transformer_encoder(transformer_input)
-        transformer_output = transformer_output.mean(dim=1)
-        final_output = self.fc_out(transformer_output)
+        # transformer_input = torch.stack([mri_features, pet_features], dim=1)
+        # transformer_output = self.transformer_encoder(transformer_input)
+        # transformer_output = transformer_output.mean(dim=1)
+        # final_output = self.fc_out(transformer_output)
+        final_output = self.fc_out(pet_features)
         return final_output
 
     def training_step(self, batch, batch_idx):
