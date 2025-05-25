@@ -9,7 +9,7 @@ from model.diff_class.unet import create_model
 
 
 class DiffClass(pl.LightningModule):
-    def __init__(self, embedding_size=128, dropout=0.2, lr=1e-3, norm='batch'):
+    def __init__(self, embedding_size=128, dropout=0.2, lr=1e-3):
         super(DiffClass, self).__init__()
         self.lr = lr
         self.classification_loss = nn.CrossEntropyLoss()

@@ -1,4 +1,3 @@
-import torch
 from torch import nn
 from model.ddpm.modules import TimestepEmbedSequential, ResBlock, AttentionBlock, Downsample, Upsample, \
     timestep_embedding, zero_module
