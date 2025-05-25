@@ -41,7 +41,7 @@ def run(cfg: DictConfig):
         max_epochs=cfg.max_epoch,
         # num_sanity_val_steps=0,
         accelerator="auto",
-        val_check_interval=1,
+        val_check_interval=1.0,
         logger=logger,
         gradient_clip_val=1.0,
         precision='16-mixed',

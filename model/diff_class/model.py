@@ -86,9 +86,9 @@ class DiffClass(pl.LightningModule):
 
         acc = self.train_accuracy(outputs, labels)
         lr = self.optimizers().param_groups[0]['lr']
-        self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False)
-        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
-        self.log('train_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
+        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+        self.log('train_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
         return loss
 
@@ -99,8 +99,8 @@ class DiffClass(pl.LightningModule):
         loss = self.classification_loss(outputs, labels)
 
         acc = self.val_accuracy(outputs, labels)
-        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
-        self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+        self.log('val_accuracy', acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
         return loss
 
