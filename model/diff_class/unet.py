@@ -167,50 +167,50 @@ class UNetModel(nn.Module):
             ),
         )
         self._feature_size += ch
-
-        self.output_blocks = nn.ModuleList([])
-        for level, mult in list(enumerate(channel_mult))[::-1]:
-            for i in range(num_res_blocks + 1):
-                ich = input_block_chans.pop()
-                layers = [
-                    ResBlock(
-                        ch + ich,
-                        time_embed_dim,
-                        dropout,
-                        out_channels=int(model_channels * mult),
-                        use_checkpoint=use_checkpoint,
-                        use_scale_shift_norm=use_scale_shift_norm,
-                    )
-                ]
-                ch = int(model_channels * mult)
-                if ds in attention_resolutions:
-                    layers.append(
-                        AttentionBlock(
-                            ch,
-                            use_checkpoint=use_checkpoint,
-                            num_heads=num_heads_upsample,
-                            num_head_channels=num_head_channels,
-                            use_new_attention_order=use_new_attention_order,
-                        )
-                    )
-                if level and i == num_res_blocks:
-                    out_ch = ch
-                    layers.append(
-                        ResBlock(
-                            ch,
-                            time_embed_dim,
-                            dropout,
-                            out_channels=out_ch,
-                            use_checkpoint=use_checkpoint,
-                            use_scale_shift_norm=use_scale_shift_norm,
-                            up=True,
-                        )
-                        if resblock_updown
-                        else Upsample(ch, conv_resample, out_channels=out_ch)
-                    )
-                    ds //= 2
-                self.output_blocks.append(TimestepEmbedSequential(*layers))
-                self._feature_size += ch
+        #
+        # self.output_blocks = nn.ModuleList([])
+        # for level, mult in list(enumerate(channel_mult))[::-1]:
+        #     for i in range(num_res_blocks + 1):
+        #         ich = input_block_chans.pop()
+        #         layers = [
+        #             ResBlock(
+        #                 ch + ich,
+        #                 time_embed_dim,
+        #                 dropout,
+        #                 out_channels=int(model_channels * mult),
+        #                 use_checkpoint=use_checkpoint,
+        #                 use_scale_shift_norm=use_scale_shift_norm,
+        #             )
+        #         ]
+        #         ch = int(model_channels * mult)
+        #         if ds in attention_resolutions:
+        #             layers.append(
+        #                 AttentionBlock(
+        #                     ch,
+        #                     use_checkpoint=use_checkpoint,
+        #                     num_heads=num_heads_upsample,
+        #                     num_head_channels=num_head_channels,
+        #                     use_new_attention_order=use_new_attention_order,
+        #                 )
+        #             )
+        #         if level and i == num_res_blocks:
+        #             out_ch = ch
+        #             layers.append(
+        #                 ResBlock(
+        #                     ch,
+        #                     time_embed_dim,
+        #                     dropout,
+        #                     out_channels=out_ch,
+        #                     use_checkpoint=use_checkpoint,
+        #                     use_scale_shift_norm=use_scale_shift_norm,
+        #                     up=True,
+        #                 )
+        #                 if resblock_updown
+        #                 else Upsample(ch, conv_resample, out_channels=out_ch)
+        #             )
+        #             ds //= 2
+        #         self.output_blocks.append(TimestepEmbedSequential(*layers))
+        #         self._feature_size += ch
 
         self.out = nn.Sequential(
             nn.GroupNorm(32, ch),
