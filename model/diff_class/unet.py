@@ -211,12 +211,12 @@ class UNetModel(nn.Module):
         #             ds //= 2
         #         self.output_blocks.append(TimestepEmbedSequential(*layers))
         #         self._feature_size += ch
-
-        self.out = nn.Sequential(
-            nn.GroupNorm(32, ch),
-            nn.SiLU(),
-            zero_module(nn.Conv3d(input_ch, out_channels, 3, padding=1)),
-        )
+        #
+        # self.out = nn.Sequential(
+        #     nn.GroupNorm(32, ch),
+        #     nn.SiLU(),
+        #     zero_module(nn.Conv3d(input_ch, out_channels, 3, padding=1)),
+        # )
 
     def forward(self, x, timesteps, y=None):
         """
