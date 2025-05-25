@@ -33,12 +33,12 @@ def run(cfg: DictConfig):
     )
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
-        patience=cfg.model.early_stop,
+        patience=cfg.early_stop,
         verbose=True,
         mode='max'
     )
     trainer = pl.Trainer(
-        max_epochs=cfg.model.max_epoch,
+        max_epochs=cfg.max_epoch,
         # num_sanity_val_steps=0,
         accelerator="auto",
         val_check_interval=1,
