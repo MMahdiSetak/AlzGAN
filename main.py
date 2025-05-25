@@ -2,8 +2,8 @@
 #
 # get_patch_indices()
 import torch
-# from train.ddpm import run
-from test.visualization import run
+from train.diff_class import run
+# from test.visualization import run
 
 torch.set_float32_matmul_precision('medium')
 run()
