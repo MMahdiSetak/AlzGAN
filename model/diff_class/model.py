@@ -54,7 +54,9 @@ class DiffClass(pl.LightningModule):
 
     def forward(self, image):
         noise = torch.randn_like(image)
-        mri_features, pet_features = self.unet(torch.cat([noise, image]), 0)
+        bs = image.shape[0]
+        t = torch.full((bs,), 0, device=self.device, dtype=torch.long)
+        mri_features, pet_features = self.unet(torch.cat([noise, image]), t)
         print("mri: ", mri_features.shape)
         print("pet: ", pet_features.shape)
         # mri_features = self.mri_proj(mri_features)
