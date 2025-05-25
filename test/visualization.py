@@ -10,6 +10,7 @@ import torchvision.utils as vutils
 # ----- CONFIGURATION -----
 checkpoint_path = "log/ddpm/version_47/checkpoints/ddpm_best_model.ckpt"
 datapath = 'dataset/mri_pet_label_v4.hdf5'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Match these with your config or training script
 input_size = 128
@@ -44,11 +45,13 @@ def run():
     mris = []
     pets = []
     gen_pets = []
+    lit_model.to(device)
     lit_model.eval()
     lit_model.freeze()
     with torch.no_grad():
         for batch in test_loader:
             mri, pet, _ = batch
+            mri = mri.to(device)
             bs = pet.size(0)
             get_pet = lit_model.model.sample(bs, mri)
             pets.append(pet[:, :, :, :, 64].cpu())
