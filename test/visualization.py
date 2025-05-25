@@ -8,8 +8,8 @@ from torch.utils.data import DataLoader
 import torchvision.utils as vutils
 
 # ----- CONFIGURATION -----
-checkpoint_path = "../log/ddpm/version_47/checkpoints/ddpm_best_model.ckpt"
-datapath = '../dataset/mri_pet_label_v4.hdf5'
+checkpoint_path = "log/ddpm/version_47/checkpoints/ddpm_best_model.ckpt"
+datapath = 'dataset/mri_pet_label_v4.hdf5'
 
 # Match these with your config or training script
 input_size = 128
