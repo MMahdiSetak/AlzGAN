@@ -20,7 +20,7 @@ num_res_blocks = 1
 timesteps = 250
 in_channels = 2
 out_channels = 1
-batch_size = 2
+batch_size = 4
 num_workers = 8
 
 # ----- MODEL SETUP -----
@@ -36,7 +36,7 @@ diffusion = GaussianDiffusion(
 lit_model = Diffusion.load_from_checkpoint(checkpoint_path, diffusion_model=diffusion)
 
 # ----- DATA LOADING -----
-test_dataset = DDPMPairDataset(datapath, 'test')
+test_dataset = DDPMPairDataset(datapath, 'train')
 test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False)
 
 
@@ -63,6 +63,6 @@ def run():
     mris = torch.cat(mris, dim=0)
     gen_pets = torch.cat(gen_pets, dim=0)
     for i in range(len(mris)):
-        vutils.save_image(pets[i], f"{i:03d}_pet.png", normalize=True)
-        vutils.save_image(mris[i], f"{i:03d}_mri.png", normalize=True)
-        vutils.save_image(gen_pets[i], f"{i:03d}_gen_pet.png", normalize=True)
+        vutils.save_image(pets[i], f"test/{i:03d}_pet.png", normalize=True)
+        vutils.save_image(mris[i], f"test/{i:03d}_mri.png", normalize=True)
+        vutils.save_image(gen_pets[i], f"test/{i:03d}_gen_pet.png", normalize=True)
