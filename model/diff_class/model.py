@@ -26,16 +26,26 @@ class DiffClass(pl.LightningModule):
         })
 
         self.unet = create_model(128, 128, 1, in_channels=2, out_channels=1)
-        # self.mri_proj = nn.Sequential(
-        #     nn.Flatten(),
-        #     nn.Linear(unet_size, embedding_size),
-        #     nn.ReLU(),
-        # )
-        # self.pet_proj = nn.Sequential(
-        #     nn.Flatten(),
-        #     nn.Linear(unet_size, embedding_size),
-        #     nn.ReLU(),
-        # )
+        self.mri_proj = nn.Sequential(
+            nn.AdaptiveAvgPool3d(1),
+            nn.Flatten(),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(256, embedding_size),
+            nn.ReLU(inplace=True)
+        )
+        self.pet_proj = nn.Sequential(
+            nn.AdaptiveAvgPool3d(1),
+            nn.Flatten(),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(256, embedding_size),
+            nn.ReLU(inplace=True)
+        )
         self.transformer_encoder_layer = nn.TransformerEncoderLayer(
             d_model=embedding_size,
             nhead=4,
@@ -53,14 +63,15 @@ class DiffClass(pl.LightningModule):
         )
 
     def forward(self, image):
+        # print(image.shape)
         noise = torch.randn_like(image)
         bs = image.shape[0]
         t = torch.full((bs,), 0, device=self.device, dtype=torch.long)
-        mri_features, pet_features = self.unet(torch.cat([noise, image]), t)
-        print("mri: ", mri_features.shape)
-        print("pet: ", pet_features.shape)
-        # mri_features = self.mri_proj(mri_features)
-        # pet_features = self.pet_proj(pet_features)
+        mri_features, pet_features = self.unet(torch.cat([noise, image], 1), t)
+        # print("mri: ", mri_features.shape)
+        # print("pet: ", pet_features.shape)
+        mri_features = self.mri_proj(mri_features)
+        pet_features = self.pet_proj(pet_features)
         transformer_input = torch.stack([mri_features, pet_features], dim=1)
         transformer_output = self.transformer_encoder(transformer_input)
         transformer_output = transformer_output.mean(dim=1)
