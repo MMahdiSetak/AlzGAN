@@ -1,4 +1,3 @@
-# from .modules import *
 import torch
 from torch import nn
 from .modules import TimestepEmbedSequential, ResBlock, AttentionBlock, Downsample, Upsample, timestep_embedding, \
