@@ -38,26 +38,28 @@ lit_model = Diffusion.load_from_checkpoint(checkpoint_path)
 test_dataset = DDPMPairDataset(datapath, 'test')
 test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False)
 
-# ----- INFERENCE -----
-mris = []
-pets = []
-gen_pets = []
-lit_model.eval()
-lit_model.freeze()
-with torch.no_grad():
-    for batch in test_loader:
-        mri, pet, _ = batch
-        bs = pet.size(0)
-        get_pet = lit_model.model.sample(bs, mri)
-        pets.append(pet[:, :, :, :, 64].cpu())
-        mris.append(mri[:, :, :, :, 64].cpu())
-        gen_pets.append(get_pet[:, :, :, :, 64].cpu())
-        break
 
-pets = torch.cat(pets, dim=0)
-mris = torch.cat(mris, dim=0)
-gen_pets = torch.cat(gen_pets, dim=0)
-for i in range(len(mris)):
-    vutils.save_image(pets[i], f"{i:03d}_pet.png", normalize=True)
-    vutils.save_image(mris[i], f"{i:03d}_mri.png", normalize=True)
-    vutils.save_image(gen_pets[i], f"{i:03d}_gen_pet.png", normalize=True)
+def run():
+    # ----- INFERENCE -----
+    mris = []
+    pets = []
+    gen_pets = []
+    lit_model.eval()
+    lit_model.freeze()
+    with torch.no_grad():
+        for batch in test_loader:
+            mri, pet, _ = batch
+            bs = pet.size(0)
+            get_pet = lit_model.model.sample(bs, mri)
+            pets.append(pet[:, :, :, :, 64].cpu())
+            mris.append(mri[:, :, :, :, 64].cpu())
+            gen_pets.append(get_pet[:, :, :, :, 64].cpu())
+            break
+
+    pets = torch.cat(pets, dim=0)
+    mris = torch.cat(mris, dim=0)
+    gen_pets = torch.cat(gen_pets, dim=0)
+    for i in range(len(mris)):
+        vutils.save_image(pets[i], f"{i:03d}_pet.png", normalize=True)
+        vutils.save_image(mris[i], f"{i:03d}_mri.png", normalize=True)
+        vutils.save_image(gen_pets[i], f"{i:03d}_gen_pet.png", normalize=True)
