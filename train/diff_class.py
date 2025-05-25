@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 from omegaconf import DictConfig
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.strategies import DDPStrategy
 from torch.utils.data import DataLoader
 from model.dataloader import MRIDataset
 from model.diff_class.model import DiffClass
@@ -39,6 +40,7 @@ def run(cfg: DictConfig):
     )
     trainer = pl.Trainer(
         max_epochs=cfg.max_epoch,
+        strategy=DDPStrategy(find_unused_parameters=True),
         # num_sanity_val_steps=0,
         accelerator="auto",
         val_check_interval=1.0,
