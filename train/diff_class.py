@@ -40,7 +40,7 @@ def run(cfg: DictConfig):
     )
     trainer = pl.Trainer(
         max_epochs=cfg.max_epoch,
-        strategy=DDPStrategy(find_unused_parameters=True),
+        # strategy=DDPStrategy(find_unused_parameters=True),
         # num_sanity_val_steps=0,
         accelerator="auto",
         val_check_interval=1.0,
