@@ -8,7 +8,7 @@ from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 from monai.networks.nets import SwinUNETR
 
-from model.classifier.swin import SwinUNETRClassifier
+from model.classifier.module import DenseNet3DClassifier
 
 
 class Classifier(pl.LightningModule):
@@ -27,7 +27,7 @@ class Classifier(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, prefix="train_")
         self.val_metrics = MetricCollection(metrics, prefix="val_")
         self.test_metrics = MetricCollection(metrics, prefix="test_")
-        self.model = SwinUNETRClassifier(img_size=128, num_classes=3)
+        self.model = DenseNet3DClassifier(num_classes=3)
 
     def forward(self, image):
         return self.model(image)
