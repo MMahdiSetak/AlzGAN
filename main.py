@@ -2,7 +2,7 @@
 #
 # get_patch_indices()
 import torch
-from train.diff_class import run
+from train.classifier import run
 # from test.visualization import run
 
 torch.set_float32_matmul_precision('medium')

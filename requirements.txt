@@ -21,3 +21,4 @@ omegaconf
 optuna
 
 imageio
+monai
