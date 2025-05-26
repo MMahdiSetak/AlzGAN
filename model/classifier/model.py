@@ -1,3 +1,5 @@
+from typing import Any
+
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -27,10 +29,13 @@ class Classifier(pl.LightningModule):
         self.test_metrics = MetricCollection(metrics, prefix="test_")
         self.model = SwinUNETRClassifier(img_size=128, num_classes=3)
 
+    def forward(self, image):
+        return self.model(image)
+
     def training_step(self, batch, batch_idx):
         mri, labels = batch
         bs = len(labels)
-        outputs = self.model(mri)
+        outputs = self(mri)
         loss = self.classification_loss(outputs, labels)
 
         lr = self.optimizers().param_groups[0]['lr']
