@@ -6,7 +6,6 @@ class SwinUNETRClassifier(nn.Module):
     def __init__(self, img_size=128, num_classes=3, feature_size=48):
         super().__init__()
         self.backbone = SwinUNETR(
-            img_size=(img_size, img_size, img_size),
             in_channels=1,
             out_channels=feature_size,
             feature_size=feature_size,
