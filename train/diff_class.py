@@ -30,7 +30,7 @@ def run(cfg: DictConfig):
         monitor="val_accuracy",
         mode="max",
         save_top_k=1,
-        filename="cvit_best_model",
+        filename="diff_class_best_model",
     )
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
@@ -54,7 +54,7 @@ def run(cfg: DictConfig):
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     test_loader = DataLoader(
-        dataset=MRIDataset(cfg.model.dataset, 'test'),
+        dataset=MRIDataset(datapath, 'test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     trainer.test(model=model, dataloaders=test_loader)
