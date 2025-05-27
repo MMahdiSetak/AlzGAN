@@ -9,7 +9,7 @@ from model.dataloader import MRIDataset
 from model.gan_class.model import GANClass
 
 
-@hydra.main(config_path='../config/model', config_name='diff_class', version_base=None)
+@hydra.main(config_path='../config/model', config_name='gan_class', version_base=None)
 def run(cfg: DictConfig):
     batch_size = cfg.batch_size
     num_workers = cfg.num_workers
@@ -43,6 +43,7 @@ def run(cfg: DictConfig):
         # strategy=DDPStrategy(find_unused_parameters=True),
         # num_sanity_val_steps=0,
         accelerator="auto",
+        # devices=[2],
         val_check_interval=1.0,
         logger=logger,
         gradient_clip_val=1.0,

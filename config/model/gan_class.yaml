@@ -1,0 +1,8 @@
+batch_size: 32
+num_workers: 16
+lr: 1e-5
+dataset: 'dataset/mri_label_v4.hdf5'
+early_stop: 50
+max_epoch: 150
+embedding_size: 128
+dropout_rate: 0.2
