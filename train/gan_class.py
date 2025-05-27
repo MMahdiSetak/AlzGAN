@@ -20,7 +20,7 @@ def run(cfg: DictConfig):
     train_loader = DataLoader(
         dataset=FastMRIDataset(datapath, 'train'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, pin_memory=True,
-        persistent_workers=True, prefetch_factor=2,
+        persistent_workers=True, prefetch_factor=4,
     )
     val_loader = DataLoader(
         dataset=FastMRIDataset(datapath, 'val'),
@@ -42,7 +42,7 @@ def run(cfg: DictConfig):
     trainer = pl.Trainer(
         max_epochs=cfg.max_epoch,
         # strategy=DDPStrategy(find_unused_parameters=True),
-        # num_sanity_val_steps=0,
+        num_sanity_val_steps=0,
         accelerator="auto",
         # devices=[2],
         val_check_interval=1.0,
