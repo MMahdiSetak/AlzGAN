@@ -164,7 +164,7 @@ criterion = nn.BCELoss()
 
 # TensorBoard writer
 time_stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-log_dir = os.path.join("log/gan", time_stamp)
+log_dir = os.path.join("../log/gan", time_stamp)
 writer = SummaryWriter(log_dir=log_dir)
 
 

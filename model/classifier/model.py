@@ -1,12 +1,9 @@
-from typing import Any
-
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
-from monai.networks.nets import SwinUNETR
 
 from model.classifier.module import DenseNet3DClassifier
 
