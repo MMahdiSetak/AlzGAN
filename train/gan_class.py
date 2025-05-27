@@ -19,8 +19,8 @@ def run(cfg: DictConfig):
     logger = TensorBoardLogger(save_dir="./log", name="gan_class")
     train_loader = DataLoader(
         dataset=FastMRIDataset(datapath, 'train'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, pin_memory=True,
-        persistent_workers=True, prefetch_factor=4,
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
+        prefetch_factor=4,
     )
     val_loader = DataLoader(
         dataset=FastMRIDataset(datapath, 'val'),
