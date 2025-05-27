@@ -72,7 +72,7 @@ class FastMRIDataset(Dataset):
                     T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),  # Gamma correction
                     T.RandBiasField(prob=0.3)
                 ],
-                device="cuda"
+                overrides={'device':'cuda'}
             )
 
     def __len__(self):
