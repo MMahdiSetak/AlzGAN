@@ -48,7 +48,17 @@ class GANClass(pl.LightningModule):
         mri, labels = batch  # Batch is (N, D, H, W), already on GPU
         mri = mri.unsqueeze(1)  # (N, 1, D, H, W)
         mri = mri / 255.0  # Scale to [0, 1]
-        mri = self.train_transforms(mri)  # Apply transforms on GPU
+
+        # Apply transforms to each sample individually
+        transformed_mri = []
+        for i in range(mri.shape[0]):
+            sample = mri[i]  # Extract single sample: (1, D, H, W)
+            transformed_sample = self.train_transforms(sample)  # Apply transforms
+            transformed_mri.append(transformed_sample)
+
+        # Stack transformed samples back into a batch
+        mri = torch.stack(transformed_mri, dim=0)  # (N, 1, D, H, W)
+
         mri = mri * 2 - 1  # Scale to [-1, 1]
         mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
         bs = len(labels)
