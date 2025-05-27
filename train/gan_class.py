@@ -5,7 +5,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
-from model.dataloader import MRIDataset
+from model.dataloader import MRIDataset, FastMRIDataset
 from model.gan_class.model import GANClass
 
 
@@ -18,12 +18,14 @@ def run(cfg: DictConfig):
 
     logger = TensorBoardLogger(save_dir="./log", name="gan_class")
     train_loader = DataLoader(
-        dataset=MRIDataset(datapath, 'train'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+        dataset=FastMRIDataset(datapath, 'train'),
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, pin_memory=True,
+        persistent_workers=True, prefetch_factor=4,
     )
     val_loader = DataLoader(
-        dataset=MRIDataset(datapath, 'val'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+        dataset=FastMRIDataset(datapath, 'val'),
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
+        prefetch_factor=4,
     )
     model = GANClass(lr=lr)
     checkpoint_callback = ModelCheckpoint(
@@ -55,7 +57,7 @@ def run(cfg: DictConfig):
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     test_loader = DataLoader(
-        dataset=MRIDataset(datapath, 'test'),
+        dataset=FastMRIDataset(datapath, 'test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     trainer.test(model=model, dataloaders=test_loader)
