@@ -38,8 +38,8 @@ class Classifier(pl.LightningModule):
         lr = self.optimizers().param_groups[0]['lr']
         metrics = self.train_metrics(outputs, labels)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
-        self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False)
-        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
+        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
         return loss
 
