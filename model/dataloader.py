@@ -59,18 +59,21 @@ class FastMRIDataset(Dataset):
             self.mri_images = f[f'mri_{split}'][:]  # load into RAM
             self.labels = f[f'label_{split}'][:]
         if split == 'train':
-            self.train_transforms = T.Compose([
-                T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.5),  # ±10 degrees
-                T.Rand3DElastic(
-                    sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3
-                ),
-                T.RandAffine(
-                    translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5
-                ),
-                T.RandGaussianNoise(std=0.01, prob=0.2),  # Light noise
-                T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),  # Gamma correction
-                T.RandBiasField(prob=0.3)
-            ])
+            self.train_transforms = T.Compose(
+                [
+                    T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.5),  # ±10 degrees
+                    T.Rand3DElastic(
+                        sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3
+                    ),
+                    T.RandAffine(
+                        translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5
+                    ),
+                    T.RandGaussianNoise(std=0.01, prob=0.2),  # Light noise
+                    T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),  # Gamma correction
+                    T.RandBiasField(prob=0.3)
+                ],
+                device="cuda"
+            )
 
     def __len__(self):
         return len(self.labels)

@@ -5,7 +5,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
-from model.dataloader import MRIDataset, FastMRIDataset
+from model.dataloader import FastMRIDataset
 from model.gan_class.model import GANClass
 
 
@@ -45,7 +45,7 @@ def run(cfg: DictConfig):
         # strategy=DDPStrategy(find_unused_parameters=True),
         # num_sanity_val_steps=0,
         accelerator="auto",
-        # devices=[2],
+        devices=[2],
         val_check_interval=1.0,
         logger=logger,
         gradient_clip_val=1.0,
