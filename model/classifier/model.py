@@ -37,7 +37,7 @@ class Classifier(pl.LightningModule):
 
         lr = self.optimizers().param_groups[0]['lr']
         metrics = self.train_metrics(outputs, labels)
-        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
         self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False)
         self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
 
@@ -48,14 +48,14 @@ class Classifier(pl.LightningModule):
         bs = len(labels)
         outputs = self(inputs)
         metrics = self.val_metrics(outputs, labels)
-        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         inputs, labels = batch
         bs = len(labels)
         outputs = self(inputs)
         metrics = self.test_metrics(outputs, labels)
-        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)

@@ -43,25 +43,25 @@ class Generator(nn.Module):
             nn.Dropout3d(0.2),
         )
 
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose3d(1024, 512, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm3d(512),
-            nn.ReLU(inplace=True),
-            nn.Dropout3d(0.1),
-
-            nn.ConvTranspose3d(512, 256, kernel_size=4, stride=(1, 2, 2), padding=1),
-            nn.BatchNorm3d(256),
-            nn.ReLU(inplace=True),
-            nn.Dropout3d(0.1),
-
-            nn.ConvTranspose3d(256, 128, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm3d(128),
-            nn.ReLU(inplace=True),
-            nn.Dropout3d(0.1),
-
-            nn.ConvTranspose3d(128, 1, kernel_size=4, stride=(1, 2, 2), padding=1),
-            nn.Tanh()
-        )
+        # self.decoder = nn.Sequential(
+        #     nn.ConvTranspose3d(1024, 512, kernel_size=4, stride=2, padding=1),
+        #     nn.BatchNorm3d(512),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout3d(0.1),
+        #
+        #     nn.ConvTranspose3d(512, 256, kernel_size=4, stride=(1, 2, 2), padding=1),
+        #     nn.BatchNorm3d(256),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout3d(0.1),
+        #
+        #     nn.ConvTranspose3d(256, 128, kernel_size=4, stride=2, padding=1),
+        #     nn.BatchNorm3d(128),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout3d(0.1),
+        #
+        #     nn.ConvTranspose3d(128, 1, kernel_size=4, stride=(1, 2, 2), padding=1),
+        #     nn.Tanh()
+        # )
 
     def forward(self, x):
         enc = self.encoder(x)
