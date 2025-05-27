@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
+import monai.transforms as T
 
 
 class MRIDataset(Dataset):
@@ -10,6 +11,19 @@ class MRIDataset(Dataset):
         self.data_path = data_path
         self.split = split
         self.file = None
+        if split == 'train':
+            self.train_transforms = T.Compose([
+                T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.5),  # ±10 degrees
+                T.Rand3DElastic(
+                    sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3
+                ),
+                T.RandAffine(
+                    translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5
+                ),
+                T.RandGaussianNoise(std=0.01, prob=0.2),  # Light noise
+                T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),  # Gamma correction
+                T.RandBiasField(prob=0.3)
+            ])
 
     def __len__(self):
         if self.file is None:
@@ -24,8 +38,15 @@ class MRIDataset(Dataset):
             self.labels = self.file[f'label_{self.split}']
 
         # mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(255)
-        mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze(0).unsqueeze(0)
-        mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        if self.split == 'train':
+            mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(255).unsqueeze(0)
+            mri = self.train_transforms(mri)
+            mri = mri.multiply_(2).sub_(1).unsqueeze(0)
+            mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        else:
+            mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze(
+                0).unsqueeze(0)
+            mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
         label = int(self.labels[index])
         return mri.squeeze(0), label
 
