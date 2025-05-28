@@ -175,7 +175,7 @@ class MetricsLogger(Callback):
         self.batch_frequency = batch_frequency
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        if batch_idx % self.batch_frequency == 0:
+        if batch_idx % self.batch_frequency == 0 and batch_idx != 0:
             # mri, real_pet, _ = batch
             real_pet, mri, _ = batch
             bs = real_pet.size(0)
