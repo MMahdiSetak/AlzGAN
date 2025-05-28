@@ -38,9 +38,8 @@ def run(cfg: DictConfig):
         dataset=DDPMPairDataset(datapath, 'val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
-    model = create_model(input_size, num_channels, num_res_blocks, num_heads=heads,
-                         in_channels=in_channels,
-                         out_channels=out_channels)
+    model = create_model(input_size, num_channels, num_res_blocks, num_heads=heads, use_checkpoint=True,
+                         in_channels=in_channels, out_channels=out_channels)
     diffusion = GaussianDiffusion(
         model,
         image_size=input_size,
