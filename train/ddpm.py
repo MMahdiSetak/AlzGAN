@@ -21,6 +21,7 @@ def run(cfg: DictConfig):
     depth_size = cfg.depth_size
     num_channels = cfg.num_channels
     num_res_blocks = cfg.num_res_blocks
+    heads = cfg.num_heads
     save_and_sample_every = cfg.save_and_sample_every
     lr = cfg.lr
     timesteps = cfg.timesteps
@@ -37,7 +38,8 @@ def run(cfg: DictConfig):
         dataset=DDPMPairDataset(datapath, 'val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
-    model = create_model(input_size, num_channels, num_res_blocks, in_channels=in_channels, out_channels=out_channels)
+    model = create_model(input_size, num_channels, num_res_blocks, num_heads=heads, in_channels=in_channels,
+                         out_channels=out_channels)
     diffusion = GaussianDiffusion(
         model,
         image_size=input_size,

@@ -2,7 +2,7 @@
 #
 # get_patch_indices()
 import torch
-from train.gan_class import run
+from train.ddpm import run
 # from test.visualization import run
 
 torch.set_float32_matmul_precision('medium')

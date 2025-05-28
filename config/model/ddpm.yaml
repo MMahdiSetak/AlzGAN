@@ -5,11 +5,11 @@ dataset: 'dataset/mri_pet_label_v4.hdf5'
 early_stop: 100
 max_epoch: 50
 
-
 input_size: 128
 depth_size: 128
 num_channels: 128
-num_res_blocks: 1
+num_res_blocks: 4
+num_heads: 4
 save_and_sample_every: 1000
 timesteps: 250
 in_channels: 2
