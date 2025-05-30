@@ -23,7 +23,7 @@ class TransformerGAN(pl.LightningModule):
             dis_stride=2,
             dis_use_bn=True,
             dis_dropout=0.1,
-            dis_lr=1e-4,
+            dis_lr=1e-5,
     ):
         super().__init__()
         self.automatic_optimization = False
@@ -67,7 +67,7 @@ class TransformerGAN(pl.LightningModule):
         # -------------------------
         #  Train Generator
         # -------------------------
-        g_loss = self.criterion(self.discriminator(fake_pet), valid) + self.pixelwise_loss(fake_pet, real_pet)
+        g_loss = self.criterion(self.discriminator(fake_pet), valid) / 10 + self.pixelwise_loss(fake_pet, real_pet)
         opt_g.zero_grad()
         self.manual_backward(g_loss)
         opt_g.step()
