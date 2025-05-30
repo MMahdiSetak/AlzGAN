@@ -280,7 +280,7 @@ def mri_pet_label_info(mri_path, pet_path):
 
 
 def count_pair_images(subjects, mri_path, pet_path):
-    count = 0
+    valid_count = count = 0
     date_distance = []
     for subject in subjects:
         pet_dates_path = {}
@@ -296,13 +296,29 @@ def count_pair_images(subjects, mri_path, pet_path):
             for date in mri_dates:
                 mri_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
                 closest_pet_date = min(pet_dates_path.keys(), key=lambda x: abs(x - mri_date))
-                date_distance.append((mri_date, closest_pet_date))
+                # date_distance.append((mri_date, closest_pet_date))
 
                 mri_img_id = os.listdir(f"{mri_path}/{subject}/{mri_desc}/{date}")[0]
                 if mri_img_id in MRI_ID_BLACKLIST:
                     continue
+                distance_days = abs((mri_date - closest_pet_date).days)
+                distance_months = distance_days / 30  # Convert days to months
+                date_distance.append(distance_months)
+                if distance_days < 180:
+                    valid_count += 1
                 count += 1
-    return count
+
+    # Plotting the histogram
+    # bins = np.arange(0, max(date_distance) + 1, 1)  # 6-month intervals
+    # bins = np.arange(0, 48, 6)  # 6-month intervals
+    # plt.hist(date_distance, bins=bins, edgecolor='black')
+    # plt.xlabel('Distance in months')
+    # plt.ylabel('Frequency')
+    # plt.title('Histogram of MRI-PET Date Distances')
+    # plt.savefig('mri_pet_histogram.png')  # Save the plot instead of showing it
+    # plt.show()  # Save the plot instead of showing it
+
+    return valid_count
 
 
 def create_mri_pet_label_dataset(mri_path, pet_path):
@@ -318,7 +334,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
     }
     df = pd.read_csv("mri_labels.csv")
 
-    with h5py.File('mri_pet_label_v4.hdf5', 'w') as h5f:
+    with h5py.File('mri_pet_label_v4.1.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
@@ -352,6 +368,9 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
                     for date in tqdm(mri_dates, leave=False):
                         mri_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
                         closest_pet_date = min(pet_dates_path.keys(), key=lambda x: abs(x - mri_date))
+                        distance_days = abs((mri_date - closest_pet_date).days)
+                        if distance_days >= 180:
+                            continue
 
                         pet_img_id = os.listdir(pet_dates_path[closest_pet_date])[0]
                         mri_img_id = os.listdir(f"{mri_path}/{subject}/{mri_desc}/{date}")[0]
@@ -599,7 +618,7 @@ mri_data_paths = "dataset/MRI/ADNI/"
 pet_data_path = "dataset/PET/ADNI/"
 
 # dataset_info(mri_data_paths)
-# create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
+create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
 # mri_pet_label_info(mri_data_paths, pet_data_path)
 # mri_dcm2nii(mri_data_paths)
 # pet_dcm2nii(pet_data_path)
