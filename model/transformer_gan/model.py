@@ -36,12 +36,15 @@ class TransformerGAN(pl.LightningModule):
         self.gen_lr = gen_lr
         self.dis_lr = dis_lr
 
-        self.metrics = MetricCollection({
+        metrics = {
             "MAE": MeanAbsoluteError(),
             "MSE": MeanSquaredError(),
             "PSNR": PeakSignalNoiseRatio(data_range=1),
             # "SSIM": StructuralSimilarityIndexMeasure(),
-        })
+        }
+        self.train_metrics = MetricCollection(metrics, prefix="train_")
+        self.val_metrics = MetricCollection(metrics, prefix="val_")
+        self.test_metrics = MetricCollection(metrics, prefix="test_")
 
     def training_step(self, batch, batch_idx):
         real_mri, real_pet, label = batch
@@ -69,22 +72,28 @@ class TransformerGAN(pl.LightningModule):
         self.manual_backward(g_loss)
         opt_g.step()
 
-        self.log_dict({"g_loss": g_loss, "d_loss": d_loss}, prog_bar=True, on_step=True, on_epoch=True, batch_size=bs)
+        self.log_dict({"g_loss": g_loss, "d_loss": d_loss}, prog_bar=True, on_step=True, on_epoch=True, batch_size=bs,
+                      sync_dist=True)
+        metrics = self.train_metrics(fake_pet, real_pet)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
         return {"g_loss": g_loss, "d_loss": d_loss}
 
-    def validation_test(self, batch, batch_idx):
+    def validation_test(self, batch, batch_idx, split):
         real_mri, real_pet, label = batch
         bs = real_pet.shape[0]
         fake_pet = self.generator(real_mri)
-        metrics = self.metrics(fake_pet, real_pet)
-        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
+        if split == "val":
+            metrics = self.val_metrics(fake_pet, real_pet)
+        else:
+            metrics = self.test_metrics(fake_pet, real_pet)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
         return metrics
 
     def validation_step(self, batch, batch_idx):
-        return self.validation_test(batch, batch_idx)
+        return self.validation_test(batch, batch_idx, "val")
 
     def test_step(self, batch, batch_idx):
-        return self.validation_test(batch, batch_idx)
+        return self.validation_test(batch, batch_idx, "test")
 
     def configure_optimizers(self):
         opt_g = optim.Adam(self.generator.parameters(), lr=self.gen_lr, betas=(0.5, 0.999))
