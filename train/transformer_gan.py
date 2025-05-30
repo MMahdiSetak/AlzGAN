@@ -1,4 +1,6 @@
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from pytorch_lightning.strategies import DDPStrategy
+
 from model.dataloader import DDPMPairDataset
 
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -42,6 +44,7 @@ def run(cfg: DictConfig):
         max_epochs=cfg.max_epoch,
         accelerator="auto",
         logger=logger,
+        strategy=DDPStrategy(find_unused_parameters=True),
         val_check_interval=1.0,
         precision='16-mixed',
         log_every_n_steps=5,
