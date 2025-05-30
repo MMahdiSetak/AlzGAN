@@ -1,0 +1,6 @@
+batch_size: 32
+num_workers: 4
+lr: 1e-4
+dataset: 'dataset/mri_pet_label_v3.hdf5'
+early_stop: 100
+max_epoch: 500
