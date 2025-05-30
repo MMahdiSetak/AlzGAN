@@ -1,4 +1,4 @@
-batch_size: 4
+batch_size: 12
 num_workers: 4
 lr: 1e-4
 dataset: 'dataset/mri_pet_label_v4.1.hdf5'
