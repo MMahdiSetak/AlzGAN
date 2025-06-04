@@ -1,5 +1,5 @@
 batch_size: 32
-num_workers: 8
+num_workers: 2
 lr: 1e-5
 dataset: 'dataset/mri_label_v4.hdf5'
 early_stop: 100
