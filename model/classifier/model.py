@@ -5,7 +5,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 
-from model.classifier.module import MRI3DViT
+from model.classifier.module import MRI3DViT, Hybrid3DViT
 
 
 class Classifier(pl.LightningModule):
@@ -26,29 +26,32 @@ class Classifier(pl.LightningModule):
         self.val_metrics = MetricCollection(metrics, prefix="val_")
         self.test_metrics = MetricCollection(metrics, prefix="test_")
 
-        self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
-                                num_heads=vit_heads)
-        self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
-        )
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.head = nn.Linear(embed_dim, 3)
+        self.model = Hybrid3DViT(image_size=128, embed_dim=2048, depth=24, num_heads=16)
+
+        # self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
+        #                         num_heads=vit_heads)
+        # self.transformer = nn.TransformerEncoder(
+        #     nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
+        # )
+        # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        # self.head = nn.Linear(embed_dim, 3)
 
     def forward(self, mri):
-        mri_token = self.mri_vit(mri)  # [B, embed_dim]
+        return self.model(mri)
+        # mri_token = self.mri_vit(mri)  # [B, embed_dim]
         # diff_token = self.diffusion_extractor(mri)  # [B, 1, embed_dim]
         # demo_token = self.demo_encoder(demo)  # [B, 1, embed_dim]
         # clinical_token = self.clinical_encoder(clinical)  # [B, 1, embed_dim]
 
         # tokens = torch.cat([mri_token.unsqueeze(1), diff_token, demo_token, clinical_token], dim=1)  # [B, 4, 768]
-        tokens = mri_token.unsqueeze(1)
-        cls_token = self.cls_token.expand(tokens.size(0), -1, -1)
-        tokens = torch.cat([cls_token, tokens], dim=1)  # [B, 5, 768]
-
-        fused = self.transformer(tokens)  # [B, 5, 768]
-        fused = fused[:, 0]  # CLS token
-        out = self.head(fused)  # [B, 3]
-        return out
+        # tokens = mri_token.unsqueeze(1)
+        # cls_token = self.cls_token.expand(tokens.size(0), -1, -1)
+        # tokens = torch.cat([cls_token, tokens], dim=1)  # [B, 5, 768]
+        #
+        # fused = self.transformer(tokens)  # [B, 5, 768]
+        # fused = fused[:, 0]  # CLS token
+        # out = self.head(fused)  # [B, 3]
+        # return out
 
     def training_step(self, batch, batch_idx):
         mri, labels = batch
