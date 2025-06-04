@@ -10,7 +10,7 @@ from model.dataloader import MRIDataset
 from model.diff_class.model import DiffClass
 
 
-@hydra.main(config_path='../config/model', config_name='diff_class', version_base=None)
+@hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
 def run(cfg: DictConfig):
     batch_size = cfg.batch_size
     num_workers = cfg.num_workers
