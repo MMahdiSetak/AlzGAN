@@ -67,7 +67,7 @@ class FastMRIDataset(Dataset):
             0).unsqueeze(0)
         mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
         label = self.labels[index]
-        return mri, label
+        return mri.squeeze(0), label
 
 
 # class FastMRIDataset(Dataset):
