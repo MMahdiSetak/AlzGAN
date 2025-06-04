@@ -29,7 +29,7 @@ class Classifier(pl.LightningModule):
         self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
                                 num_heads=vit_heads)
         self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads), num_layers=depth
+            nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
         )
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.head = nn.Linear(embed_dim, 3)

@@ -45,7 +45,7 @@ class MRI3DViT(nn.Module):
         self.pos_embed = nn.Parameter(torch.zeros(1, patch_number + 1, embed_dim))  # patches + CLS
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(embed_dim, num_heads), num_layers=depth
+            nn.TransformerEncoderLayer(embed_dim, num_heads, batch_first=True), num_layers=depth
         )
 
     def forward(self, x):
