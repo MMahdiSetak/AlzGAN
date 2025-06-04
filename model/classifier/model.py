@@ -32,7 +32,7 @@ class Classifier(pl.LightningModule):
             nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads), num_layers=depth
         )
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.head = nn.Linear(768, 3)
+        self.head = nn.Linear(embed_dim, 3)
 
     def forward(self, mri):
         mri_token = self.mri_vit(mri)  # [B, embed_dim]
