@@ -9,7 +9,7 @@ from model.classifier.module import MRI3DViT, Hybrid3DViT
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, image_size=128, patch_size=16, embed_dim=2048, depth=6, heads=12, vit_depth=12, vit_heads=12,
+    def __init__(self, image_size=128, patch_size=16, embed_dim=2048, depth=6, heads=16, vit_depth=12, vit_heads=16,
                  lr=1e-3):
         super(Classifier, self).__init__()
         self.lr = lr
@@ -25,7 +25,6 @@ class Classifier(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, prefix="train_")
         self.val_metrics = MetricCollection(metrics, prefix="val_")
         self.test_metrics = MetricCollection(metrics, prefix="test_")
-
 
         self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
                                 num_heads=vit_heads)
