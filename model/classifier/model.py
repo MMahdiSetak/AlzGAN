@@ -5,7 +5,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 
-from model.classifier.module import DenseNet3DClassifier, MRI3DViT
+from model.classifier.module import MRI3DViT
 
 
 class Classifier(pl.LightningModule):
