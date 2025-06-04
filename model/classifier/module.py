@@ -28,7 +28,7 @@ class Hybrid3DViT(nn.Module):
     def __init__(self, image_size=128, embed_dim=2048, depth=24, num_heads=16):
         super().__init__()
         # 3D CNN backbone using ResNet50 adapted for 3D (placeholder; replace with actual 3D ResNet50)
-        self.cnn = models.video.r3d_18(pretrained=False)  # Using r3d_18 as a proxy; ideally use 3D ResNet50
+        self.cnn = models.video.r3d_18(weights=None)  # Using r3d_18 as a proxy; ideally use 3D ResNet50
         self.cnn = nn.Sequential(*list(self.cnn.children())[:-2])  # Remove avgpool and fc layers
 
         # Note: For input [B, 1, 128, 128, 128], output is [B, 512, 8, 8, 8] with r3d_18.
