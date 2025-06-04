@@ -6,8 +6,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from model.classifier.model import Classifier
-from model.dataloader import MRIDataset
-from model.diff_class.model import DiffClass
+from model.dataloader import FastMRIDataset
 
 
 @hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
@@ -19,11 +18,11 @@ def run(cfg: DictConfig):
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     train_loader = DataLoader(
-        dataset=MRIDataset(datapath, 'train'),
+        dataset=FastMRIDataset(datapath, 'train'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     val_loader = DataLoader(
-        dataset=MRIDataset(datapath, 'val'),
+        dataset=FastMRIDataset(datapath, 'val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     model = Classifier(lr=lr)
@@ -44,6 +43,7 @@ def run(cfg: DictConfig):
         # strategy=DDPStrategy(find_unused_parameters=True),
         # num_sanity_val_steps=0,
         accelerator="auto",
+        devices=[0, 1],
         val_check_interval=1.0,
         logger=logger,
         gradient_clip_val=1.0,
@@ -55,7 +55,7 @@ def run(cfg: DictConfig):
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     test_loader = DataLoader(
-        dataset=MRIDataset(datapath, 'test'),
+        dataset=FastMRIDataset(datapath, 'test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     trainer.test(model=model, dataloaders=test_loader)
