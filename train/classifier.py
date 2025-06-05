@@ -19,11 +19,11 @@ def run(cfg: DictConfig):
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     train_loader = DataLoader(
         dataset=FastMRIDataset(datapath, 'train'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     val_loader = DataLoader(
         dataset=FastMRIDataset(datapath, 'val'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     model = Classifier(lr=lr)
     checkpoint_callback = ModelCheckpoint(

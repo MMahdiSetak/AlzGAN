@@ -63,11 +63,9 @@ class FastMRIDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index):
-        mri = self.mri_images[index].div_(127.5).sub_(1).unsqueeze(
-            0).unsqueeze(0)
-        mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        mri = self.mri_images[index]
         label = self.labels[index]
-        return mri.squeeze(0), label
+        return mri, label
 
 
 # class FastMRIDataset(Dataset):

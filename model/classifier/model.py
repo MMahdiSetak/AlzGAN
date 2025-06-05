@@ -1,9 +1,12 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
+import monai.transforms as T
+import torch.nn.functional as F
 
 from model.classifier.module import MRI3DViT, Hybrid3DViT
 
@@ -34,7 +37,31 @@ class Classifier(pl.LightningModule):
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.head = nn.Linear(embed_dim, 3)
 
+        self.train_transforms = T.Compose([
+            T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
+            T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
+            T.RandAffine(translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5),
+            T.RandGaussianNoise(std=0.01, prob=0.2),
+            T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
+            T.RandBiasField(prob=0.3)
+        ])
+
+    def apply_transform(self, mri):
+        mri = mri.unsqueeze(1).div_(255.0)
+        # Apply transforms to each sample individually
+        transformed_mri = []
+        for i in range(mri.shape[0]):
+            sample = mri[i]  # Extract single sample: (1, D, H, W)
+            transformed_sample = self.train_transforms(sample)  # Apply transforms
+            transformed_mri.append(transformed_sample)
+
+        # Stack transformed samples back into a batch
+        mri = torch.stack(transformed_mri, dim=0).multiply_(2).sub_(1)  # (N, 1, D, H, W)
+        mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        return mri
+
     def forward(self, mri):
+        mri = self.apply_transform(mri)
         mri_token = self.mri_vit(mri)  # [B, embed_dim]
         # diff_token = self.diffusion_extractor(mri)  # [B, 1, embed_dim]
         # demo_token = self.demo_encoder(demo)  # [B, 1, embed_dim]
