@@ -51,13 +51,24 @@ class MRIDataset(Dataset):
         return mri.squeeze(0), label
 
 
-class FastMRIDataset(Dataset):
+class MRIRAMLoader:
     def __init__(self, data_path, split):
         self.data_path = data_path
         self.split = split
-        with h5py.File(self.data_path, 'r') as f:
-            self.mri_images = torch.from_numpy(f[f'mri_{split}'][:].astype(np.float32))
-            self.labels = torch.from_numpy(f[f'label_{split}'][:]).long()
+        self.mri_images = None
+        self.labels = None
+
+    def get_data(self):
+        if self.mri_images is None:
+            with h5py.File(self.data_path, 'r') as f:
+                self.mri_images = torch.from_numpy(f[f'mri_{self.split}'][:].astype(np.float32)).share_memory_()
+                self.labels = torch.from_numpy(f[f'label_{self.split}'][:]).long().share_memory_()
+        return self.mri_images, self.labels
+
+
+class FastMRIDataset(Dataset):
+    def __init__(self, mri, labels):
+        self.mri_images, self.labels = mri, labels
 
     def __len__(self):
         return len(self.labels)

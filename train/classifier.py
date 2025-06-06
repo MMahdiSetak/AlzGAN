@@ -6,7 +6,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from model.classifier.model import Classifier
-from model.dataloader import FastMRIDataset
+from model.dataloader import FastMRIDataset, MRIRAMLoader
 
 
 @hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
@@ -17,8 +17,9 @@ def run(cfg: DictConfig):
     lr = cfg.lr
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
+    ram_loader = MRIRAMLoader(datapath, 'train')
     train_loader = DataLoader(
-        dataset=FastMRIDataset(datapath, 'train'),
+        dataset=FastMRIDataset(*ram_loader.get_data()),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     val_loader = DataLoader(
@@ -41,9 +42,9 @@ def run(cfg: DictConfig):
     trainer = pl.Trainer(
         max_epochs=cfg.max_epoch,
         # strategy=DDPStrategy(find_unused_parameters=True),
-        # num_sanity_val_steps=0,
+        num_sanity_val_steps=0,
         accelerator="auto",
-        devices=[0, 1],
+        devices=[1],
         val_check_interval=1.0,
         logger=logger,
         gradient_clip_val=1.0,
