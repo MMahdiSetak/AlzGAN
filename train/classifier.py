@@ -17,13 +17,14 @@ def run(cfg: DictConfig):
     lr = cfg.lr
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
-    ram_loader = MRIRAMLoader(datapath, 'train')
+    train_ram_loader = MRIRAMLoader(datapath, 'train')
     train_loader = DataLoader(
-        dataset=FastMRIDataset(*ram_loader.get_data(), transform=True),
+        dataset=FastMRIDataset(*train_ram_loader.get_data(), transform=True),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
+    val_ram_loader = MRIRAMLoader(datapath, 'val')
     val_loader = DataLoader(
-        dataset=FastMRIDataset(datapath, 'val'),
+        dataset=FastMRIDataset(*val_ram_loader.get_data()),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     model = Classifier(lr=lr)
@@ -55,8 +56,9 @@ def run(cfg: DictConfig):
         enable_checkpointing=False,
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    test_ram_loader = MRIRAMLoader(datapath, 'test')
     test_loader = DataLoader(
-        dataset=FastMRIDataset(datapath, 'test'),
+        dataset=FastMRIDataset(*test_ram_loader.get_data()),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     trainer.test(model=model, dataloaders=test_loader)
