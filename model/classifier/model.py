@@ -59,7 +59,7 @@ class Classifier(pl.LightningModule):
         return mri
 
     def forward(self, mri):
-        print(mri.device())
+        print(mri.device)
         # mri = self.apply_transform(mri)
         mri = mri.unsqueeze(1).div_(127.5).sub_(1)
         mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
