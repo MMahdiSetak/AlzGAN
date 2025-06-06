@@ -60,7 +60,7 @@ def run(cfg: DictConfig):
     #     batch_frequency=750, max_images=4, clamp=True))
     # callbacks.append(VideoLogger(
     #     batch_frequency=1500, max_videos=4, clamp=True))
-    callbacks.append(MetricsLogger(batch_frequency=1000))
+    callbacks.append(MetricsLogger(batch_frequency=500))
     callbacks.append(
         ModelCheckpoint(
             # dirpath="my_checkpoints/",  # custom folder
@@ -76,6 +76,7 @@ def run(cfg: DictConfig):
         max_epochs=epochs,
         num_sanity_val_steps=0,
         accelerator="auto",
+        devices=[0],
         # val_check_interval=5000,
         check_val_every_n_epoch=10,
         # overfit_batches=20,
