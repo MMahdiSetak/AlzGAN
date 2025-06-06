@@ -19,7 +19,7 @@ def run(cfg: DictConfig):
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     ram_loader = MRIRAMLoader(datapath, 'train')
     train_loader = DataLoader(
-        dataset=FastMRIDataset(*ram_loader.get_data()),
+        dataset=FastMRIDataset(*ram_loader.get_data(), transform=True),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     val_loader = DataLoader(

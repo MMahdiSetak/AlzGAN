@@ -67,14 +67,25 @@ class MRIRAMLoader:
 
 
 class FastMRIDataset(Dataset):
-    def __init__(self, mri, labels):
+    def __init__(self, mri, labels, transform=False):
         self.mri_images, self.labels = mri, labels
+        self.transform = transform
+        self.train_transforms = T.Compose([
+            T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
+            T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
+            T.RandAffine(translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5),
+            T.RandGaussianNoise(std=0.01, prob=0.2),
+            T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
+            T.RandBiasField(prob=0.3)
+        ])
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, index):
         mri = self.mri_images[index]
+        if self.transform:
+            mri = self.train_transforms(mri.div_(255).unsqueeze(0))
         label = self.labels[index]
         return mri, label
 
