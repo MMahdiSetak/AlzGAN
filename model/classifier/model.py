@@ -61,7 +61,9 @@ class Classifier(pl.LightningModule):
         return mri
 
     def forward(self, mri):
-        mri = self.apply_transform(mri)
+        # mri = self.apply_transform(mri)
+        mri.unsqueeze(1).div_(127.5).sub_(1)
+        mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
         mri_token = self.mri_vit(mri)  # [B, embed_dim]
         # diff_token = self.diffusion_extractor(mri)  # [B, 1, embed_dim]
         # demo_token = self.demo_encoder(demo)  # [B, 1, embed_dim]
