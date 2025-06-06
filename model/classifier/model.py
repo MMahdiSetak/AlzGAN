@@ -48,19 +48,18 @@ class Classifier(pl.LightningModule):
 
     def apply_transform(self, mri):
         mri = mri.unsqueeze(1).div_(255.0)
-        # Apply transforms to each sample individually
         transformed_mri = []
         for i in range(mri.shape[0]):
-            sample = mri[i]  # Extract single sample: (1, D, H, W)
-            transformed_sample = self.train_transforms(sample)  # Apply transforms
+            sample = mri[i]
+            transformed_sample = self.train_transforms(sample)
             transformed_mri.append(transformed_sample)
 
-        # Stack transformed samples back into a batch
-        mri = torch.stack(transformed_mri, dim=0).multiply_(2).sub_(1)  # (N, 1, D, H, W)
+        mri = torch.stack(transformed_mri, dim=0).multiply_(2).sub_(1)
         mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
         return mri
 
     def forward(self, mri):
+        print(mri.device())
         # mri = self.apply_transform(mri)
         mri = mri.unsqueeze(1).div_(127.5).sub_(1)
         mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
