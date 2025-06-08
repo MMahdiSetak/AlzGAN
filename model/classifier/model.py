@@ -8,7 +8,7 @@ from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AU
 import monai.transforms as T
 import torch.nn.functional as F
 
-from model.classifier.module import MRI3DViT, Hybrid3DViT
+from model.classifier.module import MRI3DViT
 
 
 class Classifier(pl.LightningModule):
