@@ -93,8 +93,8 @@ class Classifier(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
-        inputs = inputs.unsqueeze(1).div_(127.5).sub_(1)
-        inputs = F.interpolate(inputs, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        # inputs = inputs.unsqueeze(1).div_(127.5).sub_(1)
+        # inputs = F.interpolate(inputs, size=(128, 128, 128), mode='trilinear', align_corners=False)
         bs = len(labels)
         outputs = self(inputs)
         metrics = self.val_metrics(outputs, labels)
@@ -102,8 +102,8 @@ class Classifier(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         inputs, labels = batch
-        inputs = inputs.unsqueeze(1).div_(127.5).sub_(1)
-        inputs = F.interpolate(inputs, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        # inputs = inputs.unsqueeze(1).div_(127.5).sub_(1)
+        # inputs = F.interpolate(inputs, size=(128, 128, 128), mode='trilinear', align_corners=False)
         bs = len(labels)
         outputs = self(inputs)
         metrics = self.test_metrics(outputs, labels)
