@@ -247,7 +247,7 @@ def pet_preprocess2(img: np.ndarray) -> np.ndarray:
     img = nib.load('stripped.nii').get_fdata()
     normalized_img = normalize_image(img)
     padded_image = np.pad(normalized_img, ((0, 0), (0, 0), (16, 16)), mode='constant')
-    # pet (160, 160, 96) -> (100, 140, 96)
+    # pet (160, 160, 96) -> (128, 128, 128)
     # mri (160, 200, 180)
     return padded_image
 

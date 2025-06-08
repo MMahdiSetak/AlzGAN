@@ -114,7 +114,7 @@ class FastPETDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index):
-        mri = self.pet_images[index].div(127.5).sub_(1).unsqueeze_(0)
+        mri = self.pet_images[index]
         label = self.labels[index]
         return mri, self.label_mapping[label]
 
