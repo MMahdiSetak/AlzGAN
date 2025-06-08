@@ -90,6 +90,35 @@ class FastMRIDataset(Dataset):
         return mri, label
 
 
+class PETRAMLoader:
+    def __init__(self, data_path, split):
+        self.data_path = data_path
+        self.split = split
+        self.pet_images = None
+        self.labels = None
+
+    def get_data(self):
+        if self.pet_images is None:
+            with h5py.File(self.data_path, 'r') as f:
+                self.pet_images = torch.from_numpy(f[f'mri_{self.split}'][:].astype(np.float32)).share_memory_()
+                self.labels = torch.from_numpy(f[f'label_{self.split}'][:]).share_memory_()
+        return self.pet_images, self.labels
+
+
+class FastPETDataset(Dataset):
+    def __init__(self, pet, labels):
+        self.pet_images, self.labels = pet, labels
+        self.label_mapping = torch.tensor([0, 0, 1, 1, 1, 2])
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, index):
+        mri = self.pet_images[index].div(127.5).sub_(1).unsqueeze_(0)
+        label = self.labels[index]
+        return mri, self.label_mapping[label]
+
+
 # class FastMRIDataset(Dataset):
 #     def __init__(self, data_path, split):
 #         self.data_path = data_path
