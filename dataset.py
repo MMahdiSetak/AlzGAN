@@ -7,6 +7,7 @@ from datetime import datetime
 
 import ants
 import h5py
+import imageio
 import nibabel as nib
 import numpy as np
 import pandas as pd
@@ -16,10 +17,10 @@ from scipy.ndimage import zoom
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-group_mapping = {'CN': 0, 'MCI': 1, 'AD': 2}
+group_mapping = {'CN': 0, 'SMC': 1, 'EMCI': 2, 'MCI': 3, 'LMCI': 4, 'AD': 5}
 
 
-def log_to_file_image(img, file_name):
+def log_to_file_image(img, file_name='test'):
     center_slices = [dim // 2 for dim in img.shape]
     # img = np.transpose(img, (0, 2, 1))
 
@@ -34,8 +35,8 @@ def log_to_file_image(img, file_name):
         # ax.axis('off')
 
     # Save the figure to a file
-    # plt.show()
-    plt.savefig(f"log/pet/{file_name}.png")
+    plt.show()
+    # plt.savefig(f"log/pet/{file_name}.png")
     plt.close(fig)
 
 
@@ -71,46 +72,52 @@ def log_image(image):
         plt.axis('off')
         plt.show()
 
-        # print(f"Slice Instance Number: {slice.InstanceNumber}")
-        # print("Patient Name:", slice.PatientName)
-        # print("Patient ID:", slice.PatientID)
-        # print("Study Date:", slice.StudyDate)
-        # print("Modality:", slice.Modality)
-        # print("Manufacturer:", slice.Manufacturer)
-        # print(slice)
-        # print('-' * 20)
+    #     print(f"Slice Instance Number: {slice.InstanceNumber}")
+    #     print("Patient Name:", slice.PatientName)
+    #     print("Patient ID:", slice.PatientID)
+    #     print("Study Date:", slice.StudyDate)
+    #     print("Modality:", slice.Modality)
+    #     print("Manufacturer:", slice.Manufacturer)
+    #     print(slice)
+    #     print('-' * 20)
 
 
-# def dataset_info(paths):
-#     max_intensity = 0
-#     for path_to_datadir in paths:
-#         print(path_to_datadir)
-#         subjects = os.listdir(path_to_datadir)
-#         with tqdm(total=len(subjects), desc="Subjects", leave=True) as pbar_subjects:
-#             for subject in subjects:
-#                 descs = os.listdir(f"{path_to_datadir}/{subject}")
-#                 with tqdm(total=len(descs), desc=f"Descriptions ({subject})", leave=False) as pbar_descs:
-#                     for desc in descs:
-#                         dates = os.listdir(f"{path_to_datadir}/{subject}/{desc}")
-#                         with tqdm(total=len(dates), desc=f"Dates ({subject}/{desc})", leave=False) as pbar_dates:
-#                             for date in dates:
-#                                 img_ids = os.listdir(f"{path_to_datadir}/{subject}/{desc}/{date}")
-#                                 with tqdm(total=len(img_ids), desc=f"Images ({subject}/{desc}/{date})",
-#                                           leave=False) as pbar_imgs:
-#                                     for img_id in img_ids:
-#                                         image_path = f"{path_to_datadir}/{subject}/{desc}/{date}/{img_id}"
-#                                         files = [os.path.join(image_path, f) for f in os.listdir(image_path) if
-#                                                  f.endswith('.dcm')]
-#                                         slices = [pydicom.dcmread(f) for f in files]
-#                                         slices.sort(key=lambda x: x.InstanceNumber)
-#                                         image_3d = np.stack([s.pixel_array for s in slices])
-#                                         max_intensity = max(image_3d.max(), max_intensity)
-#                                         pbar_imgs.update(1)
-#                                 pbar_dates.update(1)
-#                     pbar_descs.update(1)
-#                 pbar_subjects.update(1)
-#
-#     print(max_intensity)
+def log_video(img):
+    # pet_scan_clipped = np.clip(img, 0, None)
+    #
+    # # Find the maximum value for scaling
+    # max_val = pet_scan_clipped.max()
+    #
+    # # Scale to 0-255 and convert to uint8; handle case where max_val is 0
+    # if max_val > 0:
+    #     scaled = (pet_scan_clipped / max_val * 255).astype(np.uint8)
+    # else:
+    #     scaled = np.zeros_like(pet_scan_clipped, dtype=np.uint8)
+
+    # Initialize video writer: 'mp4v' codec, 10 fps, 160x160 frame size
+    # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    # out = cv2.VideoWriter('pet_scan_video.mp4', fourcc, 10, (160, 160))
+    #
+    # # Write each slice as a frame
+    # for i in range(96):
+    #     # Extract the 2D slice (160, 160)
+    #     slice_gray = img[i, :, :]
+    #     # Convert grayscale to BGR for OpenCV video compatibility
+    #     slice_bgr = cv2.cvtColor(slice_gray, cv2.COLOR_GRAY2BGR)
+    #     # Write frame to video
+    #     out.write(slice_bgr)
+    #
+    # # Release the video writer to finalize the file
+    # out.release()
+    H, W, Z = img.shape
+    writer = imageio.get_writer('pet_scan_video.mp4', fps=8, codec='libx264')
+    for z in range(Z):
+        slice_ = img[:, :, z]
+        # Normalize to [0,255] uint8
+        # img8 = ((slice_ - vmin) / (vmax - vmin) * 255).clip(0, 255).astype(np.uint8)
+        writer.append_data(slice_)
+    writer.close()
+
 
 def dataset_info(paths):
     rows = []
@@ -230,6 +237,19 @@ def pet_preprocess(img: np.ndarray) -> np.ndarray:
     # pet (160, 160, 96) -> (100, 140, 96)
     # mri (160, 200, 180)
     return normalized_img
+
+
+def pet_preprocess2(img: np.ndarray) -> np.ndarray:
+    img = img[:, 16:144, 16:144]
+    img = np.transpose(img, (2, 1, 0))
+    img = img[::-1, ::-1, :]
+    skull_stripping(img)
+    img = nib.load('stripped.nii').get_fdata()
+    normalized_img = normalize_image(img)
+    padded_image = np.pad(normalized_img, ((0, 0), (0, 0), (16, 16)), mode='constant')
+    # pet (160, 160, 96) -> (100, 140, 96)
+    # mri (160, 200, 180)
+    return padded_image
 
 
 MRI_ID_BLACKLIST = ['I1589895', 'I1591048', 'I1594002', 'I1611628', 'I1528880', 'I1557275', 'I1582497', 'I1623763',
@@ -562,6 +582,50 @@ def create_mri_dataset(mri_path: str):
                             current_index += 1
 
 
+def create_pet_dataset(pet_path: str):
+    pet_target = (128, 128, 128)
+    subjects = os.listdir(pet_path)
+    train_subj, val_subj, test_subj = split_subject(subjects)
+    subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
+    split_num = {
+        'train': count_subject_image(train_subj, pet_path),
+        'val': count_subject_image(val_subj, pet_path),
+        'test': count_subject_image(test_subj, pet_path),
+    }
+    df = pd.read_csv("dataset/pet.csv")
+
+    with h5py.File('pet_label.hdf5', 'w') as h5f:
+        ds = {
+            'pet_train': h5f.create_dataset('pet_train', (split_num['train'], *pet_target), dtype='uint8'),
+            'pet_val': h5f.create_dataset('pet_val', (split_num['val'], *pet_target), dtype='uint8'),
+            'pet_test': h5f.create_dataset('pet_test', (split_num['test'], *pet_target), dtype='uint8'),
+            'label_train': h5f.create_dataset('label_train', (split_num['train'],), dtype='int'),
+            'label_val': h5f.create_dataset('label_val', (split_num['val'],), dtype='int'),
+            'label_test': h5f.create_dataset('label_test', (split_num['test'],), dtype='int')
+        }
+        for split, subjects in tqdm(subj_split.items(), leave=False):
+            indices = list(range(split_num[split]))
+            random.shuffle(indices)
+            current_index = 0
+            for subject in tqdm(subjects, leave=False):
+                descs = os.listdir(f"{pet_path}/{subject}")
+                for desc in tqdm(descs, leave=False):
+                    dates = os.listdir(f"{pet_path}/{subject}/{desc}")
+                    for date in tqdm(dates, leave=False):
+                        img_ids = os.listdir(f"{pet_path}/{subject}/{desc}/{date}")
+                        for img_id in img_ids:
+                            image_path = f"{pet_path}/{subject}/{desc}/{date}/{img_id}"
+                            pet_image = read_image(image_path)
+                            # log_video(pet_image)
+                            dataset_pet = pet_preprocess2(pet_image)
+                            # log_video(dataset_pet)
+                            # log_to_file_image(dataset_pet)
+                            label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
+                            ds[f'pet_{split}'][indices[current_index]] = dataset_pet
+                            ds[f'label_{split}'][indices[current_index]] = group_mapping[label]
+                            current_index += 1
+
+
 affine = np.eye(4)
 
 
@@ -618,7 +682,7 @@ mri_data_paths = "dataset/MRI/ADNI/"
 pet_data_path = "dataset/PET/ADNI/"
 
 # dataset_info(mri_data_paths)
-create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
+# create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
 # mri_pet_label_info(mri_data_paths, pet_data_path)
 # mri_dcm2nii(mri_data_paths)
 # pet_dcm2nii(pet_data_path)
