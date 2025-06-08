@@ -100,7 +100,7 @@ class PETRAMLoader:
     def get_data(self):
         if self.pet_images is None:
             with h5py.File(self.data_path, 'r') as f:
-                self.pet_images = torch.from_numpy(f[f'mri_{self.split}'][:].astype(np.float32)).share_memory_()
+                self.pet_images = torch.from_numpy(f[f'pet_{self.split}'][:].astype(np.float32)).share_memory_()
                 self.labels = torch.from_numpy(f[f'label_{self.split}'][:]).share_memory_()
         return self.pet_images, self.labels
 
