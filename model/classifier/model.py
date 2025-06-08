@@ -18,12 +18,12 @@ class Classifier(pl.LightningModule):
         self.lr = lr
         self.classification_loss = nn.CrossEntropyLoss()
         metrics = {
-            "accuracy": Accuracy(task="multiclass", num_classes=3),
-            "precision": Precision(task="multiclass", num_classes=3),
-            "recall": Recall(task="multiclass", num_classes=3),
-            "f1_score": F1Score(task="multiclass", num_classes=3),
-            "auc": AUROC(task="multiclass", num_classes=3),
-            "specificity": Specificity(task="multiclass", num_classes=3),
+            "accuracy": Accuracy(task="multiclass", num_classes=5),
+            "precision": Precision(task="multiclass", num_classes=5),
+            "recall": Recall(task="multiclass", num_classes=5),
+            "f1_score": F1Score(task="multiclass", num_classes=5),
+            "auc": AUROC(task="multiclass", num_classes=5),
+            "specificity": Specificity(task="multiclass", num_classes=5),
         }
         self.train_metrics = MetricCollection(metrics, prefix="train_")
         self.val_metrics = MetricCollection(metrics, prefix="val_")
@@ -35,7 +35,7 @@ class Classifier(pl.LightningModule):
             nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
         )
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.head = nn.Linear(embed_dim, 3)
+        self.head = nn.Linear(embed_dim, 5)
 
         self.train_transforms = T.Compose([
             T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
