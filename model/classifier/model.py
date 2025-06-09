@@ -17,7 +17,7 @@ class Classifier(pl.LightningModule):
         super(Classifier, self).__init__()
         self.lr = lr
         self.classification_loss = nn.CrossEntropyLoss()
-        num_classes = 6
+        num_classes = 3
         metrics = {
             "accuracy": Accuracy(task="multiclass", num_classes=num_classes),
             "precision": Precision(task="multiclass", num_classes=num_classes),

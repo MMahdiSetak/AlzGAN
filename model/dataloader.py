@@ -108,7 +108,7 @@ class PETRAMLoader:
 class FastPETDataset(Dataset):
     def __init__(self, pet, labels):
         self.pet_images, self.labels = pet, labels
-        # self.label_mapping = torch.tensor([0, 0, 1, 1, 1, 2])
+        self.label_mapping = torch.tensor([0, 0, 1, 1, 1, 2])
 
     def __len__(self):
         return len(self.labels)
@@ -116,7 +116,7 @@ class FastPETDataset(Dataset):
     def __getitem__(self, index):
         mri = self.pet_images[index]
         label = self.labels[index]
-        return mri, label
+        return mri, self.label_mapping[label]
 
 
 # class FastMRIDataset(Dataset):
