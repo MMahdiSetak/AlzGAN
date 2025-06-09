@@ -512,7 +512,9 @@ def mri_preprocess(img: np.ndarray) -> np.ndarray:
     img = mri_registration()
     # scaled_img = scale_image(img)
     # img = crop_image(img)
-    img = img[15:175, 17:217, :180]
+    # img = img[15:175, 17:217, :180]
+    img = img[:-1, 18:210, :-1]
+    img = resize_image(img, (128, 128, 128))
     normalized_img = normalize_image(img)
     return normalized_img
 
@@ -551,7 +553,7 @@ def create_mri_dataset(mri_path: str):
     }
     df = pd.read_csv("mri_labels.csv")
 
-    with h5py.File('mri_label_v4.hdf5', 'w') as h5f:
+    with h5py.File('mri_label_v4.1.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
@@ -678,7 +680,7 @@ def mri_dcm2nii(mri_path):
     print(count)
 
 
-mri_data_paths = "dataset/MRI/ADNI/"
+mri_data_path = "dataset/MRI/ADNI/"
 pet_data_path = "dataset/PET/ADNI/"
 
 # dataset_info(mri_data_paths)
