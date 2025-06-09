@@ -542,7 +542,7 @@ def count_subject_image(subjects, mri_path: str):
 
 
 def create_mri_dataset(mri_path: str):
-    mri_target = (160, 200, 180)
+    mri_target = (128, 128, 128)
     subjects = os.listdir(mri_path)
     train_subj, val_subj, test_subj = split_subject(subjects)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
