@@ -45,6 +45,7 @@ def run(cfg: DictConfig):
         # strategy=DDPStrategy(find_unused_parameters=True),
         num_sanity_val_steps=0,
         accelerator="auto",
+        strategy="fsdp",
         devices=[0],
         val_check_interval=1.0,
         logger=logger,
