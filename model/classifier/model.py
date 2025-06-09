@@ -32,7 +32,7 @@ class Classifier(pl.LightningModule):
 
         self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
                                 num_heads=vit_heads)
-        self.gan = Generator()
+        # self.gan = Generator()
         self.pet_proj = nn.Sequential(
             nn.AdaptiveAvgPool3d(1),
             nn.Flatten(),
@@ -63,8 +63,8 @@ class Classifier(pl.LightningModule):
             T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
             T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
             T.RandAffine(translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5),
-            T.RandGaussianNoise(std=0.01, prob=0.2),
-            T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
+            # T.RandGaussianNoise(std=0.01, prob=0.2),
+            # T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
             T.RandBiasField(prob=0.3)
         ])
 
@@ -87,15 +87,15 @@ class Classifier(pl.LightningModule):
         mri = mri.div_(127.5).sub_(1).unsqueeze_(1)
         mri_token = self.mri_vit(mri)  # [B, embed_dim]
         # diff_token = self.diffusion_extractor(mri)  # [B, 1, embed_dim]
-        mri_gan_token, pet_gan_token = self.gan(mri)
-        mri_gan_token = self.mri_proj(mri_gan_token)
-        pet_gan_token = self.pet_proj(pet_gan_token)
+        # mri_gan_token, pet_gan_token = self.gan(mri)
+        # mri_gan_token = self.mri_proj(mri_gan_token)
+        # pet_gan_token = self.pet_proj(pet_gan_token)
         # demo_token = self.demo_encoder(demo)  # [B, 1, embed_dim]
         # clinical_token = self.clinical_encoder(clinical)  # [B, 1, embed_dim]
 
-        tokens = torch.cat([mri_token.unsqueeze(1), mri_gan_token.unsqueeze(1), pet_gan_token.unsqueeze(1)],
-                           dim=1)  # [B, 4, 768]
-        # tokens = mri_token.unsqueeze(1)
+        # tokens = torch.cat([mri_token.unsqueeze(1), mri_gan_token.unsqueeze(1), pet_gan_token.unsqueeze(1)],
+        #                    dim=1)  # [B, 4, 768]
+        tokens = mri_token.unsqueeze(1)
         cls_token = self.cls_token.expand(tokens.size(0), -1, -1)
         tokens = torch.cat([cls_token, tokens], dim=1)  # [B, 5, 768]
 
