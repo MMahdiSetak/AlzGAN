@@ -77,7 +77,7 @@ def run(cfg: DictConfig):
         num_sanity_val_steps=0,
         accelerator="auto",
         strategy="fsdp",
-        devices=[1, 2],
+        devices=[0, 1, 2],
         # val_check_interval=5000,
         check_val_every_n_epoch=10,
         # overfit_batches=20,
