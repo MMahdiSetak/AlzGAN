@@ -17,7 +17,8 @@ from scipy.ndimage import zoom
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-group_mapping = {'CN': 0, 'SMC': 1, 'EMCI': 2, 'MCI': 3, 'LMCI': 4, 'AD': 5}
+# group_mapping = {'CN': 0, 'SMC': 1, 'EMCI': 2, 'MCI': 3, 'LMCI': 4, 'AD': 5}
+group_mapping = {'CN': 0, 'MCI': 1, 'AD': 2}
 
 
 def log_to_file_image(img, file_name='test'):
@@ -35,8 +36,8 @@ def log_to_file_image(img, file_name='test'):
         # ax.axis('off')
 
     # Save the figure to a file
-    plt.show()
-    # plt.savefig(f"log/pet/{file_name}.png")
+    # plt.show()
+    plt.savefig(f"log/mri/{file_name}.png")
     plt.close(fig)
 
 
@@ -201,6 +202,12 @@ def read_image(path: str) -> np.ndarray:
     slices.sort(key=lambda x: x.InstanceNumber)
     image_3d = np.stack([s.pixel_array for s in slices])
     return image_3d
+
+
+def read_mri(path: str) -> np.ndarray:
+    img = nib.load(f"{path}/brainmask.mgz")
+    img = img.get_fdata().astype(np.uint8)
+    return img
 
 
 def calculate_subject_intersect(mri, pet):
@@ -542,7 +549,7 @@ def count_subject_image(subjects, mri_path: str):
 
 
 def create_mri_dataset(mri_path: str):
-    mri_target = (128, 128, 128)
+    mri_target = (256, 256, 256)
     subjects = os.listdir(mri_path)
     train_subj, val_subj, test_subj = split_subject(subjects)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
@@ -551,9 +558,9 @@ def create_mri_dataset(mri_path: str):
         'val': count_subject_image(val_subj, mri_path),
         'test': count_subject_image(test_subj, mri_path),
     }
-    df = pd.read_csv("mri_labels.csv")
+    df = pd.read_csv("dataset/mri.csv")
 
-    with h5py.File('mri_label_v4.1.hdf5', 'w') as h5f:
+    with h5py.File('mri_label_v5.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
@@ -573,13 +580,15 @@ def create_mri_dataset(mri_path: str):
                     for date in tqdm(dates, leave=False):
                         img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
                         for img_id in img_ids:
-                            if img_id in MRI_ID_BLACKLIST:
-                                continue
+                            # if img_id in MRI_ID_BLACKLIST:
+                            #     continue
                             image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
-                            mri_image = read_image(image_path)
-                            dataset_mri = mri_preprocess(mri_image)
+                            # mri_image = read_image(image_path)
+                            mri_image = read_mri(image_path)
+                            # log_to_file_image(mri_image, file_name=img_id)
+                            # dataset_mri = mri_preprocess(mri_image)
                             label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
-                            ds[f'mri_{split}'][indices[current_index]] = dataset_mri
+                            ds[f'mri_{split}'][indices[current_index]] = mri_image
                             ds[f'label_{split}'][indices[current_index]] = group_mapping[label]
                             current_index += 1
 
@@ -680,7 +689,7 @@ def mri_dcm2nii(mri_path):
     print(count)
 
 
-mri_data_path = "dataset/MRI/ADNI/"
+mri_data_path = "dataset/MRI2/ADNI/"
 pet_data_path = "dataset/PET/ADNI/"
 
 # dataset_info(mri_data_paths)
