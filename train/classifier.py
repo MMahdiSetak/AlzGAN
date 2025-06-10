@@ -6,7 +6,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from model.classifier.model import Classifier
-from model.dataloader import PETRAMLoader, FastPETDataset
+from model.dataloader import MRIRAMLoader, FastMRIDataset
 
 
 @hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
@@ -17,14 +17,14 @@ def run(cfg: DictConfig):
     lr = cfg.lr
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
-    train_ram_loader = PETRAMLoader(datapath, 'train')
+    train_ram_loader = MRIRAMLoader(datapath, 'train')
     train_loader = DataLoader(
-        dataset=FastPETDataset(*train_ram_loader.get_data()),
+        dataset=FastMRIDataset(*train_ram_loader.get_data()),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
-    val_ram_loader = PETRAMLoader(datapath, 'val')
+    val_ram_loader = MRIRAMLoader(datapath, 'val')
     val_loader = DataLoader(
-        dataset=FastPETDataset(*val_ram_loader.get_data()),
+        dataset=FastMRIDataset(*val_ram_loader.get_data()),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     model = Classifier(lr=lr)
@@ -57,9 +57,9 @@ def run(cfg: DictConfig):
         enable_checkpointing=False,
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    test_ram_loader = PETRAMLoader(datapath, 'test')
+    test_ram_loader = MRIRAMLoader(datapath, 'test')
     test_loader = DataLoader(
-        dataset=FastPETDataset(*test_ram_loader.get_data()),
+        dataset=FastMRIDataset(*test_ram_loader.get_data()),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     trainer.test(model=model, dataloaders=test_loader)
