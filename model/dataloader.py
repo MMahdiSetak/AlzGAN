@@ -61,7 +61,7 @@ class MRIRAMLoader:
     def get_data(self):
         if self.mri_images is None:
             with h5py.File(self.data_path, 'r') as f:
-                self.mri_images = torch.from_numpy(f[f'mri_{self.split}'][:].astype(np.float32)).share_memory_()
+                self.mri_images = torch.from_numpy(f[f'mri_{self.split}'][:]).share_memory_()
                 self.labels = torch.from_numpy(f[f'label_{self.split}'][:]).long().share_memory_()
         return self.mri_images, self.labels
 
@@ -83,7 +83,7 @@ class FastMRIDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index):
-        mri = self.mri_images[index]
+        mri = self.mri_images[index].to(torch.float32)
         if self.transform:
             mri = self.train_transforms(mri.div_(255).unsqueeze(0))
         label = self.labels[index]

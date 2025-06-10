@@ -12,7 +12,7 @@ from model.classifier.module import MRI3DViT, Generator
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, image_size=128, patch_size=16, embed_dim=2048, depth=6, heads=16, vit_depth=12, vit_heads=16,
+    def __init__(self, image_size=256, patch_size=16, embed_dim=2048, depth=6, heads=16, vit_depth=12, vit_heads=16,
                  lr=1e-3):
         super(Classifier, self).__init__()
         self.lr = lr
@@ -33,26 +33,26 @@ class Classifier(pl.LightningModule):
         self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
                                 num_heads=vit_heads)
         # self.gan = Generator()
-        self.pet_proj = nn.Sequential(
-            nn.AdaptiveAvgPool3d(1),
-            nn.Flatten(),
-            nn.Linear(2048, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.1),
-            nn.Linear(2048, embed_dim),
-            nn.ReLU(inplace=True)
-        )
-        self.mri_proj = nn.Sequential(
-            nn.AdaptiveAvgPool3d(1),
-            nn.Flatten(),
-            nn.Linear(2048, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.1),
-            nn.Linear(2048, embed_dim),
-            nn.ReLU(inplace=True)
-        )
+        # self.pet_proj = nn.Sequential(
+        #     nn.AdaptiveAvgPool3d(1),
+        #     nn.Flatten(),
+        #     nn.Linear(2048, 2048),
+        #     nn.BatchNorm1d(2048),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout(0.1),
+        #     nn.Linear(2048, embed_dim),
+        #     nn.ReLU(inplace=True)
+        # )
+        # self.mri_proj = nn.Sequential(
+        #     nn.AdaptiveAvgPool3d(1),
+        #     nn.Flatten(),
+        #     nn.Linear(2048, 2048),
+        #     nn.BatchNorm1d(2048),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout(0.1),
+        #     nn.Linear(2048, embed_dim),
+        #     nn.ReLU(inplace=True)
+        # )
         self.transformer = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
         )
