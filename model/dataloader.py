@@ -83,7 +83,7 @@ class FastMRIDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index):
-        mri = self.mri_images[index].to(torch.float32)
+        mri = self.mri_images[index]
         if self.transform:
             mri = self.train_transforms(mri.div_(255).unsqueeze(0))
         label = self.labels[index]
