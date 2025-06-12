@@ -47,7 +47,7 @@ def run(cfg: DictConfig):
         accelerator="auto",
         # strategy="fsdp",
         devices=[0, 1, 2],
-        overfit_batches=10,
+        overfit_batches=5,
         val_check_interval=1.0,
         logger=logger,
         # gradient_clip_val=1.0,

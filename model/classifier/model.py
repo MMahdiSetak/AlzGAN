@@ -139,7 +139,7 @@ class Classifier(pl.LightningModule):
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
         return {
             'optimizer': optimizer,
