@@ -550,7 +550,8 @@ def count_subject_image(subjects, mri_path: str):
 
 def create_mri_dataset(mri_path: str):
     mri_target = (256, 256, 256)
-    subjects = os.listdir(mri_path)
+    # subjects = os.listdir(mri_path)
+    subjects = os.listdir(mri_path)[:10]
     train_subj, val_subj, test_subj = split_subject(subjects)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
     split_num = {
@@ -560,7 +561,7 @@ def create_mri_dataset(mri_path: str):
     }
     df = pd.read_csv("dataset/mri.csv")
 
-    with h5py.File('mri_label_v5.hdf5', 'w') as h5f:
+    with h5py.File('mri_label_v5_test.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
