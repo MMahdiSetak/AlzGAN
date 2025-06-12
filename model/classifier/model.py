@@ -8,7 +8,7 @@ from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AU
 import monai.transforms as T
 import torch.nn.functional as F
 
-from model.classifier.module import MRICNN
+from model.classifier.module import MRICNN, MRI3DViT
 
 
 class Classifier(pl.LightningModule):
@@ -29,10 +29,10 @@ class Classifier(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, prefix="train_")
         self.val_metrics = MetricCollection(metrics, prefix="val_")
         self.test_metrics = MetricCollection(metrics, prefix="test_")
-        self.classifier = MRICNN(num_classes=3, dropout_rate=0.2)
+        # self.classifier = MRICNN(num_classes=3, dropout_rate=0.2)
 
-        # self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
-        #                         num_heads=vit_heads)
+        self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
+                                num_heads=vit_heads)
         # self.gan = Generator()
         # self.pet_proj = nn.Sequential(
         #     nn.AdaptiveAvgPool3d(1),
@@ -54,12 +54,12 @@ class Classifier(pl.LightningModule):
         #     nn.Linear(2048, embed_dim),
         #     nn.ReLU(inplace=True)
         # )
-        # self.transformer = nn.TransformerEncoder(
-        #     nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
-        # )
-        # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        # self.head = nn.Linear(embed_dim, num_classes)
-        #
+        self.transformer = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
+        )
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.head = nn.Linear(embed_dim, num_classes)
+
         # self.train_transforms = T.Compose([
         #     T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
         #     T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
@@ -86,8 +86,8 @@ class Classifier(pl.LightningModule):
         # mri = mri.multiply_(2).sub_(1)
         # mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
         mri = mri.to(torch.float32).div_(127.5).sub_(1).unsqueeze_(1)
-        out = self.classifier(mri)
-        # mri_token = self.mri_vit(mri)  # [B, embed_dim]
+        # out = self.classifier(mri)
+        mri_token = self.mri_vit(mri)  # [B, embed_dim]
         # diff_token = self.diffusion_extractor(mri)  # [B, 1, embed_dim]
         # mri_gan_token, pet_gan_token = self.gan(mri)
         # mri_gan_token = self.mri_proj(mri_gan_token)
@@ -97,13 +97,13 @@ class Classifier(pl.LightningModule):
 
         # tokens = torch.cat([mri_token.unsqueeze(1), mri_gan_token.unsqueeze(1), pet_gan_token.unsqueeze(1)],
         #                    dim=1)  # [B, 4, 768]
-        # tokens = mri_token.unsqueeze(1)
-        # cls_token = self.cls_token.expand(tokens.size(0), -1, -1)
-        # tokens = torch.cat([cls_token, tokens], dim=1)  # [B, 5, 768]
-        #
-        # fused = self.transformer(tokens)  # [B, 5, 768]
-        # fused = fused[:, 0]  # CLS token
-        # out = self.head(fused)  # [B, 3]
+        tokens = mri_token.unsqueeze(1)
+        cls_token = self.cls_token.expand(tokens.size(0), -1, -1)
+        tokens = torch.cat([cls_token, tokens], dim=1)  # [B, 5, 768]
+
+        fused = self.transformer(tokens)  # [B, 5, 768]
+        fused = fused[:, 0]  # CLS token
+        out = self.head(fused)  # [B, 3]
         return out
 
     def training_step(self, batch, batch_idx):
@@ -140,6 +140,7 @@ class Classifier(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0)
+        # optimizer = torch.optim.SGD(self.parameters(), lr=self.lr)
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
         return {
             'optimizer': optimizer,
