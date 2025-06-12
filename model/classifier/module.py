@@ -113,60 +113,49 @@ class Generator(nn.Module):
 
 
 class MRICNN(nn.Module):
-    def __init__(self, num_classes=3, dropout_rate=0.2):
+    def __init__(self, num_classes=3, dropout_rate=0.2, channels=64):
         super(MRICNN, self).__init__()
-        self.cnn_blocks = nn.Sequential(
-            # First convolutional block
-            nn.Conv3d(1, 32, kernel_size=3, padding=1),
-            nn.BatchNorm3d(32),
+
+        self.model = nn.Sequential(
+            # CNN blocks
+            nn.Conv3d(1, channels, kernel_size=3, padding=1),
+            nn.BatchNorm3d(channels),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=2, stride=2),  # 128x128x128
+            nn.MaxPool3d(kernel_size=2, stride=2),
 
-            # Second convolutional block
-            nn.Conv3d(32, 64, kernel_size=3, padding=1),
-            nn.BatchNorm3d(64),
+            nn.Conv3d(channels, channels * 2, kernel_size=3, padding=1),
+            nn.BatchNorm3d(channels * 2),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=2, stride=2),  # 64x64x64
+            nn.MaxPool3d(kernel_size=2, stride=2),
 
-            # Third convolutional block
-            nn.Conv3d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm3d(128),
+            nn.Conv3d(channels * 2, channels * 4, kernel_size=3, padding=1),
+            nn.BatchNorm3d(channels * 4),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=2, stride=2),  # 32x32x32
+            nn.MaxPool3d(kernel_size=2, stride=2),
 
-            # Fourth convolutional block
-            nn.Conv3d(128, 256, kernel_size=3, padding=1),
-            nn.BatchNorm3d(256),
+            nn.Conv3d(channels * 4, channels * 8, kernel_size=3, padding=1),
+            nn.BatchNorm3d(channels * 8),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=2, stride=2),  # 16x16x16
+            nn.MaxPool3d(kernel_size=2, stride=2),
 
-            # Fifth convolutional block
-            nn.Conv3d(256, 512, kernel_size=3, padding=1),
-            nn.BatchNorm3d(512),
+            nn.Conv3d(channels * 8, channels * 16, kernel_size=3, padding=1),
+            nn.BatchNorm3d(channels * 16),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=2, stride=2),  # 8x8x8
-        )
+            nn.MaxPool3d(kernel_size=2, stride=2),
 
-        # Global average pooling
-        self.global_avg_pool = nn.AdaptiveAvgPool3d((1, 1, 1))
+            # Global average pooling and flatten
+            nn.AdaptiveAvgPool3d((1, 1, 1)),
+            nn.Flatten(),
 
-        # Fully connected layers
-        self.fully_connected = nn.Sequential(
-            nn.Linear(512, 256),
+            # Fully connected layers
+            nn.Linear(channels * 16, channels * 8),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
-            nn.Linear(256, 128),
+            nn.Linear(channels * 8, channels * 4),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
-            nn.Linear(128, num_classes),
+            nn.Linear(channels * 4, num_classes),
         )
 
-    def forward(self, x):
-        # Input shape: (batch_size, 1, 256, 256, 256)
-        x = self.cnn_blocks(x)
-        # Global average pooling
-        x = self.global_avg_pool(x)
-        x = x.view(x.size(0), -1)  # Flatten
-
-        x = self.fully_connected(x)
-        return x
+        def forward(self, x):
+            return self.model(x)
