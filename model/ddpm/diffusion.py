@@ -65,7 +65,7 @@ class Diffusion(pl.LightningModule):
         return metrics
 
     def configure_optimizers(self):
-        optimizer = Adam(self.model.parameters(), lr=self.lr)
+        optimizer = Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0)
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.1)
         return {
             'optimizer': optimizer,
