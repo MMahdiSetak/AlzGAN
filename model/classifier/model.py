@@ -97,13 +97,14 @@ class Classifier(pl.LightningModule):
 
         # tokens = torch.cat([mri_token.unsqueeze(1), mri_gan_token.unsqueeze(1), pet_gan_token.unsqueeze(1)],
         #                    dim=1)  # [B, 4, 768]
-        tokens = mri_token.unsqueeze(1)
-        cls_token = self.cls_token.expand(tokens.size(0), -1, -1)
-        tokens = torch.cat([cls_token, tokens], dim=1)  # [B, 5, 768]
-
-        fused = self.transformer(tokens)  # [B, 5, 768]
-        fused = fused[:, 0]  # CLS token
-        out = self.head(fused)  # [B, 3]
+        # tokens = mri_token.unsqueeze(1)
+        # cls_token = self.cls_token.expand(tokens.size(0), -1, -1)
+        # tokens = torch.cat([cls_token, tokens], dim=1)  # [B, 5, 768]
+        #
+        # fused = self.transformer(tokens)  # [B, 5, 768]
+        # fused = fused[:, 0]  # CLS token
+        # out = self.head(fused)  # [B, 3]
+        out = self.head(mri_token)  # [B, 3]
         return out
 
     def training_step(self, batch, batch_idx):
@@ -139,8 +140,8 @@ class Classifier(pl.LightningModule):
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
     def configure_optimizers(self):
-        # optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0)
-        optimizer = torch.optim.SGD(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0)
+        # optimizer = torch.optim.SGD(self.parameters(), lr=self.lr)
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
         return {
             'optimizer': optimizer,
