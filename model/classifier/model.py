@@ -54,10 +54,10 @@ class Classifier(pl.LightningModule):
         #     nn.Linear(2048, embed_dim),
         #     nn.ReLU(inplace=True)
         # )
-        self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
-        )
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        # self.transformer = nn.TransformerEncoder(
+        #     nn.TransformerEncoderLayer(d_model=embed_dim, nhead=heads, batch_first=True), num_layers=depth
+        # )
+        # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.head = nn.Linear(embed_dim, num_classes)
 
         # self.train_transforms = T.Compose([
