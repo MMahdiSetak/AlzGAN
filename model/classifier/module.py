@@ -157,5 +157,5 @@ class MRICNN(nn.Module):
             nn.Linear(channels * 4, num_classes),
         )
 
-        def forward(self, x):
-            return self.model(x)
+    def forward(self, x):
+        return self.model(x)
