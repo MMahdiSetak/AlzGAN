@@ -1,15 +1,15 @@
 # from seg.patch import print_patch_sizes, extract_patches, get_patch_indices
 #
 # get_patch_indices()
-# import torch
-# from train.ddpm import run
+import torch
+from train.ddpm import run
+
+torch.set_float32_matmul_precision('medium')
+run()
+
+# from dataset import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
 #
-# torch.set_float32_matmul_precision('medium')
-# run()
-
-from dataset import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
-
-create_mri_pet_label_dataset(mri_data_path, pet_data_path)
+# create_mri_pet_label_dataset(mri_data_path, pet_data_path)
 
 # import optuna
 #
