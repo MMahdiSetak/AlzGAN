@@ -1,7 +1,7 @@
 import copy
 
 import torch
-from torch.optim import Adam
+from torch.optim import AdamW
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import MeanSquaredError, MeanAbsoluteError, MetricCollection
@@ -33,8 +33,8 @@ class Diffusion(pl.LightningModule):
             "PSNR": PeakSignalNoiseRatio(data_range=1),
             # "SSIM": StructuralSimilarityIndexMeasure(),
         }
-        self.train_metrics = MetricCollection(metrics, prefix="train_")
-        self.val_metrics = MetricCollection(metrics, prefix="val_")
+        self.train_metrics = MetricCollection(metrics, postfix="/train")
+        self.val_metrics = MetricCollection(metrics, postfix="/val")
 
     def forward(self, x, condition_tensors=None):
         return self.model(x, condition_tensors=condition_tensors)
@@ -65,8 +65,8 @@ class Diffusion(pl.LightningModule):
         return metrics
 
     def configure_optimizers(self):
-        optimizer = Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0)
-        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.1)
+        optimizer = AdamW(self.model.parameters(), lr=self.lr, weight_decay=1e-6)
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.5)
         return {
             'optimizer': optimizer,
             'lr_scheduler': {

@@ -38,7 +38,7 @@ def run(cfg: DictConfig):
         dataset=DDPMPairDataset(datapath, 'val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
-    model = create_model(input_size, num_channels, num_res_blocks, num_heads=heads, use_checkpoint=False,
+    model = create_model(input_size, num_channels, num_res_blocks, "1,2,4,6,8", num_heads=heads, use_checkpoint=False,
                          in_channels=in_channels, out_channels=out_channels)
     diffusion = GaussianDiffusion(
         model,
@@ -50,7 +50,7 @@ def run(cfg: DictConfig):
     )
     lit_model = Diffusion(
         diffusion_model=diffusion,
-        train_lr=2e-6,
+        train_lr=lr,
         ema_decay=0.995,
         step_start_ema=2000,
         update_ema_every=10
@@ -60,7 +60,7 @@ def run(cfg: DictConfig):
     #     batch_frequency=750, max_images=4, clamp=True))
     # callbacks.append(VideoLogger(
     #     batch_frequency=1500, max_videos=4, clamp=True))
-    callbacks.append(MetricsLogger(batch_frequency=500))
+    callbacks.append(MetricsLogger(batch_frequency=200))
     callbacks.append(
         ModelCheckpoint(
             # dirpath="my_checkpoints/",  # custom folder
