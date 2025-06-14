@@ -351,17 +351,18 @@ def count_pair_images(subjects, mri_path, pet_path):
 def create_mri_pet_label_dataset(mri_path, pet_path):
     intersect = calculate_subject_intersect(mri=mri_path, pet=pet_path)
     train_subj, val_subj, test_subj = split_subject(list(intersect))
-    mri_target = (160, 200, 180)
-    pet_target = (100, 140, 96)
+    mri_target = (256, 256, 256)
+    pet_target = (128, 128, 128)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
     split_num = {
         'train': count_pair_images(train_subj, mri_path=mri_path, pet_path=pet_path),
         'val': count_pair_images(val_subj, mri_path=mri_path, pet_path=pet_path),
         'test': count_pair_images(test_subj, mri_path=mri_path, pet_path=pet_path),
     }
-    df = pd.read_csv("mri_labels.csv")
+    # df = pd.read_csv("mri_labels.csv")
+    df = pd.read_csv("dataset/mri.csv")
 
-    with h5py.File('mri_pet_label_v4.1.hdf5', 'w') as h5f:
+    with h5py.File('mri_pet_label_v5.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
@@ -408,11 +409,12 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
                         if mri_img_id in MRI_ID_BLACKLIST:
                             continue
 
-                        mri_image = read_image(mri_img_path)
-                        mri_image = mri_preprocess(mri_image)
+                        # mri_image = read_image(mri_img_path)
+                        mri_image = read_mri(mri_img_path)
+                        # mri_image = mri_preprocess(mri_image)
 
                         pet_image = read_image(pet_img_path)
-                        pet_image = pet_preprocess(pet_image)
+                        pet_image = pet_preprocess2(pet_image)
 
                         label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
                         ds[f'mri_{split}'][indices[current_index]] = mri_image
