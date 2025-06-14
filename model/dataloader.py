@@ -202,13 +202,12 @@ class DDPMPairDataset(Dataset):
             self.mri_images = self.file[f'mri_{self.split}']
             self.pet_images = self.file[f'pet_{self.split}']
             self.labels = self.file[f'label_{self.split}']
-        mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze(0)
-        # mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
-        pet = torch.from_numpy(self.pet_images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze(0).unsqueeze(0)
-        pet = F.interpolate(pet, size=(128, 128, 128),
-                            mode='trilinear', align_corners=False)
+        mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze(0).unsqueeze(0)
+        mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        pet = torch.from_numpy(self.pet_images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze(0)
+        # pet = F.interpolate(pet, size=(128, 128, 128), mode='trilinear', align_corners=False)
         label = int(self.labels[index])
-        return mri, pet.squeeze(0), label
+        return mri.squeeze(0), pet, label
 
 
 class TempPairDataset(Dataset):
