@@ -36,8 +36,8 @@ def log_to_file_image(img, file_name='test'):
         # ax.axis('off')
 
     # Save the figure to a file
-    # plt.show()
-    plt.savefig(f"log/mri/{file_name}.png")
+    plt.show()
+    # plt.savefig(f"log/mri/{file_name}.png")
     plt.close(fig)
 
 
@@ -83,7 +83,7 @@ def log_image(image):
     #     print('-' * 20)
 
 
-def log_video(img):
+def log_video(img, name='pet_scan_video'):
     # pet_scan_clipped = np.clip(img, 0, None)
     #
     # # Find the maximum value for scaling
@@ -111,9 +111,9 @@ def log_video(img):
     # # Release the video writer to finalize the file
     # out.release()
     H, W, Z = img.shape
-    writer = imageio.get_writer('pet_scan_video.mp4', fps=8, codec='libx264')
+    writer = imageio.get_writer(f'{name}.mp4', fps=1, codec='libx264')
     for z in range(Z):
-        slice_ = img[:, :, z]
+        slice_ = img[z, :, :]
         # Normalize to [0,255] uint8
         # img8 = ((slice_ - vmin) / (vmax - vmin) * 255).clip(0, 255).astype(np.uint8)
         writer.append_data(slice_)

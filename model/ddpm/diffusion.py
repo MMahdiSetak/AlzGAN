@@ -1,6 +1,3 @@
-import copy
-
-import torch
 from torch.optim import AdamW
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import ReduceLROnPlateau

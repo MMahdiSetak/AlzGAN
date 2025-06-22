@@ -7,12 +7,13 @@ from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 import monai.transforms as T
 import torch.nn.functional as F
+from mriaug import rotate3d
 
 from model.classifier.module import MRICNN, MRI3DViT
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, image_size=256, patch_size=16, embed_dim=2048, depth=6, heads=16, vit_depth=12, vit_heads=16,
+    def __init__(self, image_size=256, patch_size=8, embed_dim=2048, depth=6, heads=16, vit_depth=12, vit_heads=16,
                  lr=1e-3):
         super(Classifier, self).__init__()
         self.lr = lr
@@ -60,14 +61,14 @@ class Classifier(pl.LightningModule):
         # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.head = nn.Linear(embed_dim, num_classes)
 
-        # self.train_transforms = T.Compose([
-        #     T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
-        #     T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
-        #     T.RandAffine(translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5),
-        #     # T.RandGaussianNoise(std=0.01, prob=0.2),
-        #     # T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
-        #     T.RandBiasField(prob=0.3)
-        # ])
+        self.train_transforms = T.Compose([
+            T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
+            T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
+            T.RandAffine(translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5),
+            # T.RandGaussianNoise(std=0.01, prob=0.2),
+            # T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
+            T.RandBiasField(prob=0.3)
+        ])
 
     # def apply_transform(self, mri):
     #     mri = mri.unsqueeze(1).div_(255.0)
