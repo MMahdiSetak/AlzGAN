@@ -7,8 +7,11 @@ from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 import monai.transforms as T
 import torch.nn.functional as F
-from mriaug import rotate3d
 
+from augmentation.random_transform import Compose3D
+from augmentation.rotation import RandRotate3D
+from augmentation.translation import RandTranslate3D
+from dataset import log_to_file_image, log_video
 from model.classifier.module import MRICNN, MRI3DViT
 
 
@@ -61,14 +64,19 @@ class Classifier(pl.LightningModule):
         # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.head = nn.Linear(embed_dim, num_classes)
 
-        self.train_transforms = T.Compose([
-            T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
-            T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
-            T.RandAffine(translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5),
-            # T.RandGaussianNoise(std=0.01, prob=0.2),
-            # T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
-            T.RandBiasField(prob=0.3)
+        self.train_transforms = Compose3D([
+            RandRotate3D(range_x=np.pi / 9, range_y=np.pi / 9, range_z=np.pi / 9, prob=1),
+            RandTranslate3D((40, 40, 40), prob=1)
         ])
+
+        # self.train_transforms = T.Compose([
+        #     T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
+        #     T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
+        #     T.RandAffine(translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5),
+        #     # T.RandGaussianNoise(std=0.01, prob=0.2),
+        #     # T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
+        #     T.RandBiasField(prob=0.3)
+        # ])
 
     # def apply_transform(self, mri):
     #     mri = mri.unsqueeze(1).div_(255.0)
@@ -83,10 +91,14 @@ class Classifier(pl.LightningModule):
     #     return mri
 
     def forward(self, mri):
-        # mri = self.apply_transform(mri)
         # mri = mri.multiply_(2).sub_(1)
         # mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
-        mri = mri.to(torch.float32).div_(127.5).sub_(1).unsqueeze_(1)
+        mri = mri.to(torch.float32).div_(255).unsqueeze_(1)
+        # log_video(mri[0, 0].cpu().numpy(), f"test/mri")
+        # log_to_file_image(mri[0, 0].cpu())
+        mri = self.train_transforms(mri)
+        # log_video(mri[0, 0].cpu().numpy(), f"test/trans_mri")
+        # log_to_file_image(mri[0, 0].cpu())
         # out = self.classifier(mri)
         mri_token = self.mri_vit(mri)  # [B, embed_dim]
         # diff_token = self.diffusion_extractor(mri)  # [B, 1, embed_dim]
