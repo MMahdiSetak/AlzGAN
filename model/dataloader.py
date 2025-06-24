@@ -4,9 +4,6 @@ import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 import monai.transforms as T
-from scipy.ndimage import zoom
-
-from dataset import log_to_file_image
 
 
 class MRIDataset(Dataset):
@@ -257,10 +254,7 @@ class TempPairDataset(Dataset):
             self.mri_images = self.file[f'mri_{self.split}']
             self.pet_images = self.file[f'pet_{self.split}']
             self.labels = self.file[f'label_{self.split}']
-        mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(255).unsqueeze(0).unsqueeze(0)
-        mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
-        pet = torch.from_numpy(self.pet_images[index].astype(np.float32)).div_(255).unsqueeze(0).unsqueeze(0)
-        pet = F.interpolate(pet, size=(128, 128, 128),
-                            mode='trilinear', align_corners=False)
+        mri = self.mri_images[index]
+        pet = self.pet_images[index]
         label = int(self.labels[index])
-        return mri.squeeze(0), pet.squeeze(0), label
+        return mri, pet, label

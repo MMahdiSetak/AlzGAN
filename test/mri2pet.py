@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 import torchvision.utils as vutils
+from torchmetrics.image import PeakSignalNoiseRatio
 
 from dataset import log_video
 from model.MRI2PET.model import MRI2PET
@@ -9,7 +10,7 @@ from model.dataloader import MRI2PETDataset
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint_path = "log/mri2pet/version_21/checkpoints/mri2pet_best_model.ckpt"
 datapath = 'dataset/mri_pet_label_v5.hdf5'
-batch_size = 1
+batch_size = 2
 num_workers = 4
 test_loader = DataLoader(
     dataset=MRI2PETDataset(datapath, 'train'),
@@ -20,6 +21,11 @@ lit_model = MRI2PET.load_from_checkpoint(checkpoint_path=checkpoint_path)
 
 def run():
     # ----- INFERENCE -----
+    psnr = PeakSignalNoiseRatio(data_range=1).to(device)
+    # metrics = {
+    #     "PSNR": PeakSignalNoiseRatio(data_range=1),
+    # }
+    # train_metrics = MetricCollection(metrics, postfix="/train")
     mris = []
     pets = []
     gen_pets = []
@@ -29,9 +35,13 @@ def run():
     with torch.no_grad():
         for batch in test_loader:
             mri, pet, _ = batch
+            pet = pet.to(device)
             mri = mri.to(device)
             # log_video(mri[0].squeeze().cpu().numpy())
             gen_pet = lit_model.model.generate(mri)
+            print(psnr(pet, gen_pet))
+            continue
+
             pets.append(pet[:, :, :, :, 32].cpu())
             mris.append(mri[:, :, :, :, 32].cpu())
             gen_pets.append(gen_pet[:, :, :, :, 32].cpu())
