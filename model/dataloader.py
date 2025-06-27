@@ -11,19 +11,6 @@ class MRIDataset(Dataset):
         self.data_path = data_path
         self.split = split
         self.file = None
-        if split == 'train':
-            self.train_transforms = T.Compose([
-                T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.5),  # ±10 degrees
-                T.Rand3DElastic(
-                    sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3
-                ),
-                T.RandAffine(
-                    translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5
-                ),
-                T.RandGaussianNoise(std=0.01, prob=0.2),  # Light noise
-                T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),  # Gamma correction
-                T.RandBiasField(prob=0.3)
-            ])
 
     def __len__(self):
         if self.file is None:
@@ -31,11 +18,26 @@ class MRIDataset(Dataset):
                 return len(f[f'label_{self.split}'])
         return len(self.file[f'label_{self.split}'])
 
+    def get_class_weights(self):
+        """
+        Calculate class weights based on inverse frequency of labels.
+        Returns a dictionary mapping class labels to their weights.
+        """
+        with h5py.File(self.data_path, 'r') as f:
+            labels = f[f'label_{self.split}'][:]
+
+        unique, counts = np.unique(labels, return_counts=True)
+        total_samples = len(labels)
+        class_weights = {cls: total_samples / (len(unique) * count) for cls, count in zip(unique, counts)}
+
+        return class_weights
+
     def __getitem__(self, index):
         if self.file is None:
             self.file = h5py.File(self.data_path, 'r')
             self.mri_images = self.file[f'mri_{self.split}']
             self.labels = self.file[f'label_{self.split}']
+        return self.mri_images[index], self.labels[index]
 
         # mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(255)
         if self.split == 'train':
