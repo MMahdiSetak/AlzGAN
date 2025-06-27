@@ -2,7 +2,7 @@
 #
 # get_patch_indices()
 import torch
-from test.mri2pet import run
+from train.classifier import run
 
 torch.set_float32_matmul_precision('medium')
 run()
