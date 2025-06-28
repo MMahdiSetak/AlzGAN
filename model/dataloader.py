@@ -39,19 +39,6 @@ class MRIDataset(Dataset):
             self.labels = self.file[f'label_{self.split}']
         return self.mri_images[index], self.labels[index]
 
-        # mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(255)
-        if self.split == 'train':
-            mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(255).unsqueeze(0)
-            mri = self.train_transforms(mri)
-            mri = mri.multiply_(2).sub_(1).unsqueeze(0)
-            mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
-        else:
-            mri = torch.from_numpy(self.mri_images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze(
-                0).unsqueeze(0)
-            mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
-        label = int(self.labels[index])
-        return mri.squeeze(0), label
-
 
 class MRIRAMLoader:
     def __init__(self, data_path, split):
@@ -72,22 +59,23 @@ class FastMRIDataset(Dataset):
     def __init__(self, mri, labels, transform=False):
         self.mri_images, self.labels = mri, labels
         self.transform = transform
-        self.train_transforms = T.Compose([
-            T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
-            T.Rand3DElastic(sigma_range=(2, 5), magnitude_range=(0.1, 0.3), prob=0.3),
-            T.RandAffine(translate_range=(10, 10, 10), scale_range=(-0.1, 0.1), prob=0.5),
-            T.RandGaussianNoise(std=0.01, prob=0.2),
-            T.RandAdjustContrast(gamma=(0.8, 1.2), prob=0.3),
-            T.RandBiasField(prob=0.3)
-        ])
 
     def __len__(self):
         return len(self.labels)
 
+    def get_class_weights(self):
+        """
+        Calculate class weights based on inverse frequency of labels.
+        Returns a dictionary mapping class labels to their weights.
+        """
+        unique, counts = np.unique(self.labels, return_counts=True)
+        total_samples = len(self.labels)
+        class_weights = {cls: total_samples / (len(unique) * count) for cls, count in zip(unique, counts)}
+
+        return class_weights
+
     def __getitem__(self, index):
         mri = self.mri_images[index]
-        if self.transform:
-            mri = self.train_transforms(mri.div_(255).unsqueeze(0))
         label = self.labels[index]
         return mri, label
 

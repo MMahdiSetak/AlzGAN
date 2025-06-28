@@ -37,8 +37,8 @@ class Classifier(pl.LightningModule):
             nn.Dropout(0.3),
             nn.Linear(64, num_classes)
         )
-
         self.classification_loss = nn.CrossEntropyLoss(weight=class_weights)
+
         metrics = {
             "accuracy": Accuracy(task="multiclass", num_classes=num_classes),
             "precision": Precision(task="multiclass", num_classes=num_classes),
@@ -139,13 +139,9 @@ class Classifier(pl.LightningModule):
 
     def forward(self, x):
         # Extract features from both branches
-        x = x.to(torch.float32).div_(255).unsqueeze_(1)
-        log_to_file_image(x[0, 0].cpu())
-        x = self.train_transforms(x)
-        log_to_file_image(x[0, 0].cpu())
-        x_cnn = F.interpolate(x, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        # x_cnn = F.interpolate(x, size=(128, 128, 128), mode='trilinear', align_corners=False)
         x_vit = F.interpolate(x, size=(64, 64, 64), mode='trilinear', align_corners=False)
-        cnn_features = self.cnn_branch(x_cnn)  # Original size for CNN
+        cnn_features = self.cnn_branch(x)  # Original size for CNN
         vit_features = self.vit_branch(x_vit)  # Resized for ViT
         # Fuse features
         fused_features = self.fusion(cnn_features, vit_features)
@@ -155,6 +151,8 @@ class Classifier(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         mri, labels = batch
+        mri = mri.to(torch.float32).div_(255).unsqueeze_(1)
+        mri = self.train_transforms(mri)
         bs = len(labels)
         outputs = self(mri)
         loss = self.classification_loss(outputs, labels)
@@ -169,6 +167,7 @@ class Classifier(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
+        inputs = inputs.to(torch.float32).div_(255).unsqueeze_(1)
         # inputs = inputs.unsqueeze(1).div_(127.5).sub_(1)
         # inputs = F.interpolate(inputs, size=(128, 128, 128), mode='trilinear', align_corners=False)
         bs = len(labels)
@@ -180,6 +179,7 @@ class Classifier(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         inputs, labels = batch
+        inputs = inputs.to(torch.float32).div_(255).unsqueeze_(1)
         # inputs = inputs.unsqueeze(1).div_(127.5).sub_(1)
         # inputs = F.interpolate(inputs, size=(128, 128, 128), mode='trilinear', align_corners=False)
         bs = len(labels)
