@@ -35,7 +35,7 @@ def run(cfg: DictConfig):
         # dataset=MRIDataset(data_path=datapath, split='val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
-    model = Classifier(lr=lr, class_weights=weight_tensor)
+    model = Classifier(lr=lr, class_weights=weight_tensor, epochs=cfg.max_epoch)
     checkpoint_callback = ModelCheckpoint(
         monitor="val_accuracy",
         mode="max",
