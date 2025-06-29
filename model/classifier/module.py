@@ -113,7 +113,7 @@ class Generator(nn.Module):
 
 
 class MRICNN(nn.Module):
-    def __init__(self, num_classes=3, dropout_rate=0.2, channels=64):
+    def __init__(self, num_classes=3, dropout_rate=0.3, channels=64):
         super(MRICNN, self).__init__()
 
         self.model = nn.Sequential(
@@ -138,19 +138,19 @@ class MRICNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool3d(kernel_size=2, stride=2),
 
-            nn.Conv3d(channels * 8, channels * 16, kernel_size=3, padding=1),
-            nn.BatchNorm3d(channels * 16),
-            nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=2, stride=2),
+            # nn.Conv3d(channels * 8, channels * 16, kernel_size=3, padding=1),
+            # nn.BatchNorm3d(channels * 16),
+            # nn.ReLU(inplace=True),
+            # nn.MaxPool3d(kernel_size=2, stride=2),
 
             # Global average pooling and flatten
             nn.AdaptiveAvgPool3d((1, 1, 1)),
             nn.Flatten(),
 
             # Fully connected layers
-            nn.Linear(channels * 16, channels * 8),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout_rate),
+            # nn.Linear(channels * 16, channels * 8),
+            # nn.ReLU(inplace=True),
+            # nn.Dropout(dropout_rate),
             nn.Linear(channels * 8, channels * 4),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
