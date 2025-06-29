@@ -9,8 +9,6 @@ import monai.transforms as T
 import torch.nn.functional as F
 
 from augmentation.random_transform import Compose3D, RandAffine3D
-from augmentation.rotation import RandRotate3D
-from augmentation.translation import RandTranslate3D
 from dataset import log_to_file_image, log_video
 from model.classifier.model_blocks import DualCNNBranch, Vision3DTransformer, CrossAttentionFusion
 from model.classifier.module import MRICNN, MRI3DViT
@@ -27,16 +25,16 @@ class Classifier(pl.LightningModule):
         num_classes = 3
 
         # Model components
-        self.cnn_branch = DualCNNBranch()
-        self.vit_branch = Vision3DTransformer(input_size=(64, 64, 64))
-        self.fusion = CrossAttentionFusion(feature_dim=256)
-        # Final classifier
-        self.classifier = nn.Sequential(
-            nn.Linear(256, 64),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(64, num_classes)
-        )
+        # self.cnn_branch = DualCNNBranch()
+        # self.vit_branch = Vision3DTransformer(input_size=(64, 64, 64))
+        # self.fusion = CrossAttentionFusion(feature_dim=256)
+        # # Final classifier
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(256, 64),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.3),
+        #     nn.Linear(64, num_classes)
+        # )
         self.classification_loss = nn.CrossEntropyLoss(weight=class_weights)
 
         metrics = {
@@ -50,7 +48,7 @@ class Classifier(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, postfix="/train")
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
-        # self.classifier = MRICNN(num_classes=3, dropout_rate=0.2, channels=16)
+        self.classifier = MRICNN(num_classes=3, dropout_rate=0.2, channels=16)
 
         # self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
         #                         num_heads=vit_heads)
@@ -107,7 +105,7 @@ class Classifier(pl.LightningModule):
         #     mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
         #     return mri
 
-        # def forward(self, mri):
+    def forward(self, mri):
         # mri = mri.multiply_(2).sub_(1)
         # mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
         # mri = mri.to(torch.float32).div_(255).unsqueeze_(1)
@@ -116,7 +114,7 @@ class Classifier(pl.LightningModule):
         # log_video(mri[0, 0].cpu().numpy(), f"test/mri")
         # log_to_file_image(mri[0, 0].cpu())
         # log_video(mri[0, 0].cpu().numpy(), f"test/trans_mri")
-        # out = self.classifier(mri)
+        out = self.classifier(mri)
         # mri_token = self.mri_vit(mri)  # [B, embed_dim]
         # diff_token = self.diffusion_extractor(mri)  # [B, 1, embed_dim]
         # mri_gan_token, pet_gan_token = self.gan(mri)
@@ -124,7 +122,7 @@ class Classifier(pl.LightningModule):
         # pet_gan_token = self.pet_proj(pet_gan_token)
         # demo_token = self.demo_encoder(demo)  # [B, 1, embed_dim]
         # clinical_token = self.clinical_encoder(clinical)  # [B, 1, embed_dim]
-
+        #
         # tokens = torch.cat([mri_token.unsqueeze(1), mri_gan_token.unsqueeze(1), pet_gan_token.unsqueeze(1)],
         #                    dim=1)  # [B, 4, 768]
         # tokens = mri_token.unsqueeze(1)
@@ -135,19 +133,19 @@ class Classifier(pl.LightningModule):
         # fused = fused[:, 0]  # CLS token
         # out = self.head(fused)  # [B, 3]
         # out = self.head(mri_token)  # [B, 3]
-        # return out
+        return out
 
-    def forward(self, x):
-        # Extract features from both branches
-        # x_cnn = F.interpolate(x, size=(128, 128, 128), mode='trilinear', align_corners=False)
-        x_vit = F.interpolate(x, size=(64, 64, 64), mode='trilinear', align_corners=False)
-        cnn_features = self.cnn_branch(x)  # Original size for CNN
-        vit_features = self.vit_branch(x_vit)  # Resized for ViT
-        # Fuse features
-        fused_features = self.fusion(cnn_features, vit_features)
-        # Final classification
-        output = self.classifier(fused_features)
-        return output
+    # def forward(self, x):
+    #     # Extract features from both branches
+    #     # x_cnn = F.interpolate(x, size=(128, 128, 128), mode='trilinear', align_corners=False)
+    #     x_vit = F.interpolate(x, size=(64, 64, 64), mode='trilinear', align_corners=False)
+    #     cnn_features = self.cnn_branch(x)  # Original size for CNN
+    #     vit_features = self.vit_branch(x_vit)  # Resized for ViT
+    #     # Fuse features
+    #     fused_features = self.fusion(cnn_features, vit_features)
+    #     # Final classification
+    #     output = self.classifier(fused_features)
+    #     return output
 
     def training_step(self, batch, batch_idx):
         mri, labels = batch
