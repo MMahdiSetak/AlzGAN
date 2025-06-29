@@ -16,7 +16,7 @@ from model.classifier.module import MRICNN, MRI3DViT
 
 class Classifier(pl.LightningModule):
     def __init__(self, image_size=256, patch_size=8, embed_dim=2048, depth=6, heads=16, vit_depth=12, vit_heads=16,
-                 lr=1e-3, weight_decay=1e-3, class_weights=None, epochs=500):
+                 lr=1e-3, weight_decay=1e-2, class_weights=None, epochs=500):
         super().__init__()
         self.save_hyperparameters()
 
@@ -82,7 +82,7 @@ class Classifier(pl.LightningModule):
 
         self.train_transforms = Compose3D([
             RandAffine3D(translate_range=(20, 20, 20), range_x=np.pi / 9, range_y=np.pi / 9, range_z=np.pi / 9,
-                         prob=0.5)
+                         prob=1)
         ])
 
         # self.train_transforms = T.Compose([
