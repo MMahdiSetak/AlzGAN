@@ -36,8 +36,8 @@ def log_to_file_image(img, file_name='test'):
         # ax.axis('off')
 
     # Save the figure to a file
-    plt.show()
-    # plt.savefig(f"log/mri/{file_name}.png")
+    # plt.show()
+    plt.savefig(f"log/mri/{file_name}.png")
     plt.close(fig)
 
 
@@ -225,13 +225,15 @@ def resize_image(image, target_size):
     return resized_image
 
 
-mri_template = ants.image_read('template/icbm_avg_152_t1_tal_nlin_symmetric_VI_mask.nii')
+# mri_template = ants.image_read('template/icbm_avg_152_t1_tal_nlin_symmetric_VI_mask.nii')
+mri_template = ants.image_read('template/mni_icbm152_nl_VI_nifti/stripped_cropped_reoriented.nii')
 
 
-def mri_registration():
-    moving_image = ants.image_read('stripped.nii')
-    affine_registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Affine')
-    return affine_registration["warpedmovout"].numpy()
+def mri_registration(path):
+    # moving_image = ants.image_read('stripped.nii')
+    moving_image = ants.image_read(path, pixeltype='unsigned char')
+    registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Affine')
+    return registration["warpedmovout"].numpy()
 
 
 def pet_preprocess(img: np.ndarray) -> np.ndarray:
@@ -511,7 +513,7 @@ def normalize_image(img: np.ndarray) -> np.ndarray:
     # img = img.astype(np.float64) - img.min()
     img = np.maximum(img, 0)
     m = img.max()
-    return ((img.astype(np.float64) * 255) / m).astype(np.uint8)
+    return np.round((img.astype(np.float64) * 255) / m).astype(np.uint8)
 
 
 def mri_preprocess(img: np.ndarray) -> np.ndarray:
@@ -524,6 +526,13 @@ def mri_preprocess(img: np.ndarray) -> np.ndarray:
     # img = img[15:175, 17:217, :180]
     img = img[:-1, 18:210, :-1]
     img = resize_image(img, (128, 128, 128))
+    normalized_img = normalize_image(img)
+    return normalized_img
+
+
+def mri_preprocess2(path: str) -> np.ndarray:
+    img = mri_registration(path)
+    # img = img[15:175, 20:212, 5:165]
     normalized_img = normalize_image(img)
     return normalized_img
 
@@ -551,9 +560,9 @@ def count_subject_image(subjects, mri_path: str):
 
 
 def create_mri_dataset(mri_path: str):
-    mri_target = (256, 256, 256)
-    # subjects = os.listdir(mri_path)
-    subjects = os.listdir(mri_path)[:10]
+    mri_target = (160, 160, 192)
+    subjects = os.listdir(mri_path)
+    # subjects = os.listdir(mri_path)[:10]
     train_subj, val_subj, test_subj = split_subject(subjects)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
     split_num = {
@@ -563,7 +572,7 @@ def create_mri_dataset(mri_path: str):
     }
     df = pd.read_csv("dataset/mri.csv")
 
-    with h5py.File('mri_label_v5_test.hdf5', 'w') as h5f:
+    with h5py.File('mri_label_v5_Affine.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
@@ -587,11 +596,14 @@ def create_mri_dataset(mri_path: str):
                             #     continue
                             image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
                             # mri_image = read_image(image_path)
-                            mri_image = read_mri(image_path)
+                            # mri_image = read_mri(image_path)
+                            # mri_image = np.transpose(mri_image, (0, 2, 1))
+                            # mri_image = mri_image[40:220, 30:230, 190:30:-1]
                             # log_to_file_image(mri_image, file_name=img_id)
-                            # dataset_mri = mri_preprocess(mri_image)
+                            dataset_mri = mri_preprocess2(f"{image_path}/brainmask.mgz")
+                            log_to_file_image(dataset_mri, file_name=img_id)
                             label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
-                            ds[f'mri_{split}'][indices[current_index]] = mri_image
+                            ds[f'mri_{split}'][indices[current_index]] = dataset_mri
                             ds[f'label_{split}'][indices[current_index]] = group_mapping[label]
                             current_index += 1
 
