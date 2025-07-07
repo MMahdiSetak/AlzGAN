@@ -18,8 +18,9 @@ def run(cfg: DictConfig):
     lr = cfg.lr
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
-    train_ram_loader = MRIRAMLoader(datapath, 'train')
-    train_dataset = FastMRIDataset(*train_ram_loader.get_data())
+    # train_ram_loader = MRIRAMLoader(datapath, 'train')
+    # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
+    train_dataset = MRIDataset(data_path=datapath, split='train')
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]
@@ -29,10 +30,10 @@ def run(cfg: DictConfig):
         dataset=train_dataset,
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
-    val_ram_loader = MRIRAMLoader(datapath, 'val')
+    # val_ram_loader = MRIRAMLoader(datapath, 'val')
     val_loader = DataLoader(
-        dataset=FastMRIDataset(*val_ram_loader.get_data()),
-        # dataset=MRIDataset(data_path=datapath, split='val'),
+        # dataset=FastMRIDataset(*val_ram_loader.get_data()),
+        dataset=MRIDataset(data_path=datapath, split='val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     model = Classifier(lr=lr, class_weights=weight_tensor, epochs=cfg.max_epoch)
@@ -54,7 +55,7 @@ def run(cfg: DictConfig):
         num_sanity_val_steps=0,
         accelerator="auto",
         # strategy="fsdp",
-        devices=[0, 1, 2],
+        devices=[0],
         # overfit_batches=3,
         val_check_interval=1.0,
         logger=logger,

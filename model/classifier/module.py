@@ -118,15 +118,29 @@ class MRICNN(nn.Module):
 
         self.model = nn.Sequential(
             # CNN blocks
-            nn.Conv3d(1, channels, kernel_size=3, padding=1),
+            nn.Conv3d(1, 1, kernel_size=3, padding=1),
+            nn.BatchNorm3d(1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d(kernel_size=(2, 2, 3), stride=(2, 2, 3)),
+            nn.Dropout3d(0.2),
+
+            nn.Conv3d(1, 4, kernel_size=3, padding=1),
+            nn.BatchNorm3d(4),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d(kernel_size=(2, 2, 4), stride=(2, 2, 2)),
+            nn.Dropout3d(0.2),
+
+            nn.Conv3d(4, channels, kernel_size=3, padding=1),
             nn.BatchNorm3d(channels),
             nn.ReLU(inplace=True),
             nn.MaxPool3d(kernel_size=2, stride=2),
+            nn.Dropout3d(0.2),
 
             nn.Conv3d(channels, channels * 2, kernel_size=3, padding=1),
             nn.BatchNorm3d(channels * 2),
             nn.ReLU(inplace=True),
             nn.MaxPool3d(kernel_size=2, stride=2),
+            nn.Dropout3d(0.2),
 
             nn.Conv3d(channels * 2, channels * 4, kernel_size=3, padding=1),
             nn.BatchNorm3d(channels * 4),
@@ -136,7 +150,7 @@ class MRICNN(nn.Module):
             nn.Conv3d(channels * 4, channels * 8, kernel_size=3, padding=1),
             nn.BatchNorm3d(channels * 8),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d(kernel_size=2, stride=2),
+            # nn.MaxPool3d(kernel_size=2, stride=2),
 
             # nn.Conv3d(channels * 8, channels * 16, kernel_size=3, padding=1),
             # nn.BatchNorm3d(channels * 16),
@@ -148,14 +162,63 @@ class MRICNN(nn.Module):
             nn.Flatten(),
 
             # Fully connected layers
-            # nn.Linear(channels * 16, channels * 8),
-            # nn.ReLU(inplace=True),
-            # nn.Dropout(dropout_rate),
+            nn.Dropout(dropout_rate),
             nn.Linear(channels * 8, channels * 4),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
+            # nn.Linear(channels * 8, channels * 4),
+            # nn.ReLU(inplace=True),
+            # nn.Dropout(dropout_rate),
             nn.Linear(channels * 4, num_classes),
         )
 
     def forward(self, x):
         return self.model(x)
+
+
+class AlzheimerCNN3D(nn.Module):
+    def __init__(self, num_classes=3, dropout_rate=0.3):
+        super(AlzheimerCNN3D, self).__init__()
+
+        # Initial convolution block
+        self.conv1 = nn.Conv3d(1, 64, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm3d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool3d(kernel_size=2, stride=2)
+
+        # Convolutional blocks with increasing filters
+        self.conv2 = nn.Conv3d(64, 128, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm3d(128)
+        self.pool2 = nn.MaxPool3d(kernel_size=2, stride=2)
+
+        self.conv3 = nn.Conv3d(128, 256, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm3d(256)
+        self.pool3 = nn.MaxPool3d(kernel_size=2, stride=2)
+
+        self.conv4 = nn.Conv3d(256, 512, kernel_size=3, padding=1)
+        self.bn4 = nn.BatchNorm3d(512)
+
+        # Global average pooling
+        self.global_avg_pool = nn.AdaptiveAvgPool3d((1, 1, 1))
+
+        # Classification head
+        self.dropout = nn.Dropout(dropout_rate)
+        self.fc1 = nn.Linear(512, 256)
+        self.fc2 = nn.Linear(256, num_classes)
+
+    def forward(self, x):
+        # Convolutional feature extraction
+        x = self.pool1(self.relu(self.bn1(self.conv1(x))))
+        x = self.pool2(self.relu(self.bn2(self.conv2(x))))
+        x = self.pool3(self.relu(self.bn3(self.conv3(x))))
+        x = self.relu(self.bn4(self.conv4(x)))
+
+        # Global pooling and classification
+        x = self.global_avg_pool(x)
+        x = x.view(x.size(0), -1)
+        x = self.dropout(x)
+        x = self.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+
+        return x

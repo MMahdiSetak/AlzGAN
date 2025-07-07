@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from augmentation.random_transform import Compose3D, RandAffine3D
 from dataset import log_to_file_image, log_video
 from model.classifier.model_blocks import DualCNNBranch, Vision3DTransformer, CrossAttentionFusion
-from model.classifier.module import MRICNN, MRI3DViT
+from model.classifier.module import MRICNN, MRI3DViT, AlzheimerCNN3D
 
 
 class Classifier(pl.LightningModule):
@@ -49,7 +49,8 @@ class Classifier(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, postfix="/train")
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
-        self.classifier = MRICNN(num_classes=3, dropout_rate=0.3, channels=16)
+        # self.classifier = MRICNN(num_classes=3, dropout_rate=0.3, channels=16)
+        self.classifier = AlzheimerCNN3D()
 
         # self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
         #                         num_heads=vit_heads)
@@ -81,8 +82,8 @@ class Classifier(pl.LightningModule):
         # self.head = nn.Linear(embed_dim, num_classes)
 
         self.train_transforms = Compose3D([
-            RandAffine3D(translate_range=(20, 20, 20), range_x=np.pi / 9, range_y=np.pi / 9, range_z=np.pi / 9,
-                         prob=1)
+            RandAffine3D(translate_range=(5, 5, 5), range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18,
+                         prob=0.5)
         ])
 
         # self.train_transforms = T.Compose([
@@ -108,7 +109,7 @@ class Classifier(pl.LightningModule):
 
     def forward(self, mri):
         # mri = mri.multiply_(2).sub_(1)
-        # mri = F.interpolate(mri, size=(128, 128, 128), mode='trilinear', align_corners=False)
+        # mri = F.interpolate(mri, size=(80, 80, 64), mode='trilinear', align_corners=False)
         # mri = mri.to(torch.float32).div_(255).unsqueeze_(1)
         # mri = self.train_transforms(mri)
         # mri = F.interpolate(mri, size=(64, 64, 64), mode='trilinear', align_corners=False)
@@ -195,7 +196,7 @@ class Classifier(pl.LightningModule):
         scheduler = CosineAnnealingLR(
             optimizer,
             T_max=self.epochs,  # Total epochs
-            eta_min=1e-6
+            eta_min=1e-5
         )
         return {
             "optimizer": optimizer,
