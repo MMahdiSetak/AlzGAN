@@ -5,7 +5,8 @@ import torch
 from train.classifier import run
 
 torch.set_float32_matmul_precision('medium')
-run()
+if __name__ == '__main__':
+    run()
 
 # from dataset import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
 #
