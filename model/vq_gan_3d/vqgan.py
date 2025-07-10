@@ -48,45 +48,45 @@ class VQGAN(pl.LightningModule):
         super().__init__()
         self.automatic_optimization = False
         self.cfg = cfg
-        self.embedding_dim = cfg.model.embedding_dim
-        self.n_codes = cfg.model.n_codes
+        self.embedding_dim = cfg.embedding_dim
+        self.n_codes = cfg.n_codes
 
-        self.encoder = Encoder(cfg.model.n_hiddens, cfg.model.downsample,
-                               cfg.dataset.image_channels, cfg.model.norm_type, cfg.model.padding_type,
-                               cfg.model.num_groups,
+        self.encoder = Encoder(cfg.n_hiddens, cfg.downsample,
+                               cfg.image_channels, cfg.norm_type, cfg.padding_type,
+                               cfg.num_groups,
                                )
         self.decoder = Decoder(
-            cfg.model.n_hiddens, cfg.model.downsample, cfg.dataset.image_channels, cfg.model.norm_type,
-            cfg.model.num_groups)
+            cfg.n_hiddens, cfg.downsample, cfg.image_channels, cfg.norm_type,
+            cfg.num_groups)
         self.enc_out_ch = self.encoder.out_channels
         self.pre_vq_conv = SamePadConv3d(
-            self.enc_out_ch, cfg.model.embedding_dim, 1, padding_type=cfg.model.padding_type)
+            self.enc_out_ch, cfg.embedding_dim, 1, padding_type=cfg.padding_type)
         self.post_vq_conv = SamePadConv3d(
-            cfg.model.embedding_dim, self.enc_out_ch, 1)
+            cfg.embedding_dim, self.enc_out_ch, 1)
 
-        self.codebook = Codebook(cfg.model.n_codes, cfg.model.embedding_dim,
-                                 no_random_restart=cfg.model.no_random_restart, restart_thres=cfg.model.restart_thres)
+        self.codebook = Codebook(cfg.n_codes, cfg.embedding_dim,
+                                 no_random_restart=cfg.no_random_restart, restart_thres=cfg.restart_thres)
 
-        self.gan_feat_weight = cfg.model.gan_feat_weight
+        self.gan_feat_weight = cfg.gan_feat_weight
         # TODO: Changed batchnorm from sync to normal
         self.image_discriminator = NLayerDiscriminator(
-            cfg.dataset.image_channels, cfg.model.disc_channels, cfg.model.disc_layers, norm_layer=nn.BatchNorm2d)
+            cfg.image_channels, cfg.disc_channels, cfg.disc_layers, norm_layer=nn.BatchNorm2d)
         self.video_discriminator = NLayerDiscriminator3D(
-            cfg.dataset.image_channels, cfg.model.disc_channels, cfg.model.disc_layers, norm_layer=nn.BatchNorm3d)
+            cfg.image_channels, cfg.disc_channels, cfg.disc_layers, norm_layer=nn.BatchNorm3d)
 
-        if cfg.model.disc_loss_type == 'vanilla':
+        if cfg.disc_loss_type == 'vanilla':
             self.disc_loss = vanilla_d_loss
-        elif cfg.model.disc_loss_type == 'hinge':
+        elif cfg.disc_loss_type == 'hinge':
             self.disc_loss = hinge_d_loss
 
         self.perceptual_model = LPIPS().eval()
 
-        self.image_gan_weight = cfg.model.image_gan_weight
-        self.video_gan_weight = cfg.model.video_gan_weight
+        self.image_gan_weight = cfg.image_gan_weight
+        self.video_gan_weight = cfg.video_gan_weight
 
-        self.perceptual_weight = cfg.model.perceptual_weight
+        self.perceptual_weight = cfg.perceptual_weight
 
-        self.l1_weight = cfg.model.l1_weight
+        self.l1_weight = cfg.l1_weight
         self.save_hyperparameters()
 
     def encode(self, x, include_embeddings=False, quantize=True):
@@ -144,7 +144,7 @@ class VQGAN(pl.LightningModule):
             g_video_loss = -torch.mean(logits_video_fake)
             g_loss = self.image_gan_weight * g_image_loss + self.video_gan_weight * g_video_loss
             disc_factor = adopt_weight(
-                self.global_step, threshold=self.cfg.model.discriminator_iter_start)
+                self.global_step, threshold=self.cfg.discriminator_iter_start)
             aeloss = disc_factor * g_loss
 
             # GAN feature matching loss - tune features such that we get the same prediction result on the discriminator
@@ -200,7 +200,7 @@ class VQGAN(pl.LightningModule):
             d_image_loss = self.disc_loss(logits_image_real, logits_image_fake)
             d_video_loss = self.disc_loss(logits_video_real, logits_video_fake)
             disc_factor = adopt_weight(
-                self.global_step, threshold=self.cfg.model.discriminator_iter_start)
+                self.global_step, threshold=self.cfg.discriminator_iter_start)
             discloss = disc_factor * \
                        (self.image_gan_weight * d_image_loss +
                         self.video_gan_weight * d_video_loss)
@@ -262,7 +262,7 @@ class VQGAN(pl.LightningModule):
                  vq_output['commitment_loss'], prog_bar=True)
 
     def configure_optimizers(self):
-        lr = self.cfg.model.lr
+        lr = self.cfg.lr
         opt_ae = torch.optim.Adam(list(self.encoder.parameters()) +
                                   list(self.decoder.parameters()) +
                                   list(self.pre_vq_conv.parameters()) +

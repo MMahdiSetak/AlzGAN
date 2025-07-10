@@ -49,8 +49,8 @@ class Classifier(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, postfix="/train")
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
-        # self.classifier = MRICNN(num_classes=3, dropout_rate=0.3, channels=16)
-        self.classifier = AlzheimerCNN3D()
+        self.classifier = MRICNN(num_classes=3, dropout_rate=0.3, channels=16)
+        # self.classifier = AlzheimerCNN3D()
 
         # self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
         #                         num_heads=vit_heads)

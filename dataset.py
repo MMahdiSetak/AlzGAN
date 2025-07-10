@@ -3,7 +3,7 @@ import random
 import subprocess
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import ants
 import h5py
@@ -19,13 +19,15 @@ from tqdm import tqdm
 
 # group_mapping = {'CN': 0, 'SMC': 1, 'EMCI': 2, 'MCI': 3, 'LMCI': 4, 'AD': 5}
 group_mapping = {'CN': 0, 'MCI': 1, 'AD': 2}
+reversed_group_mapping = {0: 'CN', 1: 'MCI', 2: 'AD'}
 
 
-def log_to_file_image(img, file_name='test'):
+def log_to_file_image(img, title="", file_name='test'):
     center_slices = [dim // 2 for dim in img.shape]
     # img = np.transpose(img, (0, 2, 1))
 
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    fig.suptitle(title, fontsize=16, fontweight='bold')
     # titles = ['Axial', 'Coronal', 'Sagittal']
 
     slices = [img[center_slices[0], :, :], img[:, center_slices[1], :], img[:, :, center_slices[2]]]
@@ -53,7 +55,7 @@ def pair_log(mri, pet, filename):
             ax.axis('off')
             ax.set_facecolor('none')
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0.05, hspace=0.05)
-    plt.savefig(f"log/pair/{filename}.png", transparent=True, bbox_inches='tight')
+    plt.savefig(f"log/2d/pair/{filename}.png", transparent=True, bbox_inches='tight')
     # plt.show()
     plt.close()
 
@@ -226,13 +228,13 @@ def resize_image(image, target_size):
 
 
 # mri_template = ants.image_read('template/icbm_avg_152_t1_tal_nlin_symmetric_VI_mask.nii')
-mri_template = ants.image_read('template/mni_icbm152_nl_VI_nifti/stripped_cropped_reoriented.nii')
+mri_template = ants.image_read('template/mni_icbm152_nl_VI_nifti/stripped_cropped.nii')
 
 
 def mri_registration(path):
     # moving_image = ants.image_read('stripped.nii')
     moving_image = ants.image_read(path, pixeltype='unsigned char')
-    registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Affine')
+    registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Rigid')
     return registration["warpedmovout"].numpy()
 
 
@@ -254,11 +256,12 @@ def pet_preprocess2(img: np.ndarray) -> np.ndarray:
     img = img[::-1, ::-1, :]
     skull_stripping(img)
     img = nib.load('stripped.nii').get_fdata()
+    img = img[16:112, :, :]
     normalized_img = normalize_image(img)
-    padded_image = np.pad(normalized_img, ((0, 0), (0, 0), (16, 16)), mode='constant')
-    # pet (160, 160, 96) -> (128, 128, 128)
+    # padded_image = np.pad(normalized_img, ((0, 0), (0, 0), (16, 16)), mode='constant')
+    # pet (160, 160, 96) -> (96, 128, 96)
     # mri (160, 200, 180)
-    return padded_image
+    return normalized_img
 
 
 MRI_ID_BLACKLIST = ['I1589895', 'I1591048', 'I1594002', 'I1611628', 'I1528880', 'I1557275', 'I1582497', 'I1623763',
@@ -353,8 +356,8 @@ def count_pair_images(subjects, mri_path, pet_path):
 def create_mri_pet_label_dataset(mri_path, pet_path):
     intersect = calculate_subject_intersect(mri=mri_path, pet=pet_path)
     train_subj, val_subj, test_subj = split_subject(list(intersect))
-    mri_target = (256, 256, 256)
-    pet_target = (128, 128, 128)
+    mri_target = (160, 192, 160)
+    pet_target = (96, 128, 96)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
     split_num = {
         'train': count_pair_images(train_subj, mri_path=mri_path, pet_path=pet_path),
@@ -364,7 +367,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
     # df = pd.read_csv("mri_labels.csv")
     df = pd.read_csv("dataset/mri.csv")
 
-    with h5py.File('mri_pet_label_v5.hdf5', 'w') as h5f:
+    with h5py.File('mri_pet_label_v5_Rigid.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
@@ -408,15 +411,18 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
                         pet_img_path = f"{pet_dates_path[closest_pet_date]}/{pet_img_id}"
                         mri_img_path = f"{mri_path}/{subject}/{mri_desc}/{date}/{mri_img_id}"
 
-                        if mri_img_id in MRI_ID_BLACKLIST:
-                            continue
+                        # if mri_img_id in MRI_ID_BLACKLIST:
+                        #     continue
 
                         # mri_image = read_image(mri_img_path)
-                        mri_image = read_mri(mri_img_path)
                         # mri_image = mri_preprocess(mri_image)
+                        # mri_image = read_mri(mri_img_path)
+                        mri_image = mri_preprocess2(f"{mri_img_path}/brainmask.mgz")
 
                         pet_image = read_image(pet_img_path)
                         pet_image = pet_preprocess2(pet_image)
+
+                        pair_log(mri_image, pet_image, mri_img_id)
 
                         label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
                         ds[f'mri_{split}'][indices[current_index]] = mri_image
@@ -546,21 +552,31 @@ def split_subject(subjects: [str]):
 
 def count_subject_image(subjects, mri_path: str):
     count = 0
+    dgs = pd.read_csv("dataset/DXSUM.csv").dropna(subset=['DIAGNOSIS'])
+    dgs['EXAMDATE'] = pd.to_datetime(dgs['EXAMDATE'])
+    subject_rows_cache = {subject: dgs[dgs['PTID'] == subject].copy() for subject in subjects}
     for subject in subjects:
+        rows = subject_rows_cache.get(subject)
         descs = os.listdir(f"{mri_path}/{subject}")
         for desc in descs:
             dates = os.listdir(f"{mri_path}/{subject}/{desc}")
             for date in dates:
+                acc_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
                 img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
                 for img_id in img_ids:
                     if img_id in MRI_ID_BLACKLIST:
+                        continue
+                    rows['time_diff'] = (rows['EXAMDATE'] - acc_date).abs()
+                    nearest_row_index = rows['time_diff'].idxmin()
+                    min_time_diff = rows.loc[nearest_row_index, 'time_diff']
+                    if min_time_diff > timedelta(days=180):
                         continue
                     count += 1
     return count
 
 
 def create_mri_dataset(mri_path: str):
-    mri_target = (160, 160, 192)
+    mri_target = (160, 192, 160)
     subjects = os.listdir(mri_path)
     # subjects = os.listdir(mri_path)[:10]
     train_subj, val_subj, test_subj = split_subject(subjects)
@@ -570,9 +586,11 @@ def create_mri_dataset(mri_path: str):
         'val': count_subject_image(val_subj, mri_path),
         'test': count_subject_image(test_subj, mri_path),
     }
-    df = pd.read_csv("dataset/mri.csv")
-
-    with h5py.File('mri_label_v5_Affine.hdf5', 'w') as h5f:
+    # df = pd.read_csv("dataset/mri.csv")
+    dgs = pd.read_csv("dataset/DXSUM.csv").dropna(subset=['DIAGNOSIS'])
+    dgs['EXAMDATE'] = pd.to_datetime(dgs['EXAMDATE'])
+    # wrong_labels = 0
+    with h5py.File('mri_label_v5.1_Rigid.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
@@ -585,15 +603,24 @@ def create_mri_dataset(mri_path: str):
             indices = list(range(split_num[split]))
             random.shuffle(indices)
             current_index = 0
+            subject_rows_cache = {subject: dgs[dgs['PTID'] == subject].copy() for subject in subjects}
             for subject in tqdm(subjects, leave=False):
                 descs = os.listdir(f"{mri_path}/{subject}")
+                rows = subject_rows_cache.get(subject)
                 for desc in tqdm(descs, leave=False):
                     dates = os.listdir(f"{mri_path}/{subject}/{desc}")
                     for date in tqdm(dates, leave=False):
+                        acc_date = datetime.strptime(date, '%Y-%m-%d_%H_%M_%S.%f')
                         img_ids = os.listdir(f"{mri_path}/{subject}/{desc}/{date}")
                         for img_id in img_ids:
-                            # if img_id in MRI_ID_BLACKLIST:
-                            #     continue
+                            if img_id in MRI_ID_BLACKLIST:
+                                continue
+                            rows['time_diff'] = (rows['EXAMDATE'] - acc_date).abs()
+                            nearest_row_index = rows['time_diff'].idxmin()
+                            min_time_diff = rows.loc[nearest_row_index, 'time_diff']
+                            new_label = int(rows.loc[nearest_row_index, 'DIAGNOSIS'] - 1)
+                            if min_time_diff > timedelta(days=180):
+                                continue
                             image_path = f"{mri_path}/{subject}/{desc}/{date}/{img_id}"
                             # mri_image = read_image(image_path)
                             # mri_image = read_mri(image_path)
@@ -601,11 +628,16 @@ def create_mri_dataset(mri_path: str):
                             # mri_image = mri_image[40:220, 30:230, 190:30:-1]
                             # log_to_file_image(mri_image, file_name=img_id)
                             dataset_mri = mri_preprocess2(f"{image_path}/brainmask.mgz")
-                            log_to_file_image(dataset_mri, file_name=img_id)
-                            label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
+                            log_to_file_image(dataset_mri, title=reversed_group_mapping[new_label], file_name=img_id)
+                            # old_label = df.loc[df['Image Data ID'] == img_id].iloc[0]['Group']
+                            # old_label = group_mapping[old_label]
+                            # if old_label != new_label:
+                            #     print(old_label, new_label)
+                            #     wrong_labels += 1
                             ds[f'mri_{split}'][indices[current_index]] = dataset_mri
-                            ds[f'label_{split}'][indices[current_index]] = group_mapping[label]
+                            ds[f'label_{split}'][indices[current_index]] = new_label
                             current_index += 1
+    # print(wrong_labels)
 
 
 def create_pet_dataset(pet_path: str):

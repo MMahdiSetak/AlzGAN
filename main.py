@@ -9,8 +9,8 @@ run()
 
 # from dataset import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
 #
-# create_mri_dataset(mri_data_path)
-
+# create_mri_dataset(mri_path=mri_data_path)
+print("Done! 🎉🎊")
 # import optuna
 #
 # from train.opt_hparm import objective

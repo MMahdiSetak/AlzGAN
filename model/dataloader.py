@@ -228,6 +228,28 @@ class MRI2PETDataset(Dataset):
         return mri.squeeze(0), pet.squeeze(0), label
 
 
+class VQGANDataset(Dataset):
+    def __init__(self, data_path, split, modality='mri'):
+        self.data_path = data_path
+        self.split = split
+        self.file = None
+        self.modality = modality
+
+    def __len__(self):
+        if self.file is None:
+            with h5py.File(self.data_path, 'r') as f:
+                return len(f[f'label_{self.split}'])
+        return len(self.file[f'label_{self.split}'])
+
+    def __getitem__(self, index):
+        if self.file is None:
+            self.file = h5py.File(self.data_path, 'r')
+            self.images = self.file[f'{self.modality}_{self.split}']
+        img = torch.from_numpy(self.images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze_(0).unsqueeze(0)
+        img = F.interpolate(img, size=(64, 64, 64), mode='trilinear', align_corners=False)
+        return img.squeeze(0)
+
+
 class TempPairDataset(Dataset):
     def __init__(self, data_path, split):
         self.data_path = data_path

@@ -1,3 +1,4 @@
+import ants
 import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
@@ -19,15 +20,23 @@ def log_to_file_image(img, file_name='test'):
     plt.close(fig)
 
 
-org_img = nib.load(
-    "../dataset/MRI2/ADNI/003_S_0981/FreeSurfer_Longitudinal_Processing_brainmask/2007-05-02_08_18_48.0/I209483/brainmask.mgz").get_fdata().astype(
-    np.uint8)
+# org_img = nib.load(
+#     "../dataset/MRI2/ADNI/003_S_0981/FreeSurfer_Longitudinal_Processing_brainmask/2007-05-02_08_18_48.0/I209483/brainmask.mgz").get_fdata().astype(
+#     np.uint8)
+
+
+mri_template = ants.image_read('../template/mni_icbm152_nl_VI_nifti/stripped_cropped.nii')
+moving_image = ants.image_read(
+    "../dataset/MRI2/ADNI/003_S_0981/FreeSurfer_Longitudinal_Processing_brainmask/2007-05-02_08_18_48.0/I209483/brainmask.mgz",
+    pixeltype='unsigned char')
+registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Rigid')
+org_img = registration["warpedmovout"].numpy()
 
 orig = nib.load("../template/mni_icbm152_nl_VI_nifti/stripped.nii")
 img = orig.get_fdata()
 img_cropped = img[13:173, 20:212, 5:165]
-img_cropped = np.transpose(img_cropped, (0, 2, 1))
-img_cropped = img_cropped[:, ::-1, :]
+# img_cropped = np.transpose(img_cropped, (0, 2, 1))
+# img_cropped = img_cropped[:, ::-1, :]
 log_to_file_image(org_img)
 log_to_file_image(img_cropped)
 
@@ -56,8 +65,9 @@ voxel_transform = T_crop @ P @ F
 new_affine = orig.affine @ voxel_transform
 
 # --- 5. Save ---
-out_nii = nib.Nifti1Image(img_cropped, new_affine, header=orig.header)
-nib.save(out_nii, "../template/mni_icbm152_nl_VI_nifti/stripped_cropped_reoriented.nii")
+# out_nii = nib.Nifti1Image(img_cropped, new_affine, header=orig.header)
+out_nii = nib.Nifti1Image(img_cropped, orig.affine, header=orig.header)
+nib.save(out_nii, "../template/mni_icbm152_nl_VI_nifti/stripped_cropped.nii")
 
 # train_ds = MRIDataset('../dataset/mri_label_v3.hdf5', 'train')
 # for i in range(10):
