@@ -26,7 +26,7 @@ def log_to_file_image(img, title="", file_name='test'):
     center_slices = [dim // 2 for dim in img.shape]
     # img = np.transpose(img, (0, 2, 1))
 
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    fig, axes = plt.subplots(1, 3, figsize=(8, 3))
     fig.suptitle(title, fontsize=16, fontweight='bold')
     # titles = ['Axial', 'Coronal', 'Sagittal']
 
@@ -228,12 +228,12 @@ def resize_image(image, target_size):
 
 
 # mri_template = ants.image_read('template/icbm_avg_152_t1_tal_nlin_symmetric_VI_mask.nii')
-mri_template = ants.image_read('template/mni_icbm152_nl_VI_nifti/stripped_cropped.nii')
+mri_template = ants.image_read('template/stripped_cropped.nii')
 
 
 def mri_registration(path):
     # moving_image = ants.image_read('stripped.nii')
-    moving_image = ants.image_read(path, pixeltype='unsigned char')
+    moving_image = ants.image_read(path)
     registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Rigid')
     return registration["warpedmovout"].numpy()
 
@@ -256,10 +256,10 @@ def pet_preprocess2(img: np.ndarray) -> np.ndarray:
     img = img[::-1, ::-1, :]
     skull_stripping(img)
     img = nib.load('stripped.nii').get_fdata()
-    img = img[16:112, :, :]
+    # img = img[16:112, :, :]
     normalized_img = normalize_image(img)
     # padded_image = np.pad(normalized_img, ((0, 0), (0, 0), (16, 16)), mode='constant')
-    # pet (160, 160, 96) -> (96, 128, 96)
+    # pet (160, 160, 96) -> (96, 128, 96) -> (128, 128, 96)
     # mri (160, 200, 180)
     return normalized_img
 
@@ -357,7 +357,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
     intersect = calculate_subject_intersect(mri=mri_path, pet=pet_path)
     train_subj, val_subj, test_subj = split_subject(list(intersect))
     mri_target = (160, 192, 160)
-    pet_target = (96, 128, 96)
+    pet_target = (128, 128, 96)
     subj_split = {'train': train_subj, 'val': val_subj, 'test': test_subj}
     split_num = {
         'train': count_pair_images(train_subj, mri_path=mri_path, pet_path=pet_path),

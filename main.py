@@ -1,17 +1,19 @@
 # from seg.patch import print_patch_sizes, extract_patches, get_patch_indices
 #
 # get_patch_indices()
-import torch
-from train.classifier import run
 
-torch.set_float32_matmul_precision('medium')
 if __name__ == '__main__':
-    run()
+    # import torch
+    # from train.classifier import run
+    #
+    # torch.set_float32_matmul_precision('medium')
+    # run()
 
-# from dataset import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
-#
-# create_mri_dataset(mri_path=mri_data_path)
-print("Done! 🎉🎊")
+    from dataset import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
+
+    # create_mri_dataset(mri_path=mri_data_path)
+    create_mri_dataset(mri_path=mri_data_path)
+    print("Done! 🎉🎊")
 # import optuna
 #
 # from train.opt_hparm import objective
