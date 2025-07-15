@@ -3,11 +3,103 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
-import monai.transforms as T
+import torchio as tio
 
 
 class MRIDataset(Dataset):
-    def __init__(self, data_path, split):
+    def __init__(self, data_path, split, apply_augmentation=True):
+        self.data_path = data_path
+        self.split = split
+        self.file = None
+        self.apply_augmentation = apply_augmentation and (split == 'train')
+        self.augmentation_transform = self._create_augmentation_pipeline()
+
+    def _create_augmentation_pipeline(self):
+        """Create TorchIO augmentation pipeline optimized for 3D MRI (160, 192, 160)"""
+        base_transforms = [
+            # tio.ZNormalization(masking_method=tio.ZNormalization.mean),  # Z-score normalization
+            tio.ZNormalization(masking_method=lambda x: x > 0),  # Z-score normalization
+        ]
+        if not self.apply_augmentation:
+            # return None
+            return tio.Compose(base_transforms)
+
+        # Single augmentation approach - apply one technique at a time
+        augmentation_transforms = [
+            # Always include horizontal flip (most effective and safe)
+            tio.RandomFlip(axes='LR', p=0.5),
+            # Primary augmentations (choose one per batch)
+            tio.OneOf({
+                # Elastic deformation (most effective for brain MRI)
+                tio.RandomElasticDeformation(
+                    num_control_points=7,
+                    max_displacement=7.5,
+                    locked_borders=2
+                ): 0.35,
+                # Intensity augmentation (second most effective)
+                tio.RandomGamma(log_gamma=0.3): 0.30,
+                # Spatial transformations
+                tio.RandomAffine(
+                    scales=(0.8, 1.2),  # ±20% scaling
+                    degrees=15,  # ±15° rotation
+                    translation=8  # Conservative translation (5% of 160)
+                ): 0.25,
+                # No augmentation
+                tio.Lambda(lambda x: x): 0.1
+            })
+        ]
+        return tio.Compose(base_transforms + augmentation_transforms)
+
+    def __len__(self):
+        if self.file is None:
+            with h5py.File(self.data_path, 'r') as f:
+                return len(f[f'label_{self.split}'])
+        return len(self.file[f'label_{self.split}'])
+
+    def get_class_weights(self):
+        """
+        Calculate class weights based on inverse frequency of labels.
+        Returns a dictionary mapping class labels to their weights.
+        """
+        with h5py.File(self.data_path, 'r') as f:
+            labels = f[f'label_{self.split}'][:]
+
+        unique, counts = np.unique(labels, return_counts=True)
+        total_samples = len(labels)
+        class_weights = {cls: total_samples / (len(unique) * count) for cls, count in zip(unique, counts)}
+
+        return class_weights
+
+    def __getitem__(self, index):
+        if self.file is None:
+            self.file = h5py.File(self.data_path, 'r')
+            self.mri_images = self.file[f'mri_{self.split}']
+            self.labels = self.file[f'label_{self.split}']
+
+        mri_tensor = torch.from_numpy(self.mri_images[index].astype(np.float32)).unsqueeze(0)
+        label_tensor = torch.tensor(self.labels[index], dtype=torch.long)
+
+        # Apply augmentation if enabled
+        if self.augmentation_transform is not None:
+            # Create TorchIO Subject
+            subject = tio.Subject(
+                mri=tio.ScalarImage(tensor=mri_tensor),
+                label=label_tensor
+            )
+            # Apply transforms
+            try:
+                augmented_subject = self.augmentation_transform(subject)
+                mri_tensor = augmented_subject['mri'].data
+                del augmented_subject, subject
+            except Exception as e:
+                print(f"Warning: Augmentation failed for sample {index}: {e}")
+                pass
+
+        return mri_tensor, label_tensor
+
+
+class SimpleMRIDataset(Dataset):
+    def __init__(self, data_path, split, apply_augmentation=False):
         self.data_path = data_path
         self.split = split
         self.file = None

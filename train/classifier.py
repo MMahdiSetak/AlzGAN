@@ -10,6 +10,18 @@ from model.classifier.model import Classifier
 from model.dataloader import MRIRAMLoader, FastMRIDataset, MRIDataset
 
 
+# Custom collate function for GPU optimization
+def gpu_collate_fn(batch):
+    """Custom collate function for efficient GPU transfer"""
+    images, labels = zip(*batch)
+
+    # Stack tensors
+    images = torch.stack(images, dim=0)
+    labels = torch.stack(labels, dim=0)
+
+    return images, labels
+
+
 @hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
 def run(cfg: DictConfig):
     batch_size = cfg.batch_size
@@ -20,7 +32,7 @@ def run(cfg: DictConfig):
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     # train_ram_loader = MRIRAMLoader(datapath, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
-    train_dataset = MRIDataset(data_path=datapath, split='train')
+    train_dataset = MRIDataset(data_path=datapath, split='train', apply_augmentation=False)
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]
@@ -28,7 +40,9 @@ def run(cfg: DictConfig):
 
     train_loader = DataLoader(
         dataset=train_dataset,
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
+        pin_memory=True,  # Faster GPU transfer
+        collate_fn=gpu_collate_fn
     )
     # val_ram_loader = MRIRAMLoader(datapath, 'val')
     val_loader = DataLoader(
