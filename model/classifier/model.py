@@ -197,7 +197,7 @@ class Classifier(pl.LightningModule):
         scheduler = CosineAnnealingLR(
             optimizer,
             T_max=self.epochs,  # Total epochs
-            eta_min=1e-5
+            eta_min=1e-6
         )
         return {
             "optimizer": optimizer,
