@@ -234,6 +234,9 @@ mri_template = ants.image_read('template/stripped_cropped.nii')
 def mri_registration(path):
     # moving_image = ants.image_read('stripped.nii')
     moving_image = ants.image_read(path)
+    # TODO Add N4
+    # corrected_image = ants.n4_bias_field_correction(moving_image, shrink_factor=4, convergence={'iters': [50, 50, 50, 50], 'tol': 1e-7})
+    # TODO SyN pipline
     registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Rigid')
     return registration["warpedmovout"].numpy()
 
@@ -366,7 +369,7 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
     }
     # df = pd.read_csv("mri_labels.csv")
     df = pd.read_csv("dataset/mri.csv")
-
+    # TODO float32
     with h5py.File('mri_pet_label_v5_Rigid.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
@@ -515,10 +518,12 @@ def crop_image(img: np.ndarray) -> np.ndarray:
            starts[2]:starts[2] + crop_shape[2]]
 
 
+# TODO z-score normalization (mean=0, std=1)
 def normalize_image(img: np.ndarray) -> np.ndarray:
     # img = img.astype(np.float64) - img.min()
     img = np.maximum(img, 0)
     m = img.max()
+    # TODO img.astype(np.float32)
     return np.round((img.astype(np.float64) * 255) / m).astype(np.uint8)
 
 
