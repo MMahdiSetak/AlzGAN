@@ -32,7 +32,7 @@ def run(cfg: DictConfig):
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     # train_ram_loader = MRIRAMLoader(datapath, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
-    train_dataset = MRIDataset(data_path=datapath, split='train', apply_augmentation=False)
+    train_dataset = MRIDataset(data_path=datapath, split='train', apply_augmentation=True)
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]

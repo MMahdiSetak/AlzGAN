@@ -7,7 +7,7 @@ import torchio as tio
 
 
 class MRIDataset(Dataset):
-    def __init__(self, data_path, split, apply_augmentation=True):
+    def __init__(self, data_path, split, apply_augmentation=False):
         self.data_path = data_path
         self.split = split
         self.file = None
