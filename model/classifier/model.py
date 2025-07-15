@@ -1,17 +1,17 @@
-import numpy as np
+# import numpy as np
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
-import monai.transforms as T
-import torch.nn.functional as F
-
-from augmentation.random_transform import Compose3D, RandAffine3D
-from dataset import log_to_file_image, log_video
-from model.classifier.model_blocks import DualCNNBranch, Vision3DTransformer, CrossAttentionFusion
-from model.classifier.module import MRICNN, MRI3DViT, AlzheimerCNN3D
+# import monai.transforms as T
+# import torch.nn.functional as F
+#
+# from augmentation.random_transform import Compose3D, RandAffine3D
+# from dataset import log_to_file_image, log_video
+# from model.classifier.model_blocks import DualCNNBranch, Vision3DTransformer, CrossAttentionFusion
+from model.classifier.module import Simple3DCNN
 
 
 class Classifier(pl.LightningModule):
@@ -49,7 +49,8 @@ class Classifier(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, postfix="/train")
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
-        self.classifier = MRICNN(num_classes=3, dropout_rate=0.6, channels=32)
+        self.classifier = Simple3DCNN(input_size=(160, 192, 160), channels=[1, 32, 64, 128, 256], fc=128, num_classes=3,
+                                      dropout_rate=0.5)
         # self.classifier = AlzheimerCNN3D()
 
         # self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
@@ -81,10 +82,10 @@ class Classifier(pl.LightningModule):
         # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         # self.head = nn.Linear(embed_dim, num_classes)
 
-        self.train_transforms = Compose3D([
-            RandAffine3D(translate_range=(5, 5, 5), range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18,
-                         prob=0.5)
-        ])
+        # self.train_transforms = Compose3D([
+        #     RandAffine3D(translate_range=(5, 5, 5), range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18,
+        #                  prob=0.5)
+        # ])
 
         # self.train_transforms = T.Compose([
         #     T.RandRotate(range_x=np.pi / 18, range_y=np.pi / 18, range_z=np.pi / 18, prob=0.3),
@@ -151,8 +152,8 @@ class Classifier(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         mri, labels = batch
-        mri = mri.to(torch.float32).div_(255).unsqueeze_(1)
-        mri = self.train_transforms(mri)
+        # mri = mri.to(torch.float32).div_(255).unsqueeze_(1)
+        # mri = self.train_transforms(mri)
         bs = len(labels)
         outputs = self(mri)
         loss = self.classification_loss(outputs, labels)
@@ -167,7 +168,7 @@ class Classifier(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
-        inputs = inputs.to(torch.float32).div_(255).unsqueeze_(1)
+        # inputs = inputs.to(torch.float32).div_(255).unsqueeze_(1)
         # inputs = inputs.unsqueeze(1).div_(127.5).sub_(1)
         # inputs = F.interpolate(inputs, size=(128, 128, 128), mode='trilinear', align_corners=False)
         bs = len(labels)
@@ -179,7 +180,7 @@ class Classifier(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         inputs, labels = batch
-        inputs = inputs.to(torch.float32).div_(255).unsqueeze_(1)
+        # inputs = inputs.to(torch.float32).div_(255).unsqueeze_(1)
         # inputs = inputs.unsqueeze(1).div_(127.5).sub_(1)
         # inputs = F.interpolate(inputs, size=(128, 128, 128), mode='trilinear', align_corners=False)
         bs = len(labels)
