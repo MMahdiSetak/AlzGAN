@@ -19,6 +19,7 @@ class MRIDataset(Dataset):
         base_transforms = [
             # tio.ZNormalization(masking_method=tio.ZNormalization.mean),  # Z-score normalization
             tio.ZNormalization(masking_method=lambda x: x > 0),  # Z-score normalization
+            tio.Resize(target_shape=(80, 96, 80)),
         ]
         if not self.apply_augmentation:
             # return None
@@ -46,7 +47,8 @@ class MRIDataset(Dataset):
                 ): 0.25,
                 # No augmentation
                 tio.Lambda(lambda x: x): 0.1
-            })
+            }),
+            tio.Resize(target_shape=(80, 96, 80)),
         ]
         return tio.Compose(base_transforms + augmentation_transforms)
 
