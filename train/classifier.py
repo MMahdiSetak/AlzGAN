@@ -82,9 +82,9 @@ def run(cfg: DictConfig):
         enable_checkpointing=False,
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    test_ram_loader = MRIRAMLoader(datapath, 'test')
+    # test_ram_loader = MRIRAMLoader(datapath, 'test')
     test_loader = DataLoader(
-        dataset=FastMRIDataset(*test_ram_loader.get_data()),
+        dataset=MRIDataset(data_path=datapath, split='test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
     )
     trainer.test(model=model, dataloaders=test_loader)

@@ -113,7 +113,7 @@ class Generator(nn.Module):
 
 
 class Simple3DCNN(nn.Module):
-    def __init__(self, input_size=(160, 192, 160), channels=None, fc=128, num_classes=3, dropout_rate=0.5):
+    def __init__(self, input_size=(160, 192, 160), channels=None, fc=128, num_classes=3, dropout_rate=0.3):
         super(Simple3DCNN, self).__init__()
 
         if channels is None:
@@ -124,7 +124,7 @@ class Simple3DCNN(nn.Module):
             layers.append(nn.BatchNorm3d(channels[i + 1]))
             layers.append(nn.ReLU(inplace=True))
             layers.append(nn.MaxPool3d(kernel_size=2, stride=2))
-            layers.append(nn.Dropout3d(dropout_rate))
+            layers.append(nn.Dropout3d(dropout_rate / 2))
 
         flatten_size = input_size[0] * input_size[1] * input_size[2] * channels[-1] // (8 ** (len(channels) - 1))
 

@@ -50,7 +50,7 @@ class Classifier(pl.LightningModule):
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
         self.classifier = Simple3DCNN(input_size=(80, 96, 80), channels=[1, 32, 64, 128, 256], fc=128, num_classes=3,
-                                      dropout_rate=0.5)
+                                      dropout_rate=0.4)
         # self.classifier = AlzheimerCNN3D()
 
         # self.mri_vit = MRI3DViT(image_size=image_size, patch_size=patch_size, embed_dim=embed_dim, depth=vit_depth,
@@ -197,7 +197,7 @@ class Classifier(pl.LightningModule):
         scheduler = CosineAnnealingLR(
             optimizer,
             T_max=self.epochs,  # Total epochs
-            eta_min=1e-6
+            eta_min=1e-5
         )
         return {
             "optimizer": optimizer,
