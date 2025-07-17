@@ -72,7 +72,7 @@ def run(cfg: DictConfig):
         accelerator="auto",
         # strategy="fsdp",
         # TODO make it config
-        devices=[0],
+        devices=[0, 1],
         # overfit_batches=3,
         val_check_interval=1.0,
         logger=logger,
