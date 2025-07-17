@@ -8,7 +8,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from model.classifier.model import Classifier
-from model.dataloader import SimpleMRIDataset
+from model.dataloader import MRIDataset
 
 
 # Custom collate function for GPU optimization
@@ -33,7 +33,7 @@ def run(cfg: DictConfig):
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     # train_ram_loader = MRIRAMLoader(datapath, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
-    train_dataset = SimpleMRIDataset(data_path=datapath, split='train')
+    train_dataset = MRIDataset(data_path=datapath, split='train')
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]
@@ -48,7 +48,7 @@ def run(cfg: DictConfig):
     # val_ram_loader = MRIRAMLoader(datapath, 'val')
     val_loader = DataLoader(
         # dataset=FastMRIDataset(*val_ram_loader.get_data()),
-        dataset=SimpleMRIDataset(data_path=datapath, split='val'),
+        dataset=MRIDataset(data_path=datapath, split='val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
         collate_fn=monai.data.list_data_collate
     )
@@ -86,7 +86,7 @@ def run(cfg: DictConfig):
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     # test_ram_loader = MRIRAMLoader(datapath, 'test')
     test_loader = DataLoader(
-        dataset=SimpleMRIDataset(data_path=datapath, split='test'),
+        dataset=MRIDataset(data_path=datapath, split='test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
         collate_fn=monai.data.list_data_collate
     )
