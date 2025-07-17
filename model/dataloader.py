@@ -84,7 +84,7 @@ class MRIDataset(Dataset):
         # label_tensor = torch.tensor(self.labels[index], dtype=torch.long)
 
         mri_tensor = self.mri_images[index].type(torch.float32).unsqueeze(0)
-        label_tensor = torch.tensor(self.labels[index], dtype=torch.long)
+        label_tensor = self.labels[index]
 
         # Apply augmentation if enabled
         if self.augmentation_transform is not None:

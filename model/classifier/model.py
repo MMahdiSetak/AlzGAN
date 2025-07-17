@@ -107,14 +107,14 @@ class Classifier(pl.LightningModule):
         return out
 
     def training_step(self, batch, batch_idx):
-        mri, labels = self._apply_transform_per_sample(batch, self.train_transform)
+        # mri, labels = self._apply_transform_per_sample(batch, self.train_transform)
 
         # mri, labels = self._apply_transform_per_sample(batch, self.train_transform)
         # batch = self.train_transform(batch)
         # mri = batch['mri']
         # labels = batch['label']
 
-        # mri, labels = batch
+        mri, labels = batch
         bs = len(labels)
         outputs = self(mri)
         loss = self.classification_loss(outputs, labels)
@@ -128,11 +128,11 @@ class Classifier(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        inputs, labels = self._apply_transform_per_sample(batch, self.val_test_transform)
+        # inputs, labels = self._apply_transform_per_sample(batch, self.val_test_transform)
         # batch = self.val_test_transform(batch)
         # inputs = batch['mri']
         # labels = batch['label']
-        # inputs, labels = batch
+        inputs, labels = batch
         bs = len(labels)
         outputs = self(inputs)
         loss = self.classification_loss(outputs, labels)
@@ -141,11 +141,11 @@ class Classifier(pl.LightningModule):
         self.log('loss/val', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
-        inputs, labels = self._apply_transform_per_sample(batch, self.val_test_transform)
+        # inputs, labels = self._apply_transform_per_sample(batch, self.val_test_transform)
         # batch = self.val_test_transform(batch)
         # inputs = batch['mri']
         # labels = batch['label']
-        # inputs, labels = batch
+        inputs, labels = batch
         bs = len(labels)
         outputs = self(inputs)
         metrics = self.test_metrics(outputs, labels)
