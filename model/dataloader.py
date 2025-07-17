@@ -131,7 +131,12 @@ class SimpleMRIDataset(Dataset):
             self.file = h5py.File(self.data_path, 'r')
             self.mri_images = self.file[f'mri_{self.split}']
             self.labels = self.file[f'label_{self.split}']
-        return self.mri_images[index], self.labels[index]
+
+        mri_tensor = torch.from_numpy(self.mri_images[index].astype(np.float32)).unsqueeze(0)
+        label_tensor = torch.tensor(self.labels[index], dtype=torch.long)
+
+        return {'mri': mri_tensor, 'label': label_tensor}
+        # return self.mri_images[index], self.labels[index]
 
 
 class MRIRAMLoader:

@@ -1,4 +1,5 @@
 import hydra
+import monai
 import torch
 import pytorch_lightning as pl
 from omegaconf import DictConfig
@@ -7,19 +8,19 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from model.classifier.model import Classifier
-from model.dataloader import MRIRAMLoader, FastMRIDataset, MRIDataset
+from model.dataloader import SimpleMRIDataset
 
 
 # Custom collate function for GPU optimization
-def gpu_collate_fn(batch):
-    """Custom collate function for efficient GPU transfer"""
-    images, labels = zip(*batch)
-
-    # Stack tensors
-    images = torch.stack(images, dim=0)
-    labels = torch.stack(labels, dim=0)
-
-    return images, labels
+# def gpu_collate_fn(batch):
+#     """Custom collate function for efficient GPU transfer"""
+#     images, labels = zip(*batch)
+#
+#     # Stack tensors
+#     images = torch.stack(images, dim=0)
+#     labels = torch.stack(labels, dim=0)
+#
+#     return images, labels
 
 
 @hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
@@ -32,7 +33,7 @@ def run(cfg: DictConfig):
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     # train_ram_loader = MRIRAMLoader(datapath, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
-    train_dataset = MRIDataset(data_path=datapath, split='train', apply_augmentation=True)
+    train_dataset = SimpleMRIDataset(data_path=datapath, split='train')
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]
@@ -42,13 +43,14 @@ def run(cfg: DictConfig):
         dataset=train_dataset,
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
         pin_memory=True,  # Faster GPU transfer
-        collate_fn=gpu_collate_fn
+        collate_fn=monai.data.list_data_collate
     )
     # val_ram_loader = MRIRAMLoader(datapath, 'val')
     val_loader = DataLoader(
         # dataset=FastMRIDataset(*val_ram_loader.get_data()),
-        dataset=MRIDataset(data_path=datapath, split='val'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
+        dataset=SimpleMRIDataset(data_path=datapath, split='val'),
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
+        collate_fn=monai.data.list_data_collate
     )
     model = Classifier(lr=lr, class_weights=weight_tensor, epochs=cfg.max_epoch)
     checkpoint_callback = ModelCheckpoint(
@@ -70,7 +72,7 @@ def run(cfg: DictConfig):
         accelerator="auto",
         # strategy="fsdp",
         # TODO make it config
-        devices=[0, 1],
+        devices=[0],
         # overfit_batches=3,
         val_check_interval=1.0,
         logger=logger,
@@ -84,7 +86,8 @@ def run(cfg: DictConfig):
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     # test_ram_loader = MRIRAMLoader(datapath, 'test')
     test_loader = DataLoader(
-        dataset=MRIDataset(data_path=datapath, split='test'),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+        dataset=SimpleMRIDataset(data_path=datapath, split='test'),
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+        collate_fn=monai.data.list_data_collate
     )
     trainer.test(model=model, dataloaders=test_loader)
