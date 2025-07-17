@@ -7,10 +7,11 @@ import torchio as tio
 
 
 class MRIDataset(Dataset):
-    def __init__(self, data_path, split, apply_augmentation=False):
-        self.data_path = data_path
+    def __init__(self, mri, labels, split, apply_augmentation=False):
+        # self.data_path = data_path
+        self.mri_images, self.labels = mri, labels
         self.split = split
-        self.file = None
+        # self.file = None
         self.apply_augmentation = apply_augmentation and (split == 'train')
         self.augmentation_transform = self._create_augmentation_pipeline()
 
@@ -27,7 +28,6 @@ class MRIDataset(Dataset):
 
         # Single augmentation approach - apply one technique at a time
         augmentation_transforms = [
-            # Always include horizontal flip (most effective and safe)
             tio.RandomFlip(axes='LR', p=0.5),
             # Primary augmentations (choose one per batch)
             tio.OneOf({
@@ -53,18 +53,20 @@ class MRIDataset(Dataset):
         return tio.Compose(base_transforms + augmentation_transforms)
 
     def __len__(self):
-        if self.file is None:
-            with h5py.File(self.data_path, 'r') as f:
-                return len(f[f'label_{self.split}'])
-        return len(self.file[f'label_{self.split}'])
+        # if self.file is None:
+        #     with h5py.File(self.data_path, 'r') as f:
+        #         return len(f[f'label_{self.split}'])
+        # return len(self.file[f'label_{self.split}'])
+        return len(self.labels)
 
     def get_class_weights(self):
         """
         Calculate class weights based on inverse frequency of labels.
         Returns a dictionary mapping class labels to their weights.
         """
-        with h5py.File(self.data_path, 'r') as f:
-            labels = f[f'label_{self.split}'][:]
+        # with h5py.File(self.data_path, 'r') as f:
+        #     labels = f[f'label_{self.split}'][:]
+        labels = self.labels[:]
 
         unique, counts = np.unique(labels, return_counts=True)
         total_samples = len(labels)
@@ -73,12 +75,15 @@ class MRIDataset(Dataset):
         return class_weights
 
     def __getitem__(self, index):
-        if self.file is None:
-            self.file = h5py.File(self.data_path, 'r')
-            self.mri_images = self.file[f'mri_{self.split}']
-            self.labels = self.file[f'label_{self.split}']
+        # if self.file is None:
+        #     self.file = h5py.File(self.data_path, 'r')
+        #     self.mri_images = self.file[f'mri_{self.split}']
+        #     self.labels = self.file[f'label_{self.split}']
 
-        mri_tensor = torch.from_numpy(self.mri_images[index].astype(np.float32)).unsqueeze(0)
+        # mri_tensor = torch.from_numpy(self.mri_images[index].astype(np.float32)).unsqueeze(0)
+        # label_tensor = torch.tensor(self.labels[index], dtype=torch.long)
+
+        mri_tensor = self.mri_images[index].type(torch.float32).unsqueeze(0)
         label_tensor = torch.tensor(self.labels[index], dtype=torch.long)
 
         # Apply augmentation if enabled
