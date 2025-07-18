@@ -368,9 +368,9 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
         'test': count_pair_images(test_subj, mri_path=mri_path, pet_path=pet_path),
     }
     # df = pd.read_csv("mri_labels.csv")
-    df = pd.read_csv("dataset/mri.csv")
+    # df = pd.read_csv("dataset/mri.csv")
     # TODO float32
-    with h5py.File('mri_pet_label_v5_Rigid.hdf5', 'w') as h5f:
+    with h5py.File('mri_pet_label_v5.1_Rigid.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
             'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
@@ -380,9 +380,9 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
             'pet_val': h5f.create_dataset('pet_val', (split_num['val'], *pet_target), dtype='uint8'),
             'pet_test': h5f.create_dataset('pet_test', (split_num['test'], *pet_target), dtype='uint8'),
 
-            'label_train': h5f.create_dataset('label_train', (split_num['train'],), dtype='int'),
-            'label_val': h5f.create_dataset('label_val', (split_num['val'],), dtype='int'),
-            'label_test': h5f.create_dataset('label_test', (split_num['test'],), dtype='int'),
+            # 'label_train': h5f.create_dataset('label_train', (split_num['train'],), dtype='int'),
+            # 'label_val': h5f.create_dataset('label_val', (split_num['val'],), dtype='int'),
+            # 'label_test': h5f.create_dataset('label_test', (split_num['test'],), dtype='int'),
         }
 
         for split, subjects in tqdm(subj_split.items(), leave=False):
@@ -427,10 +427,10 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
 
                         pair_log(mri_image, pet_image, mri_img_id)
 
-                        label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
+                        # label = df.loc[df['Image Data ID'] == mri_img_id].iloc[0]['Group']
                         ds[f'mri_{split}'][indices[current_index]] = mri_image
                         ds[f'pet_{split}'][indices[current_index]] = pet_image
-                        ds[f'label_{split}'][indices[current_index]] = group_mapping[label]
+                        # ds[f'label_{split}'][indices[current_index]] = group_mapping[label]
                         current_index += 1
 
     print(current_index)
