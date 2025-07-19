@@ -67,6 +67,7 @@ def run(cfg: DictConfig):
 
     logger = TensorBoardLogger(save_dir="./log", name="vq_gan_mri")
     trainer = pl.Trainer(
+        num_sanity_val_steps=0,
         accumulate_grad_batches=cfg.accumulate_grad_batches,
         # default_root_dir=cfg.default_root_dir,
         logger=logger,
@@ -75,7 +76,7 @@ def run(cfg: DictConfig):
         max_epochs=cfg.max_epochs,
         precision=cfg.precision,
         accelerator='auto',
-        strategy=DDPStrategy(find_unused_parameters=True)
+        # strategy=DDPStrategy(find_unused_parameters=True)
     )
 
     # data_loader = DataLoader('dataset/mri_pet_label_v3.hdf5', bs)

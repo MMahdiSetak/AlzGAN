@@ -79,12 +79,12 @@ class VQGAN(pl.LightningModule):
         elif cfg.disc_loss_type == 'hinge':
             self.disc_loss = hinge_d_loss
 
-        self.perceptual_model = LPIPS().eval()
-
         self.image_gan_weight = cfg.image_gan_weight
         self.video_gan_weight = cfg.video_gan_weight
 
         self.perceptual_weight = cfg.perceptual_weight
+        if self.perceptual_weight > 0:
+            self.perceptual_model = LPIPS().eval()
 
         self.l1_weight = cfg.l1_weight
         self.save_hyperparameters()
@@ -221,8 +221,11 @@ class VQGAN(pl.LightningModule):
                      logger=True, on_step=True, on_epoch=True)
             return discloss
 
-        perceptual_loss = self.perceptual_model(
-            frames, frames_recon) * self.perceptual_weight
+        if self.perceptual_weight > 0:
+            perceptual_loss = self.perceptual_model(
+                frames, frames_recon) * self.perceptual_weight
+        else:
+            perceptual_loss = None
         return recon_loss, x_recon, vq_output, perceptual_loss
 
     def training_step(self, batch, batch_idx):
