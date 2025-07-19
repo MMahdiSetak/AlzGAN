@@ -76,6 +76,7 @@ def run(cfg: DictConfig):
         max_epochs=cfg.max_epochs,
         precision=cfg.precision,
         accelerator='auto',
+        devices=[0],
         # strategy=DDPStrategy(find_unused_parameters=True)
     )
 
