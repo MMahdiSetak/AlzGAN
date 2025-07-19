@@ -67,20 +67,20 @@ class VQGAN(pl.LightningModule):
         self.codebook = Codebook(cfg.n_codes, cfg.embedding_dim,
                                  no_random_restart=cfg.no_random_restart, restart_thres=cfg.restart_thres)
 
-        self.gan_feat_weight = cfg.gan_feat_weight
-        # TODO: Changed batchnorm from sync to normal
-        self.image_discriminator = NLayerDiscriminator(
-            cfg.image_channels, cfg.disc_channels, cfg.disc_layers, norm_layer=nn.BatchNorm2d)
-        self.video_discriminator = NLayerDiscriminator3D(
-            cfg.image_channels, cfg.disc_channels, cfg.disc_layers, norm_layer=nn.BatchNorm3d)
-
-        if cfg.disc_loss_type == 'vanilla':
-            self.disc_loss = vanilla_d_loss
-        elif cfg.disc_loss_type == 'hinge':
-            self.disc_loss = hinge_d_loss
-
-        self.image_gan_weight = cfg.image_gan_weight
-        self.video_gan_weight = cfg.video_gan_weight
+        # self.gan_feat_weight = cfg.gan_feat_weight
+        # # TODO: Changed batchnorm from sync to normal
+        # self.image_discriminator = NLayerDiscriminator(
+        #     cfg.image_channels, cfg.disc_channels, cfg.disc_layers, norm_layer=nn.BatchNorm2d)
+        # self.video_discriminator = NLayerDiscriminator3D(
+        #     cfg.image_channels, cfg.disc_channels, cfg.disc_layers, norm_layer=nn.BatchNorm3d)
+        #
+        # if cfg.disc_loss_type == 'vanilla':
+        #     self.disc_loss = vanilla_d_loss
+        # elif cfg.disc_loss_type == 'hinge':
+        #     self.disc_loss = hinge_d_loss
+        #
+        # self.image_gan_weight = cfg.image_gan_weight
+        # self.video_gan_weight = cfg.video_gan_weight
 
         self.perceptual_weight = cfg.perceptual_weight
         if self.perceptual_weight > 0:
@@ -230,11 +230,13 @@ class VQGAN(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         # x = batch['data']
-        opt_ae, opt_disc = self.optimizers()
+        # opt_ae, opt_disc = self.optimizers()
 
         # --- Generator update ---
         # Compute generator losses
-        recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(batch, optimizer_idx=0)
+        # recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(batch, optimizer_idx=0)
+        recon_loss, _, _, _ = self.forward(batch)
+        return recon_loss
         commitment_loss = vq_output['commitment_loss']
         loss_gen = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
 
@@ -259,7 +261,8 @@ class VQGAN(pl.LightningModule):
         # x = batch['data']  # TODO: batch['stft']
         recon_loss, _, vq_output, perceptual_loss = self.forward(batch)
         self.log('val/recon_loss', recon_loss, prog_bar=True)
-        self.log('val/perceptual_loss', perceptual_loss.mean(), prog_bar=True)
+        if self.perceptual_weight > 0:
+            self.log('val/perceptual_loss', perceptual_loss.mean(), prog_bar=True)
         self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)
         self.log('val/commitment_loss',
                  vq_output['commitment_loss'], prog_bar=True)
@@ -272,10 +275,11 @@ class VQGAN(pl.LightningModule):
                                   list(self.post_vq_conv.parameters()) +
                                   list(self.codebook.parameters()),
                                   lr=lr, betas=(0.5, 0.9))
-        opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters()) +
-                                    list(self.video_discriminator.parameters()),
-                                    lr=lr, betas=(0.5, 0.9))
-        return [opt_ae, opt_disc]
+        # opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters()) +
+        #                             list(self.video_discriminator.parameters()),
+        #                             lr=lr, betas=(0.5, 0.9))
+        # return [opt_ae, opt_disc]
+        return opt_ae
 
     def log_images(self, batch, **kwargs):
         log = dict()
