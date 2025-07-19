@@ -4,6 +4,7 @@ import os
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.strategies import DDPStrategy
 from torch.utils.data import DataLoader
 
 from model.dataloader import VQGANDataset
@@ -74,6 +75,7 @@ def run(cfg: DictConfig):
         max_epochs=cfg.max_epochs,
         precision=cfg.precision,
         accelerator='auto',
+        strategy=DDPStrategy(find_unused_parameters=True)
     )
 
     # data_loader = DataLoader('dataset/mri_pet_label_v3.hdf5', bs)
