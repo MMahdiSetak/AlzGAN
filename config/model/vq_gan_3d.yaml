@@ -1,7 +1,7 @@
 seed: 1234
 batch_size: 1
 num_workers: 16
-dataset: 'dataset/mri_pet_label_v5.hdf5'
+dataset: 'dataset/mri_label_v5.1_Rigid.hdf5'
 image_channels: 1
 
 gpus: 1
@@ -15,7 +15,7 @@ precision: 16-mixed
 gradient_clip_val: 1.0
 
 
-embedding_dim: 64
+embedding_dim: 32
 n_codes: 2048
 n_hiddens: 16
 lr: 3e-4
@@ -34,6 +34,6 @@ restart_thres: 1.0
 no_random_restart: False
 norm_type: group
 padding_type: replicate
-num_groups: 32
+num_groups: 16
 
 

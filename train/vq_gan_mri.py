@@ -6,7 +6,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
-from model.dataloader import MRI2PETDataset, VQGANDataset
+from model.dataloader import VQGANDataset
 from model.vq_gan_3d.vqgan import VQGAN
 from train.callbacks import ImageLogger, VideoLogger
 import hydra

@@ -309,24 +309,33 @@ class Encoder(nn.Module):
     def __init__(self, n_hiddens, downsample, image_channel=3, norm_type='group', padding_type='replicate',
                  num_groups=32):
         super().__init__()
-        n_times_downsample = np.array([int(math.log2(d)) for d in downsample])
+        # n_times_downsample = np.array([int(math.log2(d)) for d in downsample])
         self.conv_blocks = nn.ModuleList()
-        max_ds = n_times_downsample.max()
+        # max_ds = n_times_downsample.max()
 
         self.conv_first = SamePadConv3d(
             image_channel, n_hiddens, kernel_size=3, padding_type=padding_type)
 
-        for i in range(max_ds):
-            block = nn.Module()
-            in_channels = n_hiddens * 2 ** i
-            out_channels = n_hiddens * 2 ** (i + 1)
-            stride = tuple([2 if d > 0 else 1 for d in n_times_downsample])
-            block.down = SamePadConv3d(
-                in_channels, out_channels, 4, stride=stride, padding_type=padding_type)
-            block.res = ResBlock(
-                out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-            self.conv_blocks.append(block)
-            n_times_downsample -= 1
+        # for i in range(max_ds):
+        #     block = nn.Module()
+        #     in_channels = n_hiddens * 2 ** i
+        #     out_channels = n_hiddens * 2 ** (i + 1)
+        #     stride = tuple([2 if d > 0 else 1 for d in n_times_downsample])
+        #     block.down = SamePadConv3d(
+        #         in_channels, out_channels, 4, stride=stride, padding_type=padding_type)
+        #     block.res = ResBlock(
+        #         out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        #     self.conv_blocks.append(block)
+        #     n_times_downsample -= 1
+
+        block = nn.Module()
+        in_channels = n_hiddens
+        out_channels = n_hiddens * 2
+        block.down = SamePadConv3d(
+            in_channels, out_channels, 5, stride=(5, 3, 5), padding_type=padding_type)
+        block.res = ResBlock(
+            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        self.conv_blocks.append(block)
 
         self.final_block = nn.Sequential(
             Normalize(out_channels, norm_type, num_groups=num_groups),
@@ -348,29 +357,41 @@ class Decoder(nn.Module):
     def __init__(self, n_hiddens, upsample, image_channel, norm_type='group', num_groups=32):
         super().__init__()
 
-        n_times_upsample = np.array([int(math.log2(d)) for d in upsample])
-        max_us = n_times_upsample.max()
+        # n_times_upsample = np.array([int(math.log2(d)) for d in upsample])
+        # max_us = n_times_upsample.max()
 
-        in_channels = n_hiddens * 2 ** max_us
+        # in_channels = n_hiddens * 2 ** max_us
+        in_channels = n_hiddens * 2
         self.final_block = nn.Sequential(
             Normalize(in_channels, norm_type, num_groups=num_groups),
             SiLU()
         )
 
         self.conv_blocks = nn.ModuleList()
-        for i in range(max_us):
-            block = nn.Module()
-            in_channels = in_channels if i == 0 else n_hiddens * 2 ** (max_us - i + 1)
-            out_channels = n_hiddens * 2 ** (max_us - i)
-            us = tuple([2 if d > 0 else 1 for d in n_times_upsample])
-            block.up = SamePadConvTranspose3d(
-                in_channels, out_channels, 4, stride=us)
-            block.res1 = ResBlock(
-                out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-            block.res2 = ResBlock(
-                out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-            self.conv_blocks.append(block)
-            n_times_upsample -= 1
+        # for i in range(max_us):
+        #     block = nn.Module()
+        #     in_channels = in_channels if i == 0 else n_hiddens * 2 ** (max_us - i + 1)
+        #     out_channels = n_hiddens * 2 ** (max_us - i)
+        #     us = tuple([2 if d > 0 else 1 for d in n_times_upsample])
+        #     block.up = SamePadConvTranspose3d(
+        #         in_channels, out_channels, 4, stride=us)
+        #     block.res1 = ResBlock(
+        #         out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        #     block.res2 = ResBlock(
+        #         out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        #     self.conv_blocks.append(block)
+        #     n_times_upsample -= 1
+
+        block = nn.Module()
+        out_channels = n_hiddens
+        # block.up = SamePadConvTranspose3d(in_channels, out_channels, 5, stride=(5, 3, 5))
+        block.up = nn.ConvTranspose3d(in_channels, out_channels, 5, stride=(5, 3, 5), padding=1,
+                                      output_padding=(2, 0, 2))
+        block.res1 = ResBlock(
+            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        block.res2 = ResBlock(
+            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        self.conv_blocks.append(block)
 
         self.conv_last = SamePadConv3d(
             out_channels, image_channel, kernel_size=3)
