@@ -62,11 +62,11 @@ class VQGAN(pl.LightningModule):
         self.decoder = Decoder(
             cfg.n_hiddens, cfg.downsample, cfg.image_channels, cfg.norm_type,
             cfg.num_groups)
-        self.enc_out_ch = self.encoder.out_channels
-        self.pre_vq_conv = SamePadConv3d(
-            self.enc_out_ch, cfg.embedding_dim, 1, padding_type=cfg.padding_type)
-        self.post_vq_conv = SamePadConv3d(
-            cfg.embedding_dim, self.enc_out_ch, 1)
+        # self.enc_out_ch = self.encoder.out_channels
+        # self.pre_vq_conv = SamePadConv3d(
+        #     self.enc_out_ch, cfg.embedding_dim, 1, padding_type=cfg.padding_type)
+        # self.post_vq_conv = SamePadConv3d(
+        #     cfg.embedding_dim, self.enc_out_ch, 1)
 
         self.save_hyperparameters()
 
@@ -110,9 +110,9 @@ class VQGAN(pl.LightningModule):
     def configure_optimizers(self):
         lr = self.cfg.lr
         opt_ae = torch.optim.Adam(list(self.encoder.parameters()) +
-                                  list(self.decoder.parameters()) +
-                                  list(self.pre_vq_conv.parameters()) +
-                                  list(self.post_vq_conv.parameters()),
+                                  list(self.decoder.parameters()), # +
+                                  # list(self.pre_vq_conv.parameters()) +
+                                  # list(self.post_vq_conv.parameters()),
                                   lr=lr, betas=(0.5, 0.9))
 
         return opt_ae
