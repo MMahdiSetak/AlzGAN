@@ -33,11 +33,11 @@ class VQGAN(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, prefix="train/")
         self.val_metrics = MetricCollection(metrics, prefix="val/")
 
-    def configure_model(self):
-        """Called before fit/validate/test/predict"""
-        if hasattr(torch, 'compile'):
-            self.encoder = torch.compile(self.encoder, mode='reduce-overhead')
-            self.decoder = torch.compile(self.decoder, mode='reduce-overhead')
+    # def configure_model(self):
+    #     """Called before fit/validate/test/predict"""
+    #     if hasattr(torch, 'compile'):
+    #         self.encoder = torch.compile(self.encoder, mode='reduce-overhead')
+    #         self.decoder = torch.compile(self.decoder, mode='reduce-overhead')
 
     def forward(self, x):
         z = self.encoder(x)

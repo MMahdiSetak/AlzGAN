@@ -71,7 +71,8 @@ def run(cfg: DictConfig):
         precision=cfg.precision,
         accelerator='auto',
         # devices=[0],
-        # strategy=DDPStrategy(find_unused_parameters=True)
+        sync_batchnorm=True,
+        strategy=DDPStrategy(find_unused_parameters=False)
     )
 
     # data_loader = DataLoader('dataset/mri_pet_label_v3.hdf5', bs)
