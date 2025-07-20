@@ -72,6 +72,7 @@ def run(cfg: DictConfig):
         # overfit_batches=5,
         # default_root_dir=cfg.default_root_dir,
         logger=logger,
+        log_every_n_steps=5,
         callbacks=callbacks,
         # max_steps=cfg.max_steps,
         max_epochs=cfg.max_epochs,

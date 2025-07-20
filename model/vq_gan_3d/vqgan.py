@@ -2,52 +2,8 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchmetrics import Metric
 from torchmetrics import MeanSquaredError, MeanAbsoluteError, MetricCollection
-from torchmetrics.image import PeakSignalNoiseRatio
-from monai.metrics import SSIMMetric
-
-
-class MonaiSSIM3D(Metric):
-    def __init__(self, data_range=2.0):
-        super().__init__()
-        self.ssim = SSIMMetric(spatial_dims=3, data_range=data_range)
-        self.add_state("sum_metric", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("num_observations", default=torch.tensor(0), dist_reduce_fx="sum")
-
-    def update(self, preds: torch.Tensor, target: torch.Tensor):
-        batch_ssim = self.ssim(preds, target)
-        self.sum_metric += batch_ssim
-        self.num_observations += 1
-
-    def compute(self):
-        return self.sum_metric / self.num_observations if self.num_observations > 0 else torch.tensor(0.0)
-
-
-def silu(x):
-    return x * torch.sigmoid(x)
-
-
-class SiLU(nn.Module):
-    def __init__(self):
-        super(SiLU, self).__init__()
-
-    def forward(self, x):
-        return silu(x)
-
-
-def hinge_d_loss(logits_real, logits_fake):
-    loss_real = torch.mean(F.relu(1. - logits_real))
-    loss_fake = torch.mean(F.relu(1. + logits_fake))
-    d_loss = 0.5 * (loss_real + loss_fake)
-    return d_loss
-
-
-def vanilla_d_loss(logits_real, logits_fake):
-    d_loss = 0.5 * (
-            torch.mean(torch.nn.functional.softplus(-logits_real)) +
-            torch.mean(torch.nn.functional.softplus(logits_fake)))
-    return d_loss
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
 
 class VQGAN(pl.LightningModule):
@@ -76,7 +32,7 @@ class VQGAN(pl.LightningModule):
             "MAE": MeanAbsoluteError(),
             "MSE": MeanSquaredError(),
             "PSNR": PeakSignalNoiseRatio(data_range=2),
-            "SSIM": MonaiSSIM3D(data_range=2),
+            "SSIM": StructuralSimilarityIndexMeasure(data_range=2)
         }
         self.train_metrics = MetricCollection(metrics, prefix="train/")
         self.val_metrics = MetricCollection(metrics, prefix="val/")
@@ -102,12 +58,11 @@ class VQGAN(pl.LightningModule):
         return recon_loss
 
     def validation_step(self, batch, batch_idx):
-        recon_loss, x_recon, vq_output, perceptual_loss = self.forward(batch)
+        recon_loss, x_recon, vq_output = self.forward(batch)
         metrics = self.val_metrics(x_recon, batch)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch.shape[0])
         self.log('val/recon_loss', recon_loss, prog_bar=True)
-        if self.perceptual_weight > 0:
-            self.log('val/perceptual_loss', perceptual_loss.mean(), prog_bar=True)
+        return recon_loss
 
     def configure_optimizers(self):
         lr = self.cfg.lr
@@ -164,7 +119,7 @@ class Encoder(nn.Module):
 
         self.final_block = nn.Sequential(
             Normalize(out_channels, norm_type, num_groups=num_groups),
-            SiLU()
+            nn.SiLU()
         )
 
         self.out_channels = out_channels
@@ -184,7 +139,7 @@ class Decoder(nn.Module):
         in_channels = n_hiddens * 2
         self.final_block = nn.Sequential(
             Normalize(in_channels, norm_type, num_groups=num_groups),
-            SiLU()
+            nn.SiLU()
         )
 
         self.conv_blocks = nn.ModuleList()
@@ -235,10 +190,10 @@ class ResBlock(nn.Module):
     def forward(self, x):
         h = x
         h = self.norm1(h)
-        h = silu(h)
+        h = F.silu(h)
         h = self.conv1(h)
         h = self.norm2(h)
-        h = silu(h)
+        h = F.silu(h)
         h = self.conv2(h)
 
         if self.in_channels != self.out_channels:
