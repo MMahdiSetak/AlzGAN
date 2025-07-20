@@ -20,16 +20,8 @@ def run(cfg: DictConfig):
     batch_size = cfg.batch_size
     num_workers = cfg.num_workers
     datapath = cfg.dataset
-    # automatically adjust learning rate
-    bs, base_lr, ngpu, accumulate = batch_size, cfg.lr, cfg.gpus, cfg.accumulate_grad_batches
-    with open_dict(cfg):
-        cfg.lr = accumulate * (ngpu / 8.) * (bs / 4.) * base_lr
-    print(
-        "Setting learning rate to {:.2e} = {} (accumulate_grad_batches) * {} (num_gpus/8) * {} (batchsize/4) * {:.2e} (base_lr)".format(
-            cfg.lr, accumulate, ngpu / 8, bs / 4, base_lr))
 
     model = VQGAN(cfg)
-
     callbacks = []
     # callbacks.append(ModelCheckpoint(monitor='val/recon_loss',
     #                                  save_top_k=3, mode='min', filename='latest_checkpoint'))

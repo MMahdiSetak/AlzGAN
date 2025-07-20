@@ -2,6 +2,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchmetrics import MeanSquaredError, MeanAbsoluteError, MetricCollection
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
@@ -20,11 +21,6 @@ class VQGAN(pl.LightningModule):
         self.decoder = Decoder(
             cfg.n_hiddens, cfg.downsample, cfg.image_channels, cfg.norm_type,
             cfg.num_groups)
-        # self.enc_out_ch = self.encoder.out_channels
-        # self.pre_vq_conv = SamePadConv3d(
-        #     self.enc_out_ch, cfg.embedding_dim, 1, padding_type=cfg.padding_type)
-        # self.post_vq_conv = SamePadConv3d(
-        #     cfg.embedding_dim, self.enc_out_ch, 1)
 
         self.save_hyperparameters()
 
@@ -37,13 +33,19 @@ class VQGAN(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, prefix="train/")
         self.val_metrics = MetricCollection(metrics, prefix="val/")
 
+    def configure_model(self):
+        """Called before fit/validate/test/predict"""
+        if hasattr(torch, 'compile'):
+            self.encoder = torch.compile(self.encoder, mode='max-autotune')
+            self.decoder = torch.compile(self.decoder, mode='max-autotune')
+
     def forward(self, x, optimizer_idx=None, log_image=False):
         B, C, T, H, W = x.shape
         z = self.encoder(x)
         x_recon = self.decoder(z)
         recon_loss = F.l1_loss(x_recon, x)
         if log_image:
-            frame_idx = torch.randint(0, T, [B]).cuda()
+            frame_idx = torch.randint(0, T, [B], device=x.device)
             frame_idx_selected = frame_idx.reshape(-1,
                                                    1, 1, 1, 1).repeat(1, C, 1, H, W)
             frames = torch.gather(x, 2, frame_idx_selected).squeeze(2)
@@ -52,27 +54,45 @@ class VQGAN(pl.LightningModule):
         return recon_loss, x_recon, z
 
     def training_step(self, batch, batch_idx):
+        bs = batch.shape[0]
         recon_loss, x_recon, _ = self.forward(batch)
-        # metrics = self.train_metrics(x_recon, batch)
-        # self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch.shape[0])
+        if batch_idx == 0:
+            metrics = self.train_metrics(x_recon, batch)
+            self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+        lr = self.optimizers().param_groups[0]['lr']
+        self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
+        self.log('train/recon_loss', recon_loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         return recon_loss
 
     def validation_step(self, batch, batch_idx):
+        bs = batch.shape[0]
         recon_loss, x_recon, vq_output = self.forward(batch)
         metrics = self.val_metrics(x_recon, batch)
-        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch.shape[0])
-        self.log('val/recon_loss', recon_loss, prog_bar=True)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+        self.log('val/recon_loss', recon_loss, prog_bar=False, sync_dist=True)
         return recon_loss
 
     def configure_optimizers(self):
-        lr = self.cfg.lr
-        opt_ae = torch.optim.Adam(list(self.encoder.parameters()) +
-                                  list(self.decoder.parameters()),  # +
-                                  # list(self.pre_vq_conv.parameters()) +
-                                  # list(self.post_vq_conv.parameters()),
-                                  lr=lr, betas=(0.5, 0.9))
-
-        return opt_ae
+        optimizer = torch.optim.AdamW(
+            self.parameters(),
+            lr=self.cfg.lr,
+            betas=(0.5, 0.9),
+            fused=True
+        )
+        scheduler = CosineAnnealingLR(
+            optimizer,
+            T_max=self.cfg.max_epochs,  # Total epochs
+            eta_min=1e-5
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "val_loss",
+                "interval": "epoch",
+                "frequency": 1,
+            }
+        }
 
     def log_images(self, batch, **kwargs):
         log = dict()
@@ -195,10 +215,8 @@ class ResBlock(nn.Module):
         h = self.norm2(h)
         h = F.silu(h)
         h = self.conv2(h)
-
         if self.in_channels != self.out_channels:
             x = self.conv_shortcut(x)
-
         return x + h
 
 
@@ -209,18 +227,10 @@ class SamePadConv3d(nn.Module):
             kernel_size = (kernel_size,) * 3
         if isinstance(stride, int):
             stride = (stride,) * 3
-
-        # assumes that the input shape is divisible by stride
-        total_pad = tuple([k - s for k, s in zip(kernel_size, stride)])
-        pad_input = []
-        for p in total_pad[::-1]:  # reverse since F.pad starts from last dim
-            pad_input.append((p // 2 + p % 2, p // 2))
-        pad_input = sum(pad_input, tuple())
-        self.pad_input = pad_input
-        self.padding_type = padding_type
-
-        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size,
-                              stride=stride, padding=0, bias=bias)
+        # Calculate padding for 'same' behavior
+        padding = tuple((k - 1) // 2 for k in kernel_size)
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride=stride, padding=padding,
+                              padding_mode=padding_type, bias=bias)
 
     def forward(self, x):
-        return self.conv(F.pad(x, self.pad_input, mode=self.padding_type))
+        return self.conv(x)
