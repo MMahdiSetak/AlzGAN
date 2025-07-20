@@ -39,18 +39,10 @@ class VQGAN(pl.LightningModule):
             self.encoder = torch.compile(self.encoder, mode='max-autotune')
             self.decoder = torch.compile(self.decoder, mode='max-autotune')
 
-    def forward(self, x, optimizer_idx=None, log_image=False):
-        B, C, T, H, W = x.shape
+    def forward(self, x):
         z = self.encoder(x)
         x_recon = self.decoder(z)
         recon_loss = F.l1_loss(x_recon, x)
-        if log_image:
-            frame_idx = torch.randint(0, T, [B], device=x.device)
-            frame_idx_selected = frame_idx.reshape(-1,
-                                                   1, 1, 1, 1).repeat(1, C, 1, H, W)
-            frames = torch.gather(x, 2, frame_idx_selected).squeeze(2)
-            frames_recon = torch.gather(x_recon, 2, frame_idx_selected).squeeze(2)
-            return frames, frames_recon, x, x_recon
         return recon_loss, x_recon, z
 
     def training_step(self, batch, batch_idx):
@@ -94,17 +86,45 @@ class VQGAN(pl.LightningModule):
             }
         }
 
+    @torch.no_grad()
+    def inference(self, x):
+        """Separate inference method for logging - not compiled"""
+        B, C, T, H, W = x.shape
+
+        # Clone inputs to avoid CUDA graph conflicts
+        x = x.clone()
+
+        # Use eval mode temporarily
+        was_training = self.training
+        self.eval()
+
+        try:
+            z = self.encoder(x)
+            x_recon = self.decoder(z)
+
+            # Random frame selection for logging
+            frame_idx = torch.randint(0, T, [B], device=x.device)
+            frame_idx_selected = frame_idx.reshape(-1, 1, 1, 1, 1).repeat(1, C, 1, H, W)
+            frames = torch.gather(x, 2, frame_idx_selected).squeeze(2)
+            frames_recon = torch.gather(x_recon, 2, frame_idx_selected).squeeze(2)
+
+            return frames, frames_recon, x, x_recon
+        finally:
+            # Restore training mode
+            if was_training:
+                self.train()
+
     def log_images(self, batch, **kwargs):
         log = dict()
         batch = batch.to(self.device)
-        frames, frames_rec, _, _ = self(batch, log_image=True)
+        frames, frames_rec, _, _ = self.inference(batch)
         log["inputs"] = frames
         log["reconstructions"] = frames_rec
         return log
 
     def log_videos(self, batch, **kwargs):
         log = dict()
-        _, _, batch, x_rec = self(batch, log_image=True)
+        _, _, batch, x_rec = self.inference(batch)
         log["inputs"] = batch
         log["reconstructions"] = x_rec
         return log
@@ -113,7 +133,9 @@ class VQGAN(pl.LightningModule):
 def Normalize(in_channels, norm_type='group', num_groups=32):
     assert norm_type in ['group', 'batch']
     if norm_type == 'group':
-        # TODO Changed num_groups from 32 to 8
+        num_groups = min(num_groups, in_channels)  # Ensure valid grouping
+        if in_channels % num_groups != 0:
+            num_groups = 8  # Fallback to 8 groups
         return torch.nn.GroupNorm(num_groups=num_groups, num_channels=in_channels, eps=1e-6, affine=True)
     elif norm_type == 'batch':
         return torch.nn.SyncBatchNorm(in_channels)
@@ -200,7 +222,7 @@ class ResBlock(nn.Module):
         self.conv1 = SamePadConv3d(
             in_channels, out_channels, kernel_size=3, padding_type=padding_type)
         self.dropout = torch.nn.Dropout(dropout)
-        self.norm2 = Normalize(in_channels, norm_type, num_groups=num_groups)
+        self.norm2 = Normalize(out_channels, norm_type, num_groups=num_groups)
         self.conv2 = SamePadConv3d(
             out_channels, out_channels, kernel_size=3, padding_type=padding_type)
         if self.in_channels != self.out_channels:
