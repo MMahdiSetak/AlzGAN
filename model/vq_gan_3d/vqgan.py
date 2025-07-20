@@ -8,18 +8,20 @@ from torchmetrics.image import PeakSignalNoiseRatio
 from monai.metrics import SSIMMetric
 
 
-class MonaiSSIM3D(Metric):  # Wrap for torchmetrics compatibility
+class MonaiSSIM3D(Metric):
     def __init__(self, data_range=2.0):
         super().__init__()
         self.ssim = SSIMMetric(spatial_dims=3, data_range=data_range)
-        self.add_state("ssim_vals", default=[], dist_reduce_fx=None)
+        self.add_state("sum_metric", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("num_observations", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, preds: torch.Tensor, target: torch.Tensor):
-        self.ssim(preds, target)
-        self.ssim_vals.append(self.ssim.aggregate())
+        batch_ssim = self.ssim(preds, target)
+        self.sum_metric += batch_ssim
+        self.num_observations += 1
 
     def compute(self):
-        return torch.mean(torch.stack(self.ssim_vals)) if self.ssim_vals else torch.tensor(0.0)
+        return self.sum_metric / self.num_observations if self.num_observations > 0 else torch.tensor(0.0)
 
 
 def silu(x):
@@ -110,7 +112,7 @@ class VQGAN(pl.LightningModule):
     def configure_optimizers(self):
         lr = self.cfg.lr
         opt_ae = torch.optim.Adam(list(self.encoder.parameters()) +
-                                  list(self.decoder.parameters()), # +
+                                  list(self.decoder.parameters()),  # +
                                   # list(self.pre_vq_conv.parameters()) +
                                   # list(self.post_vq_conv.parameters()),
                                   lr=lr, betas=(0.5, 0.9))
