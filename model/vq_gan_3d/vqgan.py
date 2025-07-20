@@ -48,7 +48,7 @@ class VQGAN(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         bs = batch.shape[0]
         recon_loss, x_recon, _ = self.forward(batch)
-        if batch_idx == 0:
+        if batch_idx % 50 == 0:
             metrics = self.train_metrics(x_recon, batch)
             self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
         lr = self.optimizers().param_groups[0]['lr']
@@ -159,6 +159,15 @@ class Encoder(nn.Module):
             out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
         self.conv_blocks.append(block)
 
+        block = nn.Module()
+        in_channels = out_channels
+        out_channels = out_channels * 2
+        block.down = SamePadConv3d(
+            in_channels, out_channels, 4, stride=(2, 4, 2), padding_type=padding_type)
+        block.res = ResBlock(
+            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        self.conv_blocks.append(block)
+
         self.final_block = nn.Sequential(
             Normalize(out_channels, norm_type, num_groups=num_groups),
             nn.SiLU()
@@ -178,15 +187,25 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, n_hiddens, upsample, image_channel, norm_type='group', num_groups=32):
         super().__init__()
-        in_channels = n_hiddens * 2
+        in_channels = n_hiddens * 4
         self.final_block = nn.Sequential(
             Normalize(in_channels, norm_type, num_groups=num_groups),
             nn.SiLU()
         )
 
         self.conv_blocks = nn.ModuleList()
+        block = nn.Module()
+        out_channels = n_hiddens * 2
+        block.up = nn.ConvTranspose3d(in_channels, out_channels, 4, stride=(2, 4, 2), padding=1,
+                                      output_padding=(0, 2, 0))
+        block.res1 = ResBlock(
+            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        block.res2 = ResBlock(
+            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+        self.conv_blocks.append(block)
 
         block = nn.Module()
+        in_channels = out_channels
         out_channels = n_hiddens
         block.up = nn.ConvTranspose3d(in_channels, out_channels, 5, stride=(5, 3, 5), padding=1,
                                       output_padding=(2, 0, 2))
