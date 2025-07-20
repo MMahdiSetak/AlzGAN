@@ -69,7 +69,7 @@ class ImageLogger(Callback):
                 if isinstance(images[k], torch.Tensor):
                     images[k] = images[k].detach().cpu()
 
-            self.log_local(pl_module.logger.save_dir, split, images,
+            self.log_local(pl_module.logger.log_dir, split, images,
                            pl_module.global_step, pl_module.current_epoch, batch_idx)
 
             if is_train:
@@ -148,7 +148,7 @@ class VideoLogger(Callback):
                 if isinstance(videos[k], torch.Tensor):
                     videos[k] = videos[k].detach().cpu()
 
-            self.log_local(pl_module.logger.save_dir, split, videos,
+            self.log_local(pl_module.logger.log_dir, split, videos,
                            pl_module.global_step, pl_module.current_epoch, batch_idx)
 
             if is_train:

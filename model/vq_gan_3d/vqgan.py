@@ -11,10 +11,28 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
+from torchmetrics import Metric
+from torchmetrics import MeanSquaredError, MeanAbsoluteError, MetricCollection
+from torchmetrics.image import PeakSignalNoiseRatio
+from monai.metrics import SSIMMetric
 
 from model.vq_gan_3d.utils import shift_dim, adopt_weight, comp_getattr
 from model.vq_gan_3d.lpips import LPIPS
 from model.vq_gan_3d.codebook import Codebook
+
+
+class MonaiSSIM3D(Metric):  # Wrap for torchmetrics compatibility
+    def __init__(self, data_range=2.0):
+        super().__init__()
+        self.ssim = SSIMMetric(spatial_dims=3, data_range=data_range)
+        self.add_state("ssim_vals", default=[], dist_reduce_fx=None)
+
+    def update(self, preds: torch.Tensor, target: torch.Tensor):
+        self.ssim(preds, target)
+        self.ssim_vals.append(self.ssim.aggregate())
+
+    def compute(self):
+        return torch.mean(torch.stack(self.ssim_vals)) if self.ssim_vals else torch.tensor(0.0)
 
 
 def silu(x):
@@ -64,8 +82,8 @@ class VQGAN(pl.LightningModule):
         self.post_vq_conv = SamePadConv3d(
             cfg.embedding_dim, self.enc_out_ch, 1)
 
-        self.codebook = Codebook(cfg.n_codes, cfg.embedding_dim,
-                                 no_random_restart=cfg.no_random_restart, restart_thres=cfg.restart_thres)
+        # self.codebook = Codebook(cfg.n_codes, cfg.embedding_dim,
+        #                          no_random_restart=cfg.no_random_restart, restart_thres=cfg.restart_thres)
 
         # self.gan_feat_weight = cfg.gan_feat_weight
         # # TODO: Changed batchnorm from sync to normal
@@ -89,6 +107,15 @@ class VQGAN(pl.LightningModule):
         self.l1_weight = cfg.l1_weight
         self.save_hyperparameters()
 
+        metrics = {
+            "MAE": MeanAbsoluteError(),
+            "MSE": MeanSquaredError(),
+            "PSNR": PeakSignalNoiseRatio(data_range=2),
+            "SSIM": MonaiSSIM3D(data_range=2),
+        }
+        self.train_metrics = MetricCollection(metrics, prefix="train/")
+        self.val_metrics = MetricCollection(metrics, prefix="val/")
+
     def encode(self, x, include_embeddings=False, quantize=True):
         h = self.pre_vq_conv(self.encoder(x))
         if quantize:
@@ -110,9 +137,12 @@ class VQGAN(pl.LightningModule):
     def forward(self, x, optimizer_idx=None, log_image=False):
         B, C, T, H, W = x.shape
 
-        z = self.pre_vq_conv(self.encoder(x))
-        vq_output = self.codebook(z)
-        x_recon = self.decoder(self.post_vq_conv(vq_output['embeddings']))
+        # z = self.pre_vq_conv(self.encoder(x))
+        # vq_output = self.codebook(z)
+        # x_recon = self.decoder(self.post_vq_conv(vq_output['embeddings']))
+
+        z = self.encoder(x)
+        x_recon = self.decoder(z)
 
         recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
 
@@ -226,16 +256,24 @@ class VQGAN(pl.LightningModule):
                 frames, frames_recon) * self.perceptual_weight
         else:
             perceptual_loss = None
-        return recon_loss, x_recon, vq_output, perceptual_loss
+        return recon_loss, x_recon, z, perceptual_loss
+        # return recon_loss, x_recon, vq_output, perceptual_loss
 
     def training_step(self, batch, batch_idx):
         # x = batch['data']
         # opt_ae, opt_disc = self.optimizers()
+        opt_ae = self.optimizers()
 
         # --- Generator update ---
         # Compute generator losses
         # recon_loss, _, vq_output, aeloss, perceptual_loss, gan_feat_loss = self.forward(batch, optimizer_idx=0)
-        recon_loss, _, _, _ = self.forward(batch)
+        recon_loss, x_recon, _, _ = self.forward(batch)
+
+        metrics = self.train_metrics(x_recon, batch)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch.shape[0])
+        opt_ae.zero_grad()
+        self.manual_backward(recon_loss)
+        opt_ae.step()
         return recon_loss
         commitment_loss = vq_output['commitment_loss']
         loss_gen = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
@@ -259,21 +297,23 @@ class VQGAN(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         # x = batch['data']  # TODO: batch['stft']
-        recon_loss, _, vq_output, perceptual_loss = self.forward(batch)
+        recon_loss, x_recon, vq_output, perceptual_loss = self.forward(batch)
+        metrics = self.val_metrics(x_recon, batch)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch.shape[0])
         self.log('val/recon_loss', recon_loss, prog_bar=True)
         if self.perceptual_weight > 0:
             self.log('val/perceptual_loss', perceptual_loss.mean(), prog_bar=True)
-        self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)
-        self.log('val/commitment_loss',
-                 vq_output['commitment_loss'], prog_bar=True)
+        # self.log('val/perplexity', vq_output['perplexity'], prog_bar=True)
+        # self.log('val/commitment_loss',
+        #          vq_output['commitment_loss'], prog_bar=True)
 
     def configure_optimizers(self):
         lr = self.cfg.lr
         opt_ae = torch.optim.Adam(list(self.encoder.parameters()) +
                                   list(self.decoder.parameters()) +
                                   list(self.pre_vq_conv.parameters()) +
-                                  list(self.post_vq_conv.parameters()) +
-                                  list(self.codebook.parameters()),
+                                  list(self.post_vq_conv.parameters()),  # +
+                                  # list(self.codebook.parameters()),
                                   lr=lr, betas=(0.5, 0.9))
         # opt_disc = torch.optim.Adam(list(self.image_discriminator.parameters()) +
         #                             list(self.video_discriminator.parameters()),

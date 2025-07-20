@@ -10,7 +10,7 @@ default_root_dir: ./log/checkpoints/vq_gan_mri/
 default_root_dir_postfix: ''
 resume_from_checkpoint:
 max_steps: -1
-max_epochs: -1
+max_epochs: 500
 precision: 16-mixed
 gradient_clip_val: 1.0
 
@@ -18,7 +18,7 @@ gradient_clip_val: 1.0
 embedding_dim: 32
 n_codes: 2048
 n_hiddens: 16
-lr: 3e-4
+lr: 3e-3
 downsample: [ 8, 8, 8 ]
 disc_channels: 64
 disc_layers: 3
@@ -34,6 +34,6 @@ restart_thres: 1.0
 no_random_restart: False
 norm_type: group
 padding_type: replicate
-num_groups: 16
+num_groups: 8
 
 

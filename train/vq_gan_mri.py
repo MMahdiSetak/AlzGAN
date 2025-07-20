@@ -69,6 +69,7 @@ def run(cfg: DictConfig):
     trainer = pl.Trainer(
         num_sanity_val_steps=0,
         accumulate_grad_batches=cfg.accumulate_grad_batches,
+        # overfit_batches=5,
         # default_root_dir=cfg.default_root_dir,
         logger=logger,
         callbacks=callbacks,

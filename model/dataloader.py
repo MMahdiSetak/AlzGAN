@@ -349,7 +349,7 @@ class VQGANDataset(Dataset):
             self.file = h5py.File(self.data_path, 'r')
             self.images = self.file[f'{self.modality}_{self.split}']
         img = torch.from_numpy(self.images[index].astype(np.float32)).div_(127.5).sub_(1).unsqueeze_(0).unsqueeze(0)
-        # img = F.interpolate(img, size=(64, 64, 64), mode='trilinear', align_corners=False)
+        # img = F.interpolate(img, size=(80, 96, 80), mode='trilinear', align_corners=False)
         return img.squeeze(0)
 
 
