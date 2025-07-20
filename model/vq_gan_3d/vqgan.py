@@ -82,7 +82,7 @@ class VQGAN(pl.LightningModule):
     def forward(self, x, optimizer_idx=None, log_image=False):
         z = self.encoder(x)
         x_recon = self.decoder(z)
-        recon_loss = F.l1_loss(x_recon, x) * self.l1_weight
+        recon_loss = F.l1_loss(x_recon, x)
         return recon_loss, x_recon, z
 
     def training_step(self, batch, batch_idx):
