@@ -80,9 +80,17 @@ class VQGAN(pl.LightningModule):
         self.val_metrics = MetricCollection(metrics, prefix="val/")
 
     def forward(self, x, optimizer_idx=None, log_image=False):
+        B, C, T, H, W = x.shape
         z = self.encoder(x)
         x_recon = self.decoder(z)
         recon_loss = F.l1_loss(x_recon, x)
+        if log_image:
+            frame_idx = torch.randint(0, T, [B]).cuda()
+            frame_idx_selected = frame_idx.reshape(-1,
+                                                   1, 1, 1, 1).repeat(1, C, 1, H, W)
+            frames = torch.gather(x, 2, frame_idx_selected).squeeze(2)
+            frames_recon = torch.gather(x_recon, 2, frame_idx_selected).squeeze(2)
+            return frames, frames_recon, x, x_recon
         return recon_loss, x_recon, z
 
     def training_step(self, batch, batch_idx):
