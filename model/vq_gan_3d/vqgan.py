@@ -64,7 +64,7 @@ def vanilla_d_loss(logits_real, logits_fake):
 class VQGAN(pl.LightningModule):
     def __init__(self, cfg):
         super().__init__()
-        self.automatic_optimization = False
+        # self.automatic_optimization = False
         self.cfg = cfg
         self.embedding_dim = cfg.embedding_dim
         self.n_codes = cfg.n_codes
@@ -262,7 +262,7 @@ class VQGAN(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         # x = batch['data']
         # opt_ae, opt_disc = self.optimizers()
-        opt_ae = self.optimizers()
+        # opt_ae = self.optimizers()
 
         # --- Generator update ---
         # Compute generator losses
@@ -271,9 +271,9 @@ class VQGAN(pl.LightningModule):
 
         metrics = self.train_metrics(x_recon, batch)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch.shape[0])
-        opt_ae.zero_grad()
-        self.manual_backward(recon_loss)
-        opt_ae.step()
+        # opt_ae.zero_grad()
+        # self.manual_backward(recon_loss)
+        # opt_ae.step()
         return recon_loss
         commitment_loss = vq_output['commitment_loss']
         loss_gen = recon_loss + commitment_loss + aeloss + perceptual_loss + gan_feat_loss
