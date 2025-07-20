@@ -53,8 +53,8 @@ class VQGAN(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         recon_loss, x_recon, _ = self.forward(batch)
-        metrics = self.train_metrics(x_recon, batch)
-        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch.shape[0])
+        # metrics = self.train_metrics(x_recon, batch)
+        # self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch.shape[0])
         return recon_loss
 
     def validation_step(self, batch, batch_idx):
