@@ -124,7 +124,7 @@ class Simple3DCNN(nn.Module):
             layers.append(nn.BatchNorm3d(channels[i + 1]))
             layers.append(nn.ReLU(inplace=True))
             layers.append(nn.MaxPool3d(kernel_size=2, stride=2))
-            layers.append(nn.Dropout3d(dropout_rate / 2))
+            layers.append(nn.Dropout3d(dropout_rate))
 
         flatten_size = input_size[0] * input_size[1] * input_size[2] * channels[-1] // (8 ** (len(channels) - 1))
 
