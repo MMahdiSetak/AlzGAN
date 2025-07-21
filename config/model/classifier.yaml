@@ -1,8 +1,11 @@
 batch_size: 32
 num_workers: 24
 lr: 8e-5
+weight_decay: 1e-2
 dataset: 'dataset/mri_label_v5.1_Rigid.hdf5'
 early_stop: 300
 max_epoch: 500
 embedding_size: 128
 dropout_rate: 0.2
+
+vq_gan_checkpoint: "log/vq_gan_mri/version_106/checkpoints/latest_checkpoint.ckpt"

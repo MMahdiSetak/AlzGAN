@@ -8,6 +8,7 @@ import monai.transforms as mt
 import random
 
 from model.classifier.module import Simple3DCNN
+from model.vq_gan_3d.vqgan import VQGAN
 
 
 class CustomOneOf(mt.MapTransform):
@@ -27,13 +28,13 @@ class CustomOneOf(mt.MapTransform):
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, lr=1e-3, weight_decay=1e-2, class_weights=None, epochs=500):
+    def __init__(self, cfg, class_weights):
         super().__init__()
         self.save_hyperparameters()
 
-        self.lr = lr
-        self.weight_decay = weight_decay
-        self.epochs = epochs
+        self.lr = cfg.lr
+        self.weight_decay = cfg.weight_decay
+        self.epochs = cfg.max_epoch
         num_classes = 3
 
         self.classification_loss = nn.CrossEntropyLoss(weight=class_weights)
@@ -49,7 +50,12 @@ class Classifier(pl.LightningModule):
         self.train_metrics = MetricCollection(metrics, postfix="/train")
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
-        self.classifier = Simple3DCNN(input_size=(80, 96, 80), channels=[1, 32, 64, 128, 256], fc=128, num_classes=3,
+
+        vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=cfg.vq_gan_checkpoint)
+        self.encoder = vq_gan_model.encoder
+        # self.classifier = Simple3DCNN(input_size=(80, 96, 80), channels=[1, 32, 64, 128, 256], fc=128, num_classes=3,
+        #                               dropout_rate=0.4)
+        self.classifier = Simple3DCNN(input_size=(8, 8, 8), channels=[64, 128], fc=128, num_classes=3,
                                       dropout_rate=0.4)
 
         # MONAI GPU-accelerated transforms (applied in steps after batch on GPU)
@@ -103,6 +109,7 @@ class Classifier(pl.LightningModule):
         return mri_aug, labels_aug
 
     def forward(self, mri):
+        mri = self.encoder(mri)
         out = self.classifier(mri)
         return out
 

@@ -28,7 +28,6 @@ def run(cfg: DictConfig):
     batch_size = cfg.batch_size
     num_workers = cfg.num_workers
     datapath = cfg.dataset
-    lr = cfg.lr
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     train_ram_loader = MRIRAMLoader(datapath, 'train')
@@ -53,7 +52,7 @@ def run(cfg: DictConfig):
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
         collate_fn=monai.data.list_data_collate
     )
-    model = Classifier(lr=lr, class_weights=weight_tensor, epochs=cfg.max_epoch)
+    model = Classifier(cfg, class_weights=weight_tensor)
     checkpoint_callback = ModelCheckpoint(
         monitor="val_accuracy",
         mode="max",
@@ -73,7 +72,7 @@ def run(cfg: DictConfig):
         accelerator="auto",
         # strategy="fsdp",
         # TODO make it config
-        devices=[0, 1],
+        # devices=[0, 1],
         # overfit_batches=3,
         val_check_interval=1.0,
         logger=logger,
