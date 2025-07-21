@@ -53,6 +53,8 @@ class Classifier(pl.LightningModule):
 
         vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=cfg.vq_gan_checkpoint)
         self.encoder = vq_gan_model.encoder
+        for param in self.encoder.parameters():
+            param.requires_grad = False
         # self.classifier = Simple3DCNN(input_size=(80, 96, 80), channels=[1, 32, 64, 128, 256], fc=128, num_classes=3,
         #                               dropout_rate=0.4)
         self.classifier = Simple3DCNN(input_size=(8, 8, 8), channels=[64, 16], fc=64, num_classes=3,
