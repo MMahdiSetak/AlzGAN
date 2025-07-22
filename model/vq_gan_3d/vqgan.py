@@ -14,13 +14,8 @@ class VQGAN(pl.LightningModule):
         self.embedding_dim = cfg.embedding_dim
         self.n_codes = cfg.n_codes
 
-        self.encoder = Encoder(cfg.n_hiddens, cfg.downsample,
-                               cfg.image_channels, cfg.norm_type, cfg.padding_type,
-                               cfg.num_groups,
-                               )
-        self.decoder = Decoder(
-            cfg.n_hiddens, cfg.downsample, cfg.image_channels, cfg.norm_type,
-            cfg.num_groups)
+        self.encoder = Encoder(cfg.image_type, cfg.n_hiddens, cfg.image_channels, cfg.norm_type, cfg.num_groups)
+        self.decoder = Decoder(cfg.image_type, cfg.n_hiddens, cfg.image_channels, cfg.norm_type, cfg.num_groups)
 
         self.save_hyperparameters()
 
@@ -130,7 +125,7 @@ class VQGAN(pl.LightningModule):
         return log
 
 
-def Normalize(in_channels, norm_type='group', num_groups=32):
+def normalize(in_channels, norm_type='group', num_groups=32):
     assert norm_type in ['group', 'batch']
     if norm_type == 'group':
         num_groups = min(num_groups, in_channels)  # Ensure valid grouping
@@ -139,37 +134,37 @@ def Normalize(in_channels, norm_type='group', num_groups=32):
         return torch.nn.GroupNorm(num_groups=num_groups, num_channels=in_channels, eps=1e-6, affine=True)
     elif norm_type == 'batch':
         return torch.nn.SyncBatchNorm(in_channels)
+    else:
+        return None
 
 
 class Encoder(nn.Module):
-    def __init__(self, n_hiddens, downsample, image_channel=3, norm_type='group', padding_type='replicate',
-                 num_groups=32):
+    def __init__(self, img_type, n_hiddens, image_channel=3, norm_type='group', num_groups=32):
         super().__init__()
+        if img_type == 'mri':
+            kernels = [5, 4]
+            strides = [(5, 3, 5), (2, 4, 2)]
+        elif img_type == 'pet':
+            kernels = [4, 2]
+            strides = [(4, 4, 3), (2, 2, 2)]
+        else:
+            kernels = [3, 3]
+            strides = [2, 2]
         self.conv_blocks = nn.ModuleList()
+        self.conv_first = SamePadConv3d(image_channel, n_hiddens, kernel_size=3)
 
-        self.conv_first = SamePadConv3d(
-            image_channel, n_hiddens, kernel_size=3, padding_type=padding_type)
-
-        block = nn.Module()
+        out_channels = n_hiddens
         in_channels = n_hiddens
-        out_channels = n_hiddens * 2
-        block.down = SamePadConv3d(
-            in_channels, out_channels, 5, stride=(5, 3, 5), padding_type=padding_type)
-        block.res = ResBlock(
-            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-        self.conv_blocks.append(block)
-
-        block = nn.Module()
-        in_channels = out_channels
-        out_channels = out_channels * 2
-        block.down = SamePadConv3d(
-            in_channels, out_channels, 4, stride=(2, 4, 2), padding_type=padding_type)
-        block.res = ResBlock(
-            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-        self.conv_blocks.append(block)
+        for i in range(len(kernels)):
+            out_channels = in_channels * 2
+            block = nn.Module()
+            block.down = SamePadConv3d(in_channels, out_channels, kernels[i], stride=strides[i])
+            block.res = ResBlock(out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+            self.conv_blocks.append(block)
+            in_channels = out_channels
 
         self.final_block = nn.Sequential(
-            Normalize(out_channels, norm_type, num_groups=num_groups),
+            normalize(out_channels, norm_type, num_groups=num_groups),
             nn.SiLU()
         )
 
@@ -185,38 +180,33 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, n_hiddens, upsample, image_channel, norm_type='group', num_groups=32):
+    def __init__(self, type, n_hiddens, image_channel, norm_type='group', num_groups=32):
         super().__init__()
+        if type == 'mri':
+            kernels = [(2, 4, 2), (5, 3, 5)]
+        elif type == 'pet':
+            kernels = [(2, 2, 2), (4, 4, 3)]
+        else:
+            kernels = [2, 2]
+
         in_channels = n_hiddens * 4
         self.final_block = nn.Sequential(
-            Normalize(in_channels, norm_type, num_groups=num_groups),
+            normalize(in_channels, norm_type, num_groups=num_groups),
             nn.SiLU()
         )
 
         self.conv_blocks = nn.ModuleList()
-        block = nn.Module()
-        out_channels = n_hiddens * 2
-        block.up = nn.ConvTranspose3d(in_channels, out_channels, 4, stride=(2, 4, 2), padding=1,
-                                      output_padding=(0, 2, 0))
-        block.res1 = ResBlock(
-            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-        block.res2 = ResBlock(
-            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-        self.conv_blocks.append(block)
+        out_channels = n_hiddens * 4
+        for i in range(len(kernels)):
+            block = nn.Module()
+            out_channels = in_channels // 2
+            block.up = nn.ConvTranspose3d(in_channels, out_channels, kernels[i], stride=kernels[i])
+            block.res1 = ResBlock(out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+            block.res2 = ResBlock(out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
+            self.conv_blocks.append(block)
+            in_channels = out_channels
 
-        block = nn.Module()
-        in_channels = out_channels
-        out_channels = n_hiddens
-        block.up = nn.ConvTranspose3d(in_channels, out_channels, 5, stride=(5, 3, 5), padding=1,
-                                      output_padding=(2, 0, 2))
-        block.res1 = ResBlock(
-            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-        block.res2 = ResBlock(
-            out_channels, out_channels, norm_type=norm_type, num_groups=num_groups)
-        self.conv_blocks.append(block)
-
-        self.conv_last = SamePadConv3d(
-            out_channels, image_channel, kernel_size=3)
+        self.conv_last = SamePadConv3d(out_channels, image_channel, kernel_size=3)
 
     def forward(self, x):
         h = self.final_block(x)
@@ -237,11 +227,11 @@ class ResBlock(nn.Module):
         self.out_channels = out_channels
         self.use_conv_shortcut = conv_shortcut
 
-        self.norm1 = Normalize(in_channels, norm_type, num_groups=num_groups)
+        self.norm1 = normalize(in_channels, norm_type, num_groups=num_groups)
         self.conv1 = SamePadConv3d(
             in_channels, out_channels, kernel_size=3, padding_type=padding_type)
         self.dropout = torch.nn.Dropout(dropout)
-        self.norm2 = Normalize(out_channels, norm_type, num_groups=num_groups)
+        self.norm2 = normalize(out_channels, norm_type, num_groups=num_groups)
         self.conv2 = SamePadConv3d(
             out_channels, out_channels, kernel_size=3, padding_type=padding_type)
         if self.in_channels != self.out_channels:
@@ -262,7 +252,7 @@ class ResBlock(nn.Module):
 
 
 class SamePadConv3d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True, padding_type='replicate'):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=(1, 1, 1), bias=True, padding_type='replicate'):
         super().__init__()
         if isinstance(kernel_size, int):
             kernel_size = (kernel_size,) * 3

@@ -1,14 +1,13 @@
 seed: 1234
 batch_size: 8
 num_workers: 16
-dataset: 'dataset/mri_label_v5.1_Rigid.hdf5'
+image_type: 'pet'
+#dataset: 'dataset/mri_label_v5.1_Rigid.hdf5'
+dataset: 'dataset/mri_pet_label_v5_Rigid.hdf5'
 image_channels: 1
 
-gpus: 1
 accumulate_grad_batches: 1
-default_root_dir: ./log/checkpoints/vq_gan_mri/
-default_root_dir_postfix: ''
-resume_from_checkpoint:
+#default_root_dir: ./log/checkpoints/vq_gan_mri/
 max_steps: -1
 max_epochs: 300
 precision: 16-mixed
@@ -17,9 +16,8 @@ gradient_clip_val: 1.0
 
 embedding_dim: 32
 n_codes: 2048
-n_hiddens: 16
+n_hiddens: 8
 lr: 3e-3
-downsample: [ 8, 8, 8 ]
 disc_channels: 64
 disc_layers: 3
 discriminator_iter_start: 50000
