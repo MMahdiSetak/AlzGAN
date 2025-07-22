@@ -57,7 +57,7 @@ class Classifier(pl.LightningModule):
             param.requires_grad = False
         # self.classifier = Simple3DCNN(input_size=(80, 96, 80), channels=[1, 32, 64, 128, 256], fc=128, num_classes=3,
         #                               dropout_rate=0.4)
-        self.classifier = Simple3DCNN(input_size=(8, 8, 8), channels=[64, 32], fc=128, num_classes=3,
+        self.classifier = Simple3DCNN(input_size=(8, 8, 8), channels=[64, 16], fc=128, num_classes=3,
                                       dropout_rate=0.4)
 
         # MONAI GPU-accelerated transforms (applied in steps after batch on GPU)
