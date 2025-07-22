@@ -3,7 +3,7 @@ batch_size: 8
 num_workers: 16
 image_type: 'pet'
 #dataset: 'dataset/mri_label_v5.1_Rigid.hdf5'
-dataset: 'dataset/mri_pet_label_v5_Rigid.hdf5'
+dataset: 'dataset/mri_pet_label_v5.1_Rigid.hdf5'
 image_channels: 1
 
 accumulate_grad_batches: 1
