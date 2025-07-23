@@ -49,15 +49,16 @@ def objective(trial):
     fc_dropout_rate = trial.suggest_float('fc_dropout_rate', 0.2, 0.7, step=0.1)  # Dropout for regularization
     lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True)  # Log scale for LR
     fc_hidden = trial.suggest_categorical('fc_hidden', [64, 128, 256])  # FC size, small options
+    epochs = 300
 
     model = Classifier(
         class_weights=weight_tensor, num_layers=num_layers, base_channels=base_channels,
         channel_multiplier=channel_multiplier, cnn_dropout_rate=cnn_dropout_rate, fc_dropout_rate=fc_dropout_rate,
-        fc_hidden=fc_hidden, lr=lr, weight_decay=1e-2, max_epoch=300
+        fc_hidden=fc_hidden, lr=lr, weight_decay=1e-2, max_epoch=epochs
     )
     max_acc_callback = MaxAccuracyCallback()
     trainer = pl.Trainer(
-        max_epochs=5,
+        max_epochs=epochs,
         num_sanity_val_steps=0,
         accelerator="auto",
         val_check_interval=1.0,
