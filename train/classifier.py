@@ -76,7 +76,7 @@ def run(cfg: DictConfig):
         # overfit_batches=3,
         val_check_interval=1.0,
         logger=logger,
-        # gradient_clip_val=1.0,
+        gradient_clip_val=1.0,
         precision='16-mixed',
         callbacks=[early_stop_callback],
         # accumulate_grad_batches=2,

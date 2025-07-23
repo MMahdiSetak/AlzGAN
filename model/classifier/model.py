@@ -7,7 +7,7 @@ from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AU
 import monai.transforms as mt
 import random
 
-from model.classifier.module import Simple3DCNN
+from model.classifier.module import Simple3DCNN, Parametric3DCNN
 from model.vq_gan_3d.vqgan import VQGAN
 
 
@@ -28,13 +28,15 @@ class CustomOneOf(mt.MapTransform):
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, cfg, class_weights):
+    # def __init__(self, cfg, class_weights):
+    def __init__(self, class_weights, num_layers=4, base_channels=32, channel_multiplier=2,
+                 cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, lr=1e-3, weight_decay=1e-2, max_epoch=300):
         super().__init__()
         self.save_hyperparameters()
 
-        self.lr = cfg.lr
-        self.weight_decay = cfg.weight_decay
-        self.epochs = cfg.max_epoch
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.epochs = max_epoch
         num_classes = 3
 
         self.classification_loss = nn.CrossEntropyLoss(weight=class_weights)
@@ -51,14 +53,25 @@ class Classifier(pl.LightningModule):
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
 
-        vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=cfg.vq_gan_checkpoint)
-        self.encoder = vq_gan_model.encoder
-        for param in self.encoder.parameters():
-            param.requires_grad = False
+        # vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=cfg.vq_gan_checkpoint)
+        # self.encoder = vq_gan_model.encoder
+        # for param in self.encoder.parameters():
+        #     param.requires_grad = False
         # self.classifier = Simple3DCNN(input_size=(80, 96, 80), channels=[1, 32, 64, 128, 256], fc=128, num_classes=3,
         #                               dropout_rate=0.4)
-        self.classifier = Simple3DCNN(input_size=(8, 8, 8), channels=[64, 16], fc=64, num_classes=3,
-                                      dropout_rate=0.6)
+        # self.classifier = Simple3DCNN(input_size=(8, 8, 8), channels=[64, 16], fc=64, num_classes=3,
+        #                               dropout_rate=0.6)
+
+        self.classifier = Parametric3DCNN(
+            input_size=(80, 96, 80),
+            num_layers=num_layers,
+            base_channels=base_channels,
+            channel_multiplier=channel_multiplier,
+            cnn_dropout_rate=cnn_dropout_rate,
+            fc_dropout_rate=fc_dropout_rate,
+            fc_hidden=fc_hidden,
+            num_classes=num_classes
+        )
 
         # MONAI GPU-accelerated transforms (applied in steps after batch on GPU)
         keys = ['mri']  # Key for image in dict
@@ -111,7 +124,7 @@ class Classifier(pl.LightningModule):
         return mri_aug, labels_aug
 
     def forward(self, mri):
-        mri = self.encoder(mri)
+        # mri = self.encoder(mri)
         out = self.classifier(mri)
         return out
 

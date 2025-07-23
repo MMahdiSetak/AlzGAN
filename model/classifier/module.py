@@ -143,6 +143,51 @@ class Simple3DCNN(nn.Module):
         return self.model(x)
 
 
+class Parametric3DCNN(nn.Module):
+    def __init__(self, input_size=(80, 96, 80), num_layers=4, base_channels=32, channel_multiplier=2,
+                 cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, num_classes=3):
+        super(Parametric3DCNN, self).__init__()
+
+        # Validate params
+        if num_layers < 2 or num_layers > 6:
+            raise ValueError("num_layers should be between 2 and 6 for manageable model size.")
+
+        channels = [1] + [base_channels * (channel_multiplier ** i) for i in range(num_layers)]
+        channels = [int(c) for c in channels]  # Ensure integer channels
+
+        # Build convolutional layers
+        conv_layers = []
+        current_size = list(input_size)
+        for i in range(num_layers):
+            conv_layers.append(nn.Conv3d(channels[i], channels[i + 1], kernel_size=3, padding=1))
+            conv_layers.append(nn.BatchNorm3d(channels[i + 1]))
+            conv_layers.append(nn.ReLU(inplace=True))
+            conv_layers.append(nn.MaxPool3d(kernel_size=2, stride=2))
+            conv_layers.append(nn.Dropout3d(cnn_dropout_rate))
+
+            # Update current size after pooling
+            current_size = [s // 2 for s in current_size]
+
+        self.conv = nn.Sequential(*conv_layers)
+
+        # Calculate flatten size dynamically
+        flatten_size = channels[-1] * current_size[0] * current_size[1] * current_size[2]
+
+        # FC layers
+        self.fc = nn.Sequential(
+            nn.Flatten(),
+            nn.Dropout(fc_dropout_rate),
+            nn.Linear(flatten_size, fc_hidden),
+            nn.ReLU(inplace=True),
+            nn.Dropout(fc_dropout_rate),
+            nn.Linear(fc_hidden, num_classes)
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+        return self.fc(x)
+
+
 class AlzheimerCNN3D(nn.Module):
     def __init__(self, num_classes=3, dropout_rate=0.3):
         super(AlzheimerCNN3D, self).__init__()
