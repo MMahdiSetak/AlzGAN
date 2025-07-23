@@ -10,7 +10,7 @@ from model.classifier.model import Classifier
 from model.dataloader import MRIDataset, MRIRAMLoader
 
 batch_size = 32
-num_workers = 24
+num_workers = 48
 datapath = 'dataset/mri_label_v5.1_Rigid.hdf5'
 train_ram_loader = MRIRAMLoader(datapath, 'train')
 train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train', apply_augmentation=True)
@@ -61,6 +61,7 @@ def objective(trial):
         max_epochs=epochs,
         num_sanity_val_steps=0,
         accelerator="auto",
+        devices=1,
         val_check_interval=1.0,
         logger=TensorBoardLogger(save_dir="./log", name="classifier_optuna"),
         gradient_clip_val=1.0,
