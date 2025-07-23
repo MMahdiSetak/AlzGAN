@@ -45,7 +45,7 @@ class VQGAN(pl.LightningModule):
         recon_loss, x_recon, _ = self.forward(batch)
         if batch_idx % 50 == 0:
             metrics = self.train_metrics(x_recon, batch)
-            self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+            self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
         lr = self.optimizers().param_groups[0]['lr']
         self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
         self.log('train/recon_loss', recon_loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
@@ -69,7 +69,7 @@ class VQGAN(pl.LightningModule):
         scheduler = CosineAnnealingLR(
             optimizer,
             T_max=self.cfg.max_epochs,  # Total epochs
-            eta_min=1e-5
+            eta_min=self.cfg.eta_min
         )
         return {
             "optimizer": optimizer,
