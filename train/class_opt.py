@@ -9,7 +9,7 @@ import gc
 from model.classifier.model import Classifier
 from model.dataloader import MRIDataset, MRIRAMLoader
 
-batch_size = 64
+batch_size = 32
 num_workers = 64
 datapath = 'dataset/mri_label_v5.1_Rigid.hdf5'
 train_ram_loader = MRIRAMLoader(datapath, 'train')
