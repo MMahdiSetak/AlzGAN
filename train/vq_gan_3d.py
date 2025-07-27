@@ -52,8 +52,7 @@ def run(cfg: DictConfig):
 
     train_loader = DataLoader(
         dataset=VQGANDataset(datapath, 'train', modality=image_type),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
-        prefetch_factor=4
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     val_loader = DataLoader(
         dataset=VQGANDataset(datapath, 'val', modality=image_type),
