@@ -1,3 +1,4 @@
+import torch
 from torch.optim import AdamW
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -62,25 +63,27 @@ class LcDDPM(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         mri, pet = batch
         loss = self(pet, condition_tensors=mri)
-        # loss = loss.mean()
         lr = self.optimizers().param_groups[0]['lr']
         self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
         self.log('train/loss', loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         return loss
 
-    # def validation_step(self, batch, batch_idx):
-    #     mri, real_pet= batch
-    #     bs = real_pet.size(0)
-    #     fake_pet = self.model.sample(bs, mri)
-    #
-    #     # PSNR expects images scaled in [0, 1], so scale img and x_gt accordingly:
-    #     # Assuming your images are in [-1, 1], rescale to [0, 1]
-    #     fake_pet = rescale(fake_pet)
-    #     real_pet = rescale(real_pet)
-    #
-    #     metrics = self.val_metrics(fake_pet, real_pet)
-    #     self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs)
-    #     return metrics
+    def validation_step(self, batch, batch_idx):
+        mri, real_pet = batch
+        bs = real_pet.size(0)
+        fake_pet = self.inference(mri)
+
+        metrics = self.val_metrics(fake_pet, real_pet)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+        return metrics
+
+    @torch.no_grad()
+    def inference(self, mri):
+        bs = mri.size(0)
+        enc_mri = self.mri_encoder(mri)
+        enc_pet = self.model.sample(bs, enc_mri)
+        fake_pet = self.pet_decoder(enc_pet)
+        return fake_pet
 
     def configure_optimizers(self):
         optimizer = AdamW(

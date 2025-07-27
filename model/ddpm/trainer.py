@@ -1,23 +1,13 @@
 # -*- coding:utf-8 -*-
 #
 # *Main part of the code is adopted from the following repository: https://github.com/lucidrains/denoising-diffusion-pytorch
-
-# import copy
 import torch
 from torch import nn
 import torch.nn.functional as F
 from inspect import isfunction
 from functools import partial
-# from torch.utils import data
-# from pathlib import Path
-# from torch.optim import Adam
-# import nibabel as nib
 import numpy as np
 from tqdm import tqdm
-# from torch.utils.tensorboard import SummaryWriter
-# import datetime
-# import time
-# import os
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -36,14 +26,6 @@ def num_to_groups(num, divisor):
     if remainder > 0:
         arr.append(remainder)
     return arr
-
-
-# def loss_backwards(fp16, loss, optimizer, **kwargs):
-#     if fp16:
-#         with amp.scale_loss(loss, optimizer) as scaled_loss:
-#             scaled_loss.backward(**kwargs)
-#     else:
-#         loss.backward(**kwargs)
 
 
 # small helper modules
@@ -155,14 +137,14 @@ class GaussianDiffusion(nn.Module):
         self.register_buffer('posterior_mean_coef3', to_torch(
             1. - (1. - alphas_cumprod_prev) * np.sqrt(alphas) / (1. - alphas_cumprod)))
 
-    def q_mean_variance(self, x_start, t, c=None):
+    def q_mean_variance(self, x_start, t):
         x_hat = 0
         mean = extract(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start + x_hat
         variance = extract(1. - self.alphas_cumprod, t, x_start.shape)
         log_variance = extract(self.log_one_minus_alphas_cumprod, t, x_start.shape)
         return mean, variance, log_variance
 
-    def predict_start_from_noise(self, x_t, t, noise, c=None):
+    def predict_start_from_noise(self, x_t, t, noise):
         x_hat = 0.
         return (
                 extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t -
@@ -170,7 +152,7 @@ class GaussianDiffusion(nn.Module):
                 extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_hat
         )
 
-    def q_posterior(self, x_start, x_t, t, c=None):
+    def q_posterior(self, x_start, x_t, t):
         x_hat = 0.
         posterior_mean = (
                 extract(self.posterior_mean_coef1, t, x_t.shape) * x_start +
@@ -183,12 +165,11 @@ class GaussianDiffusion(nn.Module):
 
     def p_mean_variance(self, x, t, clip_denoised: bool, c=None):
         x_recon = self.predict_start_from_noise(x, t=t, noise=self.denoise_fn(torch.cat([x, c], 1), t))
-        # x_recon = self.predict_start_from_noise(x, t=t, noise=self.denoise_fn(x, t))
 
         if clip_denoised:
             x_recon.clamp_(-1., 1.)
 
-        model_mean, posterior_variance, posterior_log_variance = self.q_posterior(x_start=x_recon, x_t=x, t=t, c=c)
+        model_mean, posterior_variance, posterior_log_variance = self.q_posterior(x_start=x_recon, x_t=x, t=t)
         return model_mean, posterior_variance, posterior_log_variance
 
     @torch.no_grad()
@@ -207,11 +188,9 @@ class GaussianDiffusion(nn.Module):
         b = shape[0]
         img = torch.randn(shape, device=device)
 
-        # for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
         for i in reversed(range(0, self.num_timesteps)):
             t = torch.full((b,), i, device=device, dtype=torch.long)
             img = self.p_sample(img, t, condition_tensors=condition_tensors)
-            # img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long))
         return img
 
     @torch.no_grad()
@@ -237,7 +216,7 @@ class GaussianDiffusion(nn.Module):
             img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long))
         return img
 
-    def q_sample(self, x_start, t, noise=None, c=None):
+    def q_sample(self, x_start, t, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))
         x_hat = 0.
         return (
@@ -246,14 +225,10 @@ class GaussianDiffusion(nn.Module):
         )
 
     def p_losses(self, x_start, t, condition_tensors=None, noise=None):
-        b, c, h, w, d = x_start.shape
         noise = default(noise, lambda: torch.randn_like(x_start))
 
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
         x_recon = self.denoise_fn(torch.cat([x_noisy, condition_tensors], 1), t)
-        # x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-        # x_recon = self.denoise_fn(x_noisy, t)
-
         if self.loss_type == 'l1':
             loss = (noise - x_recon).abs().mean()
         elif self.loss_type == 'l2':
@@ -268,151 +243,3 @@ class GaussianDiffusion(nn.Module):
         assert h == img_size and w == img_size and d == depth_size, f'Expected dimensions: height={img_size}, width={img_size}, depth={depth_size}. Actual: height={h}, width={w}, depth={d}.'
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
         return self.p_losses(x, t, condition_tensors=condition_tensors, *args, **kwargs)
-
-# trainer class
-
-# class Trainer(object):
-#     def __init__(
-#             self,
-#             diffusion_model,
-#             dataset,
-#             ema_decay=0.995,
-#             image_size=128,
-#             depth_size=128,
-#             train_batch_size=2,
-#             train_lr=2e-6,
-#             train_num_steps=100000,
-#             gradient_accumulate_every=2,
-#             fp16=False,
-#             step_start_ema=2000,
-#             update_ema_every=10,
-#             save_and_sample_every=1000,
-#             results_folder='./results',
-#             with_condition=False,
-#             with_pairwised=False):
-#         super().__init__()
-#         self.model = diffusion_model
-#         self.ema = EMA(ema_decay)
-#         self.ema_model = copy.deepcopy(self.model)
-#         self.update_ema_every = update_ema_every
-#
-#         self.step_start_ema = step_start_ema
-#         self.save_and_sample_every = save_and_sample_every
-#
-#         self.batch_size = train_batch_size
-#         self.image_size = diffusion_model.image_size
-#         self.depth_size = depth_size
-#         self.gradient_accumulate_every = gradient_accumulate_every
-#         self.train_num_steps = train_num_steps
-#
-#         self.ds = dataset
-#         self.dl = data.DataLoader(self.ds, batch_size=train_batch_size, shuffle=True, num_workers=4, pin_memory=True)
-#         self.opt = Adam(diffusion_model.parameters(), lr=train_lr)
-#         self.train_lr = train_lr
-#         self.train_batch_size = train_batch_size
-#
-#         self.step = 0
-#
-#         # assert not fp16 or fp16 and APEX_AVAILABLE, 'Apex must be installed in order for mixed precision training to be turned on'
-#         self.fp16 = fp16
-#         if fp16:
-#             (self.model, self.ema_model), self.opt = amp.initialize([self.model, self.ema_model], self.opt,
-#                                                                     opt_level='O1')
-#
-#         self.results_folder = Path(results_folder)
-#         self.results_folder.mkdir(exist_ok=True)
-#         self.log_dir = self.create_log_dir()
-#         self.writer = SummaryWriter(log_dir=self.log_dir)  # "./logs")
-#         self.reset_parameters()
-#
-#     def create_log_dir(self):
-#         now = datetime.datetime.now().strftime("%y-%m-%dT%H%M%S")
-#         log_dir = os.path.join("./logs", now)
-#         os.makedirs(log_dir, exist_ok=True)
-#         return log_dir
-#
-#     def reset_parameters(self):
-#         self.ema_model.load_state_dict(self.model.state_dict())
-#
-#     def step_ema(self):
-#         if self.step < self.step_start_ema:
-#             self.reset_parameters()
-#             return
-#         self.ema.update_model_average(self.ema_model, self.model)
-#
-#     def save(self, milestone):
-#         data = {
-#             'step': self.step,
-#             'model': self.model.state_dict(),
-#             'ema': self.ema_model.state_dict()
-#         }
-#         torch.save(data, str(self.results_folder / f'model-{milestone}.pt'))
-#
-#     def load(self, milestone):
-#         data = torch.load(str(self.results_folder / f'model-{milestone}.pt'))
-#
-#         self.step = data['step']
-#         self.model.load_state_dict(data['model'])
-#         self.ema_model.load_state_dict(data['ema'])
-#
-#     def train(self):
-#         backwards = partial(loss_backwards, self.fp16)
-#         start_time = time.time()
-#
-#         while self.step < self.train_num_steps:
-#             accumulated_loss = []
-#             for i in range(self.gradient_accumulate_every):
-#                 data = next(iter(self.dl))
-#                 input_tensors = data[0].to('cuda')
-#                 target_tensors = data[1].to('cuda')
-#                 loss = self.model(target_tensors, condition_tensors=input_tensors)
-#                 loss = loss.sum() / self.batch_size
-#                 print(f'{self.step}: {loss.item()}')
-#                 backwards(loss / self.gradient_accumulate_every, self.opt)
-#                 accumulated_loss.append(loss.item())
-#
-#             # Record here
-#             average_loss = np.mean(accumulated_loss)
-#             self.writer.add_scalar("training_loss", average_loss, self.step)
-#
-#             self.opt.step()
-#             self.opt.zero_grad()
-#
-#             if self.step % self.update_ema_every == 0:
-#                 self.step_ema()
-#
-#             if self.step != 0 and self.step % self.save_and_sample_every == 0:
-#                 milestone = self.step // self.save_and_sample_every
-#                 batches = num_to_groups(1, self.batch_size)
-#
-#                 all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n,
-#                                                                            condition_tensors=self.ds.sample_conditions(
-#                                                                                batch_size=n)), batches))
-#                 all_images = torch.cat(all_images_list, dim=0)
-#                 # all_images_list = list(map(lambda n: self.ema_model.sample(batch_size=n), batches))
-#                 # all_images = torch.cat(all_images_list, dim=0)
-#
-#                 all_images = all_images.transpose(4, 2)
-#                 sampleImage = all_images.cpu().numpy()
-#                 sampleImage = sampleImage.reshape([self.image_size, self.image_size, self.depth_size])
-#                 nifti_img = nib.Nifti1Image(sampleImage, affine=np.eye(4))
-#                 nib.save(nifti_img, str(self.results_folder / f'sample-{milestone}.nii.gz'))
-#
-#                 self.save(milestone)
-#
-#             self.step += 1
-#
-#         print('training completed')
-#         end_time = time.time()
-#         execution_time = (end_time - start_time) / 3600
-#         self.writer.add_hparams(
-#             {
-#                 "lr": self.train_lr,
-#                 "batchsize": self.train_batch_size,
-#                 "image_size": self.image_size,
-#                 "depth_size": self.depth_size,
-#                 "execution_time (hour)": execution_time
-#             },
-#             {"last_loss": average_loss}
-#         )
-#         self.writer.close()
