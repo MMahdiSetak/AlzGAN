@@ -43,7 +43,7 @@ class VQGAN(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         bs = batch.shape[0]
         recon_loss, x_recon, _ = self.forward(batch)
-        if batch_idx % 50 == 0:
+        if batch_idx == 0:
             metrics = self.train_metrics(x_recon, batch)
             self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
         lr = self.optimizers().param_groups[0]['lr']

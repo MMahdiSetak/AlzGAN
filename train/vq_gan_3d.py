@@ -35,6 +35,7 @@ def run(cfg: DictConfig):
     logger = TensorBoardLogger(save_dir="./log", name=f"vq_gan_{image_type}")
     trainer = pl.Trainer(
         num_sanity_val_steps=0,
+        check_val_every_n_epoch=10,
         accumulate_grad_batches=cfg.accumulate_grad_batches,
         # overfit_batches=5,
         logger=logger,
@@ -49,15 +50,13 @@ def run(cfg: DictConfig):
         strategy=DDPStrategy(find_unused_parameters=False)
     )
 
-    # data_loader = DataLoader('dataset/mri_pet_label_v3.hdf5', bs)
-    # train_dataloader = data_loader.mri_generator(bs, "train")
-    # val_dataloader = data_loader.mri_generator(bs, "val")
     train_loader = DataLoader(
         dataset=VQGANDataset(datapath, 'train', modality=image_type),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     val_loader = DataLoader(
         dataset=VQGANDataset(datapath, 'val', modality=image_type),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+        batch_size=batch_size, num_workers=num_workers // 8 if num_workers > 8 else 2, shuffle=False, drop_last=False,
+        persistent_workers=True
     )
     trainer.fit(model, train_loader, val_loader)
