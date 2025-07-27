@@ -56,6 +56,7 @@ def objective(trial):
         channel_multiplier=channel_multiplier, cnn_dropout_rate=cnn_dropout_rate, fc_dropout_rate=fc_dropout_rate,
         fc_hidden=fc_hidden, lr=lr, weight_decay=1e-2, max_epoch=epochs
     )
+    # todo early stopping callback
     max_acc_callback = MaxAccuracyCallback()
     trainer = pl.Trainer(
         max_epochs=epochs,
