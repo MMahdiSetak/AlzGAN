@@ -4,7 +4,7 @@
 
 if __name__ == '__main__':
     import torch
-    from train.class_opt import run
+    from train.vq_gan_3d import run
 
     torch.set_float32_matmul_precision('medium')
     run()
