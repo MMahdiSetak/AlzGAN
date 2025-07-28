@@ -10,8 +10,8 @@ pet_vqgan_checkpoint: "log/vq_gan_pet/version_9/checkpoints/latest_checkpoint.ck
 
 input_size: 16
 depth_size: 16
-num_channels: 32
-num_res_blocks: 1
+num_channels: 64
+num_res_blocks: 2
 num_heads: 1
 #save_and_sample_every: 1000
 timesteps: 250
