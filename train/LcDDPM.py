@@ -77,6 +77,7 @@ def run(cfg: DictConfig):
         logger=logger,
         # gradient_clip_val=0,
         precision='16-mixed',
+        gradient_clip_val=1,
         # callbacks=[EMACallback()],
         # callbacks=callbacks,
         # accumulate_grad_batches=2,

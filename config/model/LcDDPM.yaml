@@ -1,10 +1,10 @@
 batch_size: 32
 num_workers: 16
-lr: 1e-3
+lr: 1e-4
 eta_min: 1e-5
 dataset: 'dataset/mri_pet_label_v5.1_Rigid.hdf5'
 #early_stop: 100
-max_epochs: 500
+max_epochs: 1000
 mri_vqgan_checkpoint: "log/vq_gan_mri/version_116/checkpoints/latest_checkpoint.ckpt"
 pet_vqgan_checkpoint: "log/vq_gan_pet/version_9/checkpoints/latest_checkpoint.ckpt"
 
