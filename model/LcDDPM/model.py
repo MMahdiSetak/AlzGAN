@@ -16,7 +16,8 @@ class LcDDPM(pl.LightningModule):
         self.cfg = cfg
 
         model = create_model(
-            cfg.input_size, cfg.num_channels, cfg.num_res_blocks, "1,2,4", num_heads=cfg.num_heads,
+            cfg.input_size, cfg.num_channels, cfg.num_res_blocks, "1,2", num_heads=cfg.num_heads,
+            attention_resolutions=None,
             use_checkpoint=False, in_channels=cfg.in_channels, out_channels=cfg.out_channels
         )
         self.model = GaussianDiffusion(

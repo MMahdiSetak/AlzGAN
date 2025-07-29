@@ -21,7 +21,6 @@ class UNetModel(nn.Module):
     :param channel_mult: channel multiplier for each level of the UNet.
     :param conv_resample: if True, use learned convolutions for upsampling and
         downsampling.
-    :param dims: determines if the signal is 1D, 2D, or 3D.
     :param num_classes: if specified (as an int), then this model will be
         class-conditional with `num_classes` classes.
     :param use_checkpoint: use gradient checkpointing to reduce memory usage.
@@ -282,8 +281,9 @@ def create_model(
         channel_mult = tuple(int(ch_mult) for ch_mult in channel_mult.split(","))
 
     attention_ds = []
-    for res in attention_resolutions.split(","):
-        attention_ds.append(image_size // int(res))
+    if attention_resolutions is not None:
+        for res in attention_resolutions.split(","):
+            attention_ds.append(image_size // int(res))
 
     return UNetModel(
         image_size=image_size,
