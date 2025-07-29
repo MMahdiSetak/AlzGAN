@@ -89,7 +89,7 @@ class LcDDPM(pl.LightningModule):
         optimizer = AdamW(
             self.parameters(),
             lr=self.cfg.lr,
-            fused=True
+            # fused=True
         )
         scheduler = CosineAnnealingLR(
             optimizer,
