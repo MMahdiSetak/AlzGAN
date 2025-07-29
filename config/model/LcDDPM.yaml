@@ -1,7 +1,7 @@
 batch_size: 32
 num_workers: 16
 lr: 1e-4
-eta_min: 1e-5
+eta_min: 1e-6
 dataset: 'dataset/mri_pet_label_v5.1_Rigid.hdf5'
 #early_stop: 100
 max_epochs: 1000
@@ -16,6 +16,6 @@ num_res_blocks: 2
 attention_resolutions:
 num_heads: 1
 #save_and_sample_every: 1000
-timesteps: 250
+timesteps: 1000
 in_channels: 64
 out_channels: 32
