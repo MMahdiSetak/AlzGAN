@@ -71,10 +71,12 @@ class LcDDPM(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         mri, real_pet = batch
         bs = real_pet.size(0)
+        loss = self(real_pet, condition_tensors=mri)
         fake_pet = self.inference(mri)
 
         metrics = self.val_metrics(fake_pet, real_pet)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+        self.log('val/loss', loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         return metrics
 
     @torch.no_grad()
