@@ -1,6 +1,6 @@
 batch_size: 32
 num_workers: 24
-lr: 8e-5
+lr: 1e-4
 weight_decay: 1e-2
 dataset: 'dataset/mri_label_v5.1_Rigid.hdf5'
 early_stop: 300
@@ -8,4 +8,12 @@ max_epoch: 500
 embedding_size: 128
 dropout_rate: 0.2
 
-vq_gan_checkpoint: "log/vq_gan_mri/version_106/checkpoints/latest_checkpoint.ckpt"
+#vq_gan_checkpoint: "log/vq_gan_mri/version_106/checkpoints/latest_checkpoint.ckpt"
+vq_gan_checkpoint:
+
+num_layers: 5
+base_channels: 64
+channel_multiplier: 1.5
+cnn_dropout_rate: 0.0
+fc_dropout_rate: 0.4
+fc_hidden: 256

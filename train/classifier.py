@@ -33,7 +33,7 @@ def run(cfg: DictConfig):
     train_ram_loader = MRIRAMLoader(datapath, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
     # train_dataset = MRIDataset(data_path=datapath, split='train')
-    train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train')
+    train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train', apply_augmentation=True)
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]
@@ -52,7 +52,18 @@ def run(cfg: DictConfig):
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
         collate_fn=monai.data.list_data_collate
     )
-    model = Classifier(cfg, class_weights=weight_tensor)
+    model = Classifier(
+        num_layers=cfg.num_layers,
+        base_channels=cfg.base_channels,
+        channel_multiplier=cfg.channel_multiplier,
+        cnn_dropout_rate=cfg.cnn_dropout_rate,
+        fc_dropout_rate=cfg.fc_dropout_rate,
+        fc_hidden=cfg.fc_hidden,
+        lr=cfg.lr,
+        weight_decay=cfg.weight_decay,
+        max_epoch=cfg.max_epoch,
+        class_weights=weight_tensor
+    )
     checkpoint_callback = ModelCheckpoint(
         monitor="val_accuracy",
         mode="max",
