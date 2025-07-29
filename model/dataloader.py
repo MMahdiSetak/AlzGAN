@@ -31,7 +31,6 @@ class MRIDataset(Dataset):
                 scales=(0.8, 1.2),  # ±20% scaling/zoom
                 degrees=15,  # ±15° rotation
                 translation=5,  # Slightly increased for more shift variety (~6% of 160)
-                shears=10,  # Add shear (±10°) for subtle distortions
                 p=0.4  # Apply 40% of the time
             ),
             tio.RandomElasticDeformation(
