@@ -18,12 +18,14 @@ class MRIDataset(Dataset):
     def _create_augmentation_pipeline(self):
         """Create TorchIO augmentation pipeline optimized for 3D MRI (160, 192, 160)"""
         base_transforms = [
-            tio.Resize(target_shape=(80, 96, 80)),
             # tio.ZNormalization(masking_method=tio.ZNormalization.mean),  # Z-score normalization
             tio.ZNormalization(masking_method=lambda x: x > 0),
         ]
+        end_transforms = [
+            tio.Resize(target_shape=(80, 96, 80))
+        ]
         if not self.apply_augmentation:
-            return tio.Compose(base_transforms)
+            return tio.Compose(base_transforms + end_transforms)
 
         augmentation_transforms = [
             tio.RandomFlip(axes='LR', p=0.5),
@@ -78,7 +80,7 @@ class MRIDataset(Dataset):
             #     p=0.25
             # ),
         ]
-        return tio.Compose(base_transforms + augmentation_transforms)
+        return tio.Compose(base_transforms + augmentation_transforms + end_transforms)
 
     def __len__(self):
         # if self.file is None:

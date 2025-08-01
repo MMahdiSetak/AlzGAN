@@ -1,5 +1,6 @@
+import os.path
+
 import hydra
-import monai
 import torch
 import pytorch_lightning as pl
 from omegaconf import DictConfig
@@ -43,14 +44,14 @@ def run(cfg: DictConfig):
         dataset=train_dataset,
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
         pin_memory=True,  # Faster GPU transfer
-        collate_fn=monai.data.list_data_collate
+        # collate_fn=monai.data.list_data_collate
     )
     val_ram_loader = MRIRAMLoader(datapath, 'val')
     val_loader = DataLoader(
         # dataset=FastMRIDataset(*val_ram_loader.get_data()),
         dataset=MRIDataset(*val_ram_loader.get_data(), split='val'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
-        collate_fn=monai.data.list_data_collate
+        # collate_fn=monai.data.list_data_collate
     )
     model = Classifier(
         num_layers=cfg.num_layers,
@@ -66,7 +67,7 @@ def run(cfg: DictConfig):
         vq_gan_checkpoint=cfg.vq_gan_checkpoint
     )
     checkpoint_callback = ModelCheckpoint(
-        monitor="val_accuracy",
+        monitor="accuracy/val",
         mode="max",
         save_top_k=1,
         filename="classifier_best_model",
@@ -90,10 +91,10 @@ def run(cfg: DictConfig):
         logger=logger,
         gradient_clip_val=1.0,
         precision='16-mixed',
-        callbacks=[early_stop_callback],
+        callbacks=[early_stop_callback, checkpoint_callback],
         # accumulate_grad_batches=2,
         log_every_n_steps=5,
-        enable_checkpointing=False,
+        enable_checkpointing=True,
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     test_ram_loader = MRIRAMLoader(datapath, 'test')
@@ -101,6 +102,8 @@ def run(cfg: DictConfig):
         # dataset=MRIDataset(data_path=datapath, split='test'),
         dataset=MRIDataset(*test_ram_loader.get_data(), split='test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-        collate_fn=monai.data.list_data_collate
+        # collate_fn=monai.data.list_data_collate
     )
+    os.path.join(logger.log_dir, "checkpoints", "classifier_best_model.ckpt")
+    model = Classifier.load_from_checkpoint(logger.log_dir)
     trainer.test(model=model, dataloaders=test_loader)
