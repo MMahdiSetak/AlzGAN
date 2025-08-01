@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
 
-def merge_mri_dataset(mri_path: str):
+def merge_mri_csv(mri_path: str):
     df_tb = pd.read_csv('dataset/tabular/all.csv')
     df_tb['image_path'] = pd.NA
     df_img = pd.read_csv('dataset/mri.csv')
@@ -147,5 +147,5 @@ def create_mri_dataset():
 
 
 def run():
-    # merge_mri_dataset('dataset/MRI2/ADNI/')
-    create_mri_dataset()
+    merge_mri_csv('dataset/MRI2/ADNI/')
+    # create_mri_dataset()
