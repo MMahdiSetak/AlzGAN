@@ -126,6 +126,8 @@ def run():
     ohe_df = pd.DataFrame(ohe_encoded, columns=ohe.get_feature_names_out(ohe_cols))
     cleaned_merged = pd.concat([cleaned_merged.drop(ohe_cols, axis=1), ohe_df], axis=1)
 
+    cleaned_merged.to_csv(f'dataset/tabular/all.csv', index=False)
+
     # Define numerical cols for scaling (AGE now included)
     numerical_cols = ['MMSCORE', 'TOTSCORE', 'TOTAL13', 'FAQTOTAL', 'PTEDUCAT', 'AGE']
 
