@@ -126,6 +126,7 @@ def run():
     ohe_df = pd.DataFrame(ohe_encoded, columns=ohe.get_feature_names_out(ohe_cols))
     cleaned_merged = pd.concat([cleaned_merged.drop(ohe_cols, axis=1), ohe_df], axis=1)
 
+    os.makedirs('dataset/tabular/', exist_ok=True)
     cleaned_merged.to_csv(f'dataset/tabular/all.csv', index=False)
 
     # Define numerical cols for scaling (AGE now included)
@@ -176,7 +177,6 @@ def run():
     test[numerical_cols] = scaler.transform(test[numerical_cols])
 
     # Save X and y for each split
-    os.makedirs('dataset/tabular/', exist_ok=True)
     for split_name, df in [('train', train), ('val', val), ('test', test)]:
         x = df[features]
         y = df['DIAGNOSIS'] - 1
