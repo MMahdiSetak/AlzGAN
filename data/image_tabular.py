@@ -133,16 +133,16 @@ def create_mri_dataset():
         print(y.value_counts())
 
     mri_target = (160, 192, 160)
-    with h5py.File('mri_v5.2_Rigid.hdf5', 'w') as h5f:
+    with h5py.File('mri_v5.2_SyN.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (len(train), *mri_target), dtype='float32'),
             'mri_val': h5f.create_dataset('mri_val', (len(val), *mri_target), dtype='float32'),
             'mri_test': h5f.create_dataset('mri_test', (len(test), *mri_target), dtype='float32'),
         }
-        for split, df in [('train', train), ('val', val), ('test', test)]:
-            for index, row in df.iterrows():
+        for split, df in tqdm([('train', train), ('val', val), ('test', test)]):
+            for index, row in tqdm(df.iterrows(), total=len(df)):
                 dataset_mri = mri_preprocess(f"{row['image_path']}/brainmask.mgz")
-                log_to_file_image(dataset_mri)
+                # log_to_file_image(dataset_mri)
                 ds[f'mri_{split}'][index] = dataset_mri
 
 

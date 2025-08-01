@@ -4,7 +4,7 @@
 
 if __name__ == '__main__':
     import torch
-    from data.tabular import run
+    from data.image_tabular import run
 
     torch.set_float32_matmul_precision('medium')
     run()
