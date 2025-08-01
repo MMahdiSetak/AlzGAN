@@ -30,7 +30,8 @@ class CustomOneOf(mt.MapTransform):
 class Classifier(pl.LightningModule):
     # def __init__(self, cfg, class_weights):
     def __init__(self, class_weights, num_layers=4, base_channels=32, channel_multiplier=2,
-                 cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, lr=1e-3, weight_decay=1e-2, max_epoch=300):
+                 cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, lr=1e-3, weight_decay=1e-2,
+                 vq_gan_checkpoint=None, max_epoch=300):
         super().__init__()
         self.save_hyperparameters()
 
@@ -53,14 +54,15 @@ class Classifier(pl.LightningModule):
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
 
-        # vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=cfg.vq_gan_checkpoint)
-        # self.encoder = vq_gan_model.encoder
-        # for param in self.encoder.parameters():
-        #     param.requires_grad = False
-        # self.classifier = Simple3DCNN(input_size=(80, 96, 80), channels=[1, 32, 64, 128, 256], fc=128, num_classes=3,
-        #                               dropout_rate=0.4)
-        # self.classifier = Simple3DCNN(input_size=(8, 8, 8), channels=[64, 16], fc=64, num_classes=3,
-        #                               dropout_rate=0.6)
+        if vq_gan_checkpoint is not None:
+            vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=vq_gan_checkpoint)
+            self.encoder = vq_gan_model.encoder
+            # for param in self.encoder.parameters():
+            #     param.requires_grad = False
+            self.mri_features = Simple3DCNN(input_size=(8, 8, 8), channels=[32, 16], fc=64, num_classes=32,
+                                            dropout_rate=0.4)
+
+
 
         self.classifier = Parametric3DCNN(
             input_size=(80, 96, 80),
@@ -70,7 +72,13 @@ class Classifier(pl.LightningModule):
             cnn_dropout_rate=cnn_dropout_rate,
             fc_dropout_rate=fc_dropout_rate,
             fc_hidden=fc_hidden,
-            num_classes=num_classes
+            num_classes=32
+        )
+
+        self.fc = nn.Sequential(
+            nn.ReLU(inplace=True),
+            nn.Dropout(fc_dropout_rate),
+            nn.Linear(64, num_classes)
         )
 
         # MONAI GPU-accelerated transforms (applied in steps after batch on GPU)
@@ -124,8 +132,10 @@ class Classifier(pl.LightningModule):
         return mri_aug, labels_aug
 
     def forward(self, mri):
-        # mri = self.encoder(mri)
-        out = self.classifier(mri)
+        latent_mri = self.encoder(mri)
+        mri_features = self.mri_features(latent_mri)
+        main_features = self.classifier(mri)
+        out = self.fc(torch.cat([mri_features, main_features], dim=1))
         return out
 
     def training_step(self, batch, batch_idx):

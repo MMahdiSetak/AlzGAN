@@ -27,36 +27,56 @@ class MRIDataset(Dataset):
 
         augmentation_transforms = [
             tio.RandomFlip(axes='LR', p=0.5),
-            tio.RandomAffine(
-                scales=(0.8, 1.2),  # ±20% scaling/zoom
-                degrees=15,  # ±15° rotation
-                translation=5,  # Slightly increased for more shift variety (~6% of 160)
-                p=0.4  # Apply 40% of the time
-            ),
-            tio.RandomElasticDeformation(
-                num_control_points=5,
-                max_displacement=3,
-                locked_borders=1,
-                p=0.4  # Apply 40% of the time
-            ),
-            # Intensity augmentations (simulate MRI variations)
-            tio.RandomGamma(
-                log_gamma=(-0.3, 0.3),  # Adjust contrast; expanded range for more variety
-                p=0.3
-            ),
+            # Primary augmentations (choose one per batch)
+            tio.OneOf({
+                # Elastic deformation (most effective for brain MRI)
+                tio.RandomElasticDeformation(
+                    num_control_points=7,
+                    max_displacement=7.5,
+                    locked_borders=2
+                ): 0.35,
+                # Intensity augmentation (second most effective)
+                tio.RandomGamma(log_gamma=0.3): 0.30,
+                # Spatial transformations
+                tio.RandomAffine(
+                    scales=(0.8, 1.2),  # ±20% scaling
+                    degrees=15,  # ±15° rotation
+                    translation=8  # Conservative translation (5% of 160)
+                ): 0.25,
+                # No augmentation
+                tio.Lambda(lambda x: x): 0.1
+            }),
+
+            # tio.RandomAffine(
+            #     scales=(0.8, 1.2),  # ±20% scaling/zoom
+            #     degrees=15,  # ±15° rotation
+            #     translation=5,  # Slightly increased for more shift variety (~6% of 160)
+            #     p=0.4  # Apply 40% of the time
+            # ),
+            # tio.RandomElasticDeformation(
+            #     num_control_points=5,
+            #     max_displacement=3,
+            #     locked_borders=1,
+            #     p=0.4  # Apply 40% of the time
+            # ),
+            # # Intensity augmentations (simulate MRI variations)
+            # tio.RandomGamma(
+            #     log_gamma=(-0.3, 0.3),  # Adjust contrast; expanded range for more variety
+            #     p=0.3
+            # ),
             tio.RandomNoise(
                 mean=0,
                 std=(0, 0.025),  # Low Gaussian noise to mimic scanner variations
                 p=0.3
             ),
-            tio.RandomBiasField(
-                coefficients=0.5,  # Low-frequency intensity non-uniformity (common MRI artifact)
-                p=0.3
-            ),
-            tio.RandomBlur(
-                std=(0, 0.5),  # Slight blurring for resolution variability
-                p=0.25
-            ),
+            # tio.RandomBiasField(
+            #     coefficients=0.5,  # Low-frequency intensity non-uniformity (common MRI artifact)
+            #     p=0.3
+            # ),
+            # tio.RandomBlur(
+            #     std=(0, 0.5),  # Slight blurring for resolution variability
+            #     p=0.25
+            # ),
         ]
         return tio.Compose(base_transforms + augmentation_transforms)
 

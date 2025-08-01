@@ -62,7 +62,8 @@ def run(cfg: DictConfig):
         lr=cfg.lr,
         weight_decay=cfg.weight_decay,
         max_epoch=cfg.max_epoch,
-        class_weights=weight_tensor
+        class_weights=weight_tensor,
+        vq_gan_checkpoint=cfg.vq_gan_checkpoint
     )
     checkpoint_callback = ModelCheckpoint(
         monitor="val_accuracy",
