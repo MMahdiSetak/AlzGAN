@@ -228,7 +228,7 @@ def resize_image(image, target_size):
 
 
 # mri_template = ants.image_read('template/icbm_avg_152_t1_tal_nlin_symmetric_VI_mask.nii')
-mri_template = ants.image_read('template/stripped_cropped.nii')
+mri_template = ants.image_read('../template/stripped_cropped.nii')
 
 
 def mri_registration(path):
@@ -245,7 +245,7 @@ def pet_preprocess(img: np.ndarray) -> np.ndarray:
     img = np.transpose(img, (2, 1, 0))
     img = img[::-1, ::-1, :]
     skull_stripping(img)
-    img = nib.load('stripped.nii').get_fdata()
+    img = nib.load('../stripped.nii').get_fdata()
     img = img[30:130, 10:150, :]
     normalized_img = normalize_image(img)
     # pet (160, 160, 96) -> (100, 140, 96)
@@ -258,7 +258,7 @@ def pet_preprocess2(img: np.ndarray) -> np.ndarray:
     img = np.transpose(img, (2, 1, 0))
     img = img[::-1, ::-1, :]
     skull_stripping(img)
-    img = nib.load('stripped.nii').get_fdata()
+    img = nib.load('../stripped.nii').get_fdata()
     # img = img[16:112, :, :]
     normalized_img = normalize_image(img)
     # padded_image = np.pad(normalized_img, ((0, 0), (0, 0), (16, 16)), mode='constant')
@@ -557,7 +557,7 @@ def split_subject(subjects: [str]):
 
 def count_subject_image(subjects, mri_path: str):
     count = 0
-    dgs = pd.read_csv("dataset/DXSUM.csv").dropna(subset=['DIAGNOSIS'])
+    dgs = pd.read_csv("../dataset/DXSUM.csv").dropna(subset=['DIAGNOSIS'])
     dgs['EXAMDATE'] = pd.to_datetime(dgs['EXAMDATE'])
     subject_rows_cache = {subject: dgs[dgs['PTID'] == subject].copy() for subject in subjects}
     for subject in subjects:
@@ -592,7 +592,7 @@ def create_mri_dataset(mri_path: str):
         'test': count_subject_image(test_subj, mri_path),
     }
     # df = pd.read_csv("dataset/mri.csv")
-    dgs = pd.read_csv("dataset/DXSUM.csv").dropna(subset=['DIAGNOSIS'])
+    dgs = pd.read_csv("../dataset/DXSUM.csv").dropna(subset=['DIAGNOSIS'])
     dgs['EXAMDATE'] = pd.to_datetime(dgs['EXAMDATE'])
     # wrong_labels = 0
     with h5py.File('mri_label_v5.1_Rigid.hdf5', 'w') as h5f:
@@ -655,7 +655,7 @@ def create_pet_dataset(pet_path: str):
         'val': count_subject_image(val_subj, pet_path),
         'test': count_subject_image(test_subj, pet_path),
     }
-    df = pd.read_csv("dataset/pet.csv")
+    df = pd.read_csv("../dataset/pet.csv")
 
     with h5py.File('pet_label.hdf5', 'w') as h5f:
         ds = {
@@ -694,7 +694,7 @@ affine = np.eye(4)
 
 def skull_stripping(img):
     nifti_img = nib.Nifti1Image(img, affine)
-    nib.save(nifti_img, "temp.nii")
+    nib.save(nifti_img, "../temp.nii")
     command = f'docker run --rm --gpus all -v .:/temp freesurfer/synthstrip:1.6 -i /temp/temp.nii -o /temp/stripped.nii'
     proc = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     proc.wait()
@@ -741,8 +741,8 @@ def mri_dcm2nii(mri_path):
     print(count)
 
 
-mri_data_path = "dataset/MRI2/ADNI/"
-pet_data_path = "dataset/PET/ADNI/"
+mri_data_path = "../dataset/MRI2/ADNI/"
+pet_data_path = "../dataset/PET/ADNI/"
 
 # dataset_info(mri_data_paths)
 # create_mri_pet_label_dataset(mri_data_paths, pet_data_path)

@@ -3,7 +3,6 @@ from torch.utils.data import DataLoader
 import torchvision.utils as vutils
 from torchmetrics.image import PeakSignalNoiseRatio
 
-from dataset import log_video
 from model.MRI2PET.model import MRI2PET
 from model.dataloader import MRI2PETDataset
 
