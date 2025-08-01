@@ -12,8 +12,8 @@ vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt
 #vq_gan_checkpoint:
 
 num_layers: 4
-base_channels: 16
+base_channels: 8
 channel_multiplier: 1.5
 cnn_dropout_rate: 0.0
 fc_dropout_rate: 0.4
-fc_hidden: 128
+fc_hidden: 64
