@@ -269,7 +269,7 @@ class MRIRAMLoader:
     def get_data(self):
         if self.mri_images is None:
             with h5py.File(self.data_path, 'r') as f:
-                self.mri_images = torch.from_numpy(f[f'mri_{self.split}'][:10]).share_memory_()
+                self.mri_images = torch.from_numpy(f[f'mri_{self.split}'][:]).share_memory_()
                 # labels_tensor = torch.from_numpy(f[f'label_{self.split}'][:]).long()
                 # _, mapped_labels = torch.unique(labels_tensor, sorted=True, return_inverse=True)
                 # self.labels = mapped_labels.share_memory_()
