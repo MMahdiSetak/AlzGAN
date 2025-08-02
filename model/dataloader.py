@@ -84,7 +84,7 @@ class MergedDataset(Dataset):
             }),
             tio.RandomNoise(
                 mean=0,
-                std=(0, 0.025),  # Low Gaussian noise to mimic scanner variations
+                std=(0, 0.25),  # Low Gaussian noise to mimic scanner variations
                 p=0.3
             )
         ]

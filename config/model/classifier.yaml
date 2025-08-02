@@ -1,5 +1,5 @@
-batch_size: 32
-num_workers: 16
+batch_size: 16
+num_workers: 32
 lr: 1e-4
 weight_decay: 1e-2
 mri_dataset: 'dataset/mri_v5.2_SyN.hdf5'
@@ -13,7 +13,7 @@ vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt
 #vq_gan_checkpoint:
 
 num_layers: 4
-base_channels: 8
+base_channels: 16
 channel_multiplier: 1.5
 cnn_dropout_rate: 0.0
 fc_dropout_rate: 0.4
