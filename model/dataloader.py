@@ -61,7 +61,7 @@ class MergedDataset(Dataset):
         """Create TorchIO augmentation pipeline optimized for 3D MRI (160, 192, 160)"""
         base_transforms = [
             tio.Resize(target_shape=(80, 96, 80)),
-            tio.ZNormalization(masking_method=lambda x: x > 0),
+            # tio.ZNormalization(masking_method=lambda x: x > 0),
         ]
         if not self.apply_augmentation:
             return tio.Compose(base_transforms)
