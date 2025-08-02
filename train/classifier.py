@@ -19,12 +19,12 @@ def run(cfg: DictConfig):
     mri_dataset = cfg.mri_dataset
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
-    train_ram_loader = MRIRAMLoader(mri_dataset, 'train')
+    # train_ram_loader = MRIRAMLoader(mri_dataset, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
     # train_dataset = MRIDataset(data_path=datapath, split='train')
     # train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train', apply_augmentation=True)
     train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='train',
-                                  mri_cache=train_ram_loader.get_data(), apply_augmentation=True)
+                                  mri_cache=None, apply_augmentation=True)
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]

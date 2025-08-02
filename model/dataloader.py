@@ -30,9 +30,10 @@ class MergedDataset(Dataset):
 
     def __getitem__(self, idx):
         tabular = torch.tensor(self.df.loc[idx, self.tabular_cols].values.astype(np.float32))
-        mri = self.mri_images[idx].unsqueeze(0)
-        if type(self.mri_images[idx]) is not torch.Tensor:
-            mri = torch.from_numpy(mri).unsqueeze(0)
+        mri = self.mri_images[idx]
+        if type(mri) is not torch.Tensor:
+            mri = torch.from_numpy(mri)
+        mri = mri.unsqueeze_(0)
         label = torch.tensor(self.df.loc[idx, 'DIAGNOSIS'], dtype=torch.long)
 
         subject = tio.Subject(
@@ -268,7 +269,7 @@ class MRIRAMLoader:
     def get_data(self):
         if self.mri_images is None:
             with h5py.File(self.data_path, 'r') as f:
-                self.mri_images = torch.from_numpy(f[f'mri_{self.split}'][:]).share_memory_()
+                self.mri_images = torch.from_numpy(f[f'mri_{self.split}'][:10]).share_memory_()
                 # labels_tensor = torch.from_numpy(f[f'label_{self.split}'][:]).long()
                 # _, mapped_labels = torch.unique(labels_tensor, sorted=True, return_inverse=True)
                 # self.labels = mapped_labels.share_memory_()
