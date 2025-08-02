@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 import ants
 import h5py
@@ -71,8 +72,17 @@ def mri_registration(path):
     # corrected_image = ants.n4_bias_field_correction(moving_image, shrink_factor=4, convergence={'iters': [50, 50, 50, 50], 'tol': 1e-7})
     # registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Rigid')
     # registration = ants.registration(fixed=mri_template, moving=moving_image,type_of_transform='antsRegistrationSyNQuick[s]')
-    registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='SyN')
-    return registration["warpedmovout"].numpy()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        outprefix = os.path.join(temp_dir, "registration_")
+
+        registration = ants.registration(
+            fixed=mri_template,
+            moving=moving_image,
+            type_of_transform='SyN',
+            outprefix=outprefix
+        )
+
+        return registration["warpedmovout"].numpy()
 
 
 def normalize_image(img: np.ndarray) -> np.ndarray:
