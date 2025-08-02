@@ -9,49 +9,39 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from model.classifier.model import Classifier
-from model.dataloader import MRIDataset, MRIRAMLoader
-
-
-# Custom collate function for GPU optimization
-# def gpu_collate_fn(batch):
-#     """Custom collate function for efficient GPU transfer"""
-#     images, labels = zip(*batch)
-#
-#     # Stack tensors
-#     images = torch.stack(images, dim=0)
-#     labels = torch.stack(labels, dim=0)
-#
-#     return images, labels
+from model.dataloader import MRIDataset, MRIRAMLoader, MergedDataset
 
 
 @hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
 def run(cfg: DictConfig):
     batch_size = cfg.batch_size
     num_workers = cfg.num_workers
-    datapath = cfg.dataset
+    mri_dataset = cfg.mri_dataset
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
-    train_ram_loader = MRIRAMLoader(datapath, 'train')
+    train_ram_loader = MRIRAMLoader(mri_dataset, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
     # train_dataset = MRIDataset(data_path=datapath, split='train')
-    train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train', apply_augmentation=True)
+    # train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train', apply_augmentation=True)
+    train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='train',
+                                  mri_cache=train_ram_loader.get_data(), apply_augmentation=True)
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]
     weight_tensor = torch.tensor(weight_list, dtype=torch.float32)
 
     train_loader = DataLoader(
-        dataset=train_dataset,
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
-        pin_memory=True,  # Faster GPU transfer
-        # collate_fn=monai.data.list_data_collate
+        dataset=train_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+        persistent_workers=True,
+        # pin_memory=True,
     )
-    val_ram_loader = MRIRAMLoader(datapath, 'val')
+    val_ram_loader = MRIRAMLoader(mri_dataset, 'val')
     val_loader = DataLoader(
         # dataset=FastMRIDataset(*val_ram_loader.get_data()),
-        dataset=MRIDataset(*val_ram_loader.get_data(), split='val'),
+        # dataset=MRIDataset(*val_ram_loader.get_data(), split='val'),
+        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='val',
+                              mri_cache=val_ram_loader.get_data()),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
-        # collate_fn=monai.data.list_data_collate
     )
     model = Classifier(
         num_layers=cfg.num_layers,
@@ -97,12 +87,12 @@ def run(cfg: DictConfig):
         enable_checkpointing=True,
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    test_ram_loader = MRIRAMLoader(datapath, 'test')
+    # test_ram_loader = MRIRAMLoader(datapath, 'test')
     test_loader = DataLoader(
         # dataset=MRIDataset(data_path=datapath, split='test'),
-        dataset=MRIDataset(*test_ram_loader.get_data(), split='test'),
+        # dataset=MRIDataset(*test_ram_loader.get_data(), split='test'),
+        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-        # collate_fn=monai.data.list_data_collate
     )
     os.path.join(logger.log_dir, "checkpoints", "classifier_best_model.ckpt")
     model = Classifier.load_from_checkpoint(logger.log_dir)

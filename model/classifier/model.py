@@ -143,10 +143,11 @@ class Classifier(pl.LightningModule):
 
         # mri, labels = self._apply_transform_per_sample(batch, self.train_transform)
         # batch = self.train_transform(batch)
-        # mri = batch['mri']
-        # labels = batch['label']
+        mri = batch['mri']
+        labels = batch['label']
+        tabular = batch['tabular']
 
-        mri, labels = batch
+        # mri, labels = batch
         bs = len(labels)
         outputs = self(mri)
         loss = self.classification_loss(outputs, labels)

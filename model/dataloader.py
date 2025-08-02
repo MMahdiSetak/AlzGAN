@@ -1,9 +1,93 @@
+import os
+
 import h5py
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 import torchio as tio
+
+
+class MergedDataset(Dataset):
+    def __init__(self, csv_path, hdf5_path, split, mri_cache=None, apply_augmentation=False, tabular_cols=None):
+        self.df = pd.read_csv(os.path.join(csv_path, f'{split}.csv'))
+        if mri_cache is not None:
+            self.mri_images = mri_cache
+        else:
+            self.file = h5py.File(hdf5_path, 'r')
+            self.mri_images = self.file[f'mri_{split}']
+        if tabular_cols is None:
+            numerical_cols = ['MMSCORE', 'TOTSCORE', 'TOTAL13', 'FAQTOTAL', 'PTEDUCAT', 'AGE']
+            tabular_cols = numerical_cols + ['PTGENDER', 'PTHAND'] + [col for col in self.df if
+                                                                      col.startswith('PTMARRY_')]
+        self.tabular_cols = tabular_cols
+        self.apply_augmentation = apply_augmentation
+        self.augmentation_transform = self._create_augmentation_pipeline()
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        tabular = torch.tensor(self.df.loc[idx, self.tabular_cols].values.astype(np.float32))
+        mri = self.mri_images[idx].unsqueeze(0)
+        if type(self.mri_images[idx]) is not torch.Tensor:
+            mri = torch.from_numpy(mri).unsqueeze(0)
+        label = torch.tensor(self.df.loc[idx, 'DIAGNOSIS'], dtype=torch.long)
+
+        subject = tio.Subject(
+            mri=tio.ScalarImage(tensor=mri),
+            label=label
+        )
+        try:
+            augmented_subject = self.augmentation_transform(subject)
+            mri = augmented_subject['mri'].data
+            del augmented_subject, subject
+        except Exception as e:
+            print(f"Warning: Augmentation failed for sample {idx}: {e}")
+            pass
+
+        return {'tabular': tabular, 'mri': mri, 'label': label}
+
+    def get_class_weights(self):
+        labels = self.df['DIAGNOSIS'].values
+        unique, counts = np.unique(labels, return_counts=True)
+        total_samples = len(labels)
+        class_weights = {cls: total_samples / (len(unique) * count) for cls, count in zip(unique, counts)}
+        return class_weights
+
+    def _create_augmentation_pipeline(self):
+        """Create TorchIO augmentation pipeline optimized for 3D MRI (160, 192, 160)"""
+        base_transforms = [
+            tio.Resize(target_shape=(80, 96, 80)),
+            tio.ZNormalization(masking_method=lambda x: x > 0),
+        ]
+        if not self.apply_augmentation:
+            return tio.Compose(base_transforms)
+
+        augmentation_transforms = [
+            tio.RandomFlip(axes='LR', p=0.5),
+            tio.OneOf({
+                tio.RandomElasticDeformation(
+                    num_control_points=7,
+                    max_displacement=7.5,
+                    locked_borders=2
+                ): 0.35,
+                tio.RandomGamma(log_gamma=0.3): 0.30,
+                tio.RandomAffine(
+                    scales=(0.8, 1.2),  # ±20% scaling
+                    degrees=15,  # ±15° rotation
+                    translation=8  # Conservative translation (5% of 160)
+                ): 0.25,
+                tio.Lambda(lambda x: x): 0.1
+            }),
+            tio.RandomNoise(
+                mean=0,
+                std=(0, 0.025),  # Low Gaussian noise to mimic scanner variations
+                p=0.3
+            )
+        ]
+        return tio.Compose(base_transforms + augmentation_transforms)
 
 
 class MRIDataset(Dataset):
@@ -179,16 +263,16 @@ class MRIRAMLoader:
         self.data_path = data_path
         self.split = split
         self.mri_images = None
-        self.labels = None
+        # self.labels = None
 
     def get_data(self):
         if self.mri_images is None:
             with h5py.File(self.data_path, 'r') as f:
                 self.mri_images = torch.from_numpy(f[f'mri_{self.split}'][:]).share_memory_()
-                labels_tensor = torch.from_numpy(f[f'label_{self.split}'][:]).long()
-                _, mapped_labels = torch.unique(labels_tensor, sorted=True, return_inverse=True)
-                self.labels = mapped_labels.share_memory_()
-        return self.mri_images, self.labels
+                # labels_tensor = torch.from_numpy(f[f'label_{self.split}'][:]).long()
+                # _, mapped_labels = torch.unique(labels_tensor, sorted=True, return_inverse=True)
+                # self.labels = mapped_labels.share_memory_()
+        return self.mri_images  # , self.labels
 
 
 class FastMRIDataset(Dataset):
