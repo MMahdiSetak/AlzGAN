@@ -35,12 +35,12 @@ def run(cfg: DictConfig):
         persistent_workers=True,
         # pin_memory=True,
     )
-    val_ram_loader = MRIRAMLoader(mri_dataset, 'val')
+    # val_ram_loader = MRIRAMLoader(mri_dataset, 'val')
     val_loader = DataLoader(
         # dataset=FastMRIDataset(*val_ram_loader.get_data()),
         # dataset=MRIDataset(*val_ram_loader.get_data(), split='val'),
         dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='val',
-                              mri_cache=val_ram_loader.get_data()),
+                              mri_cache=None),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
     )
     model = Classifier(
@@ -74,7 +74,6 @@ def run(cfg: DictConfig):
         num_sanity_val_steps=0,
         accelerator="auto",
         # strategy="fsdp",
-        # TODO make it config
         # devices=[0, 1],
         # overfit_batches=3,
         val_check_interval=1.0,
