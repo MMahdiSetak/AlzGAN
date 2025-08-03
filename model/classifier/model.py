@@ -6,20 +6,20 @@ from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 
 from model.classifier.module import Simple3DCNN, Parametric3DCNN
+from model.classifier.tabular import TabularMLP
 from model.vq_gan_3d.vqgan import VQGAN
 
 
 class Classifier(pl.LightningModule):
     def __init__(self, class_weights, num_layers=4, base_channels=32, channel_multiplier=2,
                  cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, lr=1e-3, weight_decay=1e-2,
-                 vq_gan_checkpoint=None, max_epoch=300):
+                 vq_gan_checkpoint=None, max_epoch=300, num_classes=3):
         super().__init__()
         self.save_hyperparameters()
 
         self.lr = lr
         self.weight_decay = weight_decay
         self.epochs = max_epoch
-        num_classes = 3
 
         self.classification_loss = nn.CrossEntropyLoss(weight=class_weights)
 
@@ -43,6 +43,8 @@ class Classifier(pl.LightningModule):
             self.mri_features = Simple3DCNN(input_size=(8, 8, 8), channels=[32, 16], fc=64, num_classes=32,
                                             dropout_rate=0.4)
 
+        self.tabular_model = TabularMLP(input_dim=13, hidden_dims=[128, 64], output_dim=32,
+                                        dropout=fc_dropout_rate)
         self.classifier = Parametric3DCNN(
             input_size=(80, 96, 80),
             num_layers=num_layers,
@@ -57,14 +59,16 @@ class Classifier(pl.LightningModule):
         self.fc = nn.Sequential(
             nn.ReLU(inplace=True),
             nn.Dropout(fc_dropout_rate),
-            nn.Linear(64, num_classes)
+            nn.Linear(96, num_classes)
         )
 
-    def forward(self, mri):
+    def forward(self, mri, tabular):
         latent_mri = self.encoder(mri)
-        mri_features = self.mri_features(latent_mri)
-        main_features = self.classifier(mri)
-        out = self.fc(torch.cat([mri_features, main_features], dim=1))
+        mri_feats = self.mri_features(latent_mri)
+        main_feats = self.classifier(mri)
+        tabular_feats = self.tabular_model(tabular)
+        fused = torch.cat([mri_feats, main_feats, tabular_feats], dim=1)
+        out = self.fc(fused)
         return out
 
     def training_step(self, batch, batch_idx):
@@ -73,7 +77,7 @@ class Classifier(pl.LightningModule):
         tabular = batch['tabular']
 
         bs = len(labels)
-        outputs = self(mri)
+        outputs = self(mri, tabular)
         loss = self.classification_loss(outputs, labels)
 
         lr = self.optimizers().param_groups[0]['lr']
@@ -90,7 +94,7 @@ class Classifier(pl.LightningModule):
         tabular = batch['tabular']
 
         bs = len(labels)
-        outputs = self(mri)
+        outputs = self(mri, tabular)
         loss = self.classification_loss(outputs, labels)
         metrics = self.val_metrics(outputs, labels)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
@@ -102,7 +106,7 @@ class Classifier(pl.LightningModule):
         tabular = batch['tabular']
 
         bs = len(labels)
-        outputs = self(mri)
+        outputs = self(mri, tabular)
         metrics = self.test_metrics(outputs, labels)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
