@@ -4,7 +4,7 @@
 
 if __name__ == '__main__':
     import torch
-    from train.classifier import run
+    from test.visualize_model import run
 
     torch.set_float32_matmul_precision('medium')
     run()
