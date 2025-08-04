@@ -78,7 +78,7 @@ def mri_registration(path):
         registration = ants.registration(
             fixed=mri_template,
             moving=moving_image,
-            type_of_transform='SyN',
+            type_of_transform='Rigid',
             outprefix=outprefix
         )
 
@@ -143,7 +143,7 @@ def create_mri_dataset():
         print(y.value_counts())
 
     mri_target = (160, 192, 160)
-    with h5py.File('mri_v5.2_SyN.hdf5', 'w') as h5f:
+    with h5py.File('mri_v5.2_Rigid.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (len(train), *mri_target), dtype='float32'),
             'mri_val': h5f.create_dataset('mri_val', (len(val), *mri_target), dtype='float32'),
