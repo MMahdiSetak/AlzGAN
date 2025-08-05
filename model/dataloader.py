@@ -72,25 +72,25 @@ class MergedDataset(Dataset):
 
         augmentation_transforms = [
             tio.RandomFlip(axes='LR', p=0.5),
-            tio.OneOf({
-                tio.RandomElasticDeformation(
-                    num_control_points=7,
-                    max_displacement=7.5,
-                    locked_borders=2
-                ): 0.35,
-                tio.RandomGamma(log_gamma=0.3): 0.30,
-                tio.RandomAffine(
-                    scales=(0.8, 1.2),  # ±20% scaling
-                    degrees=15,  # ±15° rotation
-                    translation=8  # Conservative translation (5% of 160)
-                ): 0.25,
-                tio.Lambda(lambda x: x): 0.1
-            }),
-            tio.RandomNoise(
-                mean=0,
-                std=(0, 0.25),  # Low Gaussian noise to mimic scanner variations
-                p=0.3
-            )
+            # tio.OneOf({
+            #     tio.RandomElasticDeformation(
+            #         num_control_points=7,
+            #         max_displacement=7.5,
+            #         locked_borders=2
+            #     ): 0.35,
+            #     tio.RandomGamma(log_gamma=0.3): 0.30,
+            #     tio.RandomAffine(
+            #         scales=(0.8, 1.2),  # ±20% scaling
+            #         degrees=15,  # ±15° rotation
+            #         translation=8  # Conservative translation (5% of 160)
+            #     ): 0.25,
+            #     tio.Lambda(lambda x: x): 0.1
+            # }),
+            # tio.RandomNoise(
+            #     mean=0,
+            #     std=(0, 0.25),  # Low Gaussian noise to mimic scanner variations
+            #     p=0.3
+            # )
         ]
         return tio.Compose(base_transforms + augmentation_transforms)
 
