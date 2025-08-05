@@ -24,7 +24,7 @@ def run(cfg: DictConfig):
     # train_dataset = MRIDataset(data_path=datapath, split='train')
     # train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train', apply_augmentation=True)
     train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='train',
-                                  mri_cache=None, apply_augmentation=True)
+                                  mri_cache=None, apply_augmentation=cfg.augmentation)
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
     weight_list = [class_weights[i] for i in sorted(class_weights.keys())]
@@ -50,11 +50,14 @@ def run(cfg: DictConfig):
         cnn_dropout_rate=cfg.cnn_dropout_rate,
         fc_dropout_rate=cfg.fc_dropout_rate,
         fc_hidden=cfg.fc_hidden,
+        embed_dim=cfg.embed_dim,
         lr=cfg.lr,
         weight_decay=cfg.weight_decay,
         max_epoch=cfg.max_epoch,
         class_weights=weight_tensor,
-        vq_gan_checkpoint=cfg.vq_gan_checkpoint
+        vq_gan_checkpoint=cfg.vq_gan_checkpoint,
+        ddpm_checkpoint=cfg.ddpm_checkpoint,
+        tabular=cfg.tabular
     )
     checkpoint_callback = ModelCheckpoint(
         monitor="accuracy/val",

@@ -5,6 +5,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 
+from model.LcDDPM.model import LcDDPM
 from model.classifier.module import Simple3DCNN, Parametric3DCNN
 from model.classifier.tabular import TabularMLP
 from model.vq_gan_3d.vqgan import VQGAN
@@ -12,8 +13,8 @@ from model.vq_gan_3d.vqgan import VQGAN
 
 class Classifier(pl.LightningModule):
     def __init__(self, class_weights, num_layers=4, base_channels=32, channel_multiplier=2,
-                 cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, lr=1e-3, weight_decay=1e-2,
-                 vq_gan_checkpoint=None, max_epoch=300, num_classes=3):
+                 cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, embed_dim=32, lr=1e-3, weight_decay=1e-2,
+                 vq_gan_checkpoint=None, tabular=True, ddpm_checkpoint=None, max_epoch=300, num_classes=3):
         super().__init__()
         self.save_hyperparameters()
 
@@ -35,16 +36,6 @@ class Classifier(pl.LightningModule):
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
 
-        if vq_gan_checkpoint is not None:
-            vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=vq_gan_checkpoint)
-            self.encoder = vq_gan_model.encoder
-            # for param in self.encoder.parameters():
-            #     param.requires_grad = False
-            self.mri_features = Simple3DCNN(input_size=(8, 8, 8), channels=[32, 16], fc=64, num_classes=32,
-                                            dropout_rate=0.4)
-
-        self.tabular_model = TabularMLP(input_dim=13, hidden_dims=[128, 64], output_dim=32,
-                                        dropout=fc_dropout_rate)
         self.classifier = Parametric3DCNN(
             input_size=(80, 96, 80),
             num_layers=num_layers,
@@ -53,21 +44,51 @@ class Classifier(pl.LightningModule):
             cnn_dropout_rate=cnn_dropout_rate,
             fc_dropout_rate=fc_dropout_rate,
             fc_hidden=fc_hidden,
-            num_classes=32
+            num_classes=embed_dim
         )
+        fc_input = embed_dim
+
+        if vq_gan_checkpoint is not None:
+            vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=vq_gan_checkpoint)
+            self.encoder = vq_gan_model.encoder
+            # for param in self.encoder.parameters():
+            #     param.requires_grad = False
+            self.mri_features = Simple3DCNN(input_size=(8, 8, 8), channels=[32, 16], fc=64, num_classes=embed_dim,
+                                            dropout_rate=0.4)
+            fc_input += embed_dim
+
+        if tabular:
+            self.tabular_features = TabularMLP(input_dim=13, hidden_dims=[128, 64], output_dim=embed_dim,
+                                            dropout=fc_dropout_rate)
+            fc_input += embed_dim
+        if ddpm_checkpoint is not None:
+            ddpm_model = LcDDPM.load_from_checkpoint(checkpoint_path=ddpm_checkpoint)
+            self.ddpm_model = ddpm_model.model
+            self.pet_features = Simple3DCNN(input_size=(8, 8, 8), channels=[32, 16], fc=64, num_classes=embed_dim,
+                                            dropout_rate=0.4)
+            fc_input += embed_dim
 
         self.fc = nn.Sequential(
             nn.ReLU(inplace=True),
             nn.Dropout(fc_dropout_rate),
-            nn.Linear(96, num_classes)
+            nn.Linear(fc_input, num_classes)
         )
 
-    def forward(self, mri, tabular):
-        latent_mri = self.encoder(mri)
-        mri_feats = self.mri_features(latent_mri)
+    def forward(self, mri, tabular=None):
         main_feats = self.classifier(mri)
-        tabular_feats = self.tabular_model(tabular)
-        fused = torch.cat([mri_feats, main_feats, tabular_feats], dim=1)
+        feats = [main_feats]
+        if hasattr(self, "mri_features"):
+            latent_mri = self.encoder(mri)
+            mri_feats = self.mri_features(latent_mri)
+            feats.append(mri_feats)
+            if hasattr(self, "pet_features"):
+                latent_pet = self.ddpm_model.sample(latent_mri.shape[0], latent_mri)
+                pet_feats = self.pet_features(latent_pet)
+                feats.append(pet_feats)
+        if hasattr(self, "tabular_features"):
+            tabular_feats = self.tabular_features(tabular)
+            feats.append(tabular_feats)
+        fused = torch.cat(feats, dim=1)
         out = self.fc(fused)
         return out
 
