@@ -15,8 +15,9 @@ class MergedDataset(Dataset):
         if mri_cache is not None:
             self.mri_images = mri_cache
         else:
-            self.file = h5py.File(hdf5_path, 'r')
-            self.mri_images = self.file[f'mri_{split}']
+            self.mri_images = None
+            self.data_path = hdf5_path
+            self.split = split
         if tabular_cols is None:
             numerical_cols = ['MMSCORE', 'TOTSCORE', 'TOTAL13', 'FAQTOTAL', 'PTEDUCAT', 'AGE']
             tabular_cols = numerical_cols + ['PTGENDER', 'PTHAND'] + [col for col in self.df if
@@ -30,10 +31,13 @@ class MergedDataset(Dataset):
 
     def __getitem__(self, idx):
         tabular = torch.tensor(self.df.loc[idx, self.tabular_cols].values.astype(np.float32))
+        if self.mri_images is None:
+            self.file = h5py.File(self.data_path, 'r')
+            self.mri_images = self.file[f'mri_{self.split}']
         mri = self.mri_images[idx]
         if type(mri) is not torch.Tensor:
             mri = torch.from_numpy(mri)
-        mri = mri.unsqueeze_(0)
+        mri = mri.unsqueeze(0)
         label = torch.tensor(self.df.loc[idx, 'DIAGNOSIS'], dtype=torch.long)
 
         subject = tio.Subject(
@@ -89,6 +93,10 @@ class MergedDataset(Dataset):
             )
         ]
         return tio.Compose(base_transforms + augmentation_transforms)
+
+    def __del__(self):
+        if hasattr(self, 'file') and self.file is not None:
+            self.file.close()
 
 
 class MRIDataset(Dataset):
