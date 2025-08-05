@@ -32,7 +32,7 @@ def run(cfg: DictConfig):
 
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-        persistent_workers=True,
+        persistent_workers=False,
         # pin_memory=True,
     )
     # val_ram_loader = MRIRAMLoader(mri_dataset, 'val')
@@ -41,7 +41,7 @@ def run(cfg: DictConfig):
         # dataset=MRIDataset(*val_ram_loader.get_data(), split='val'),
         dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='val',
                               mri_cache=None),
-        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True,
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=False,
     )
     model = Classifier(
         num_layers=cfg.num_layers,

@@ -1,5 +1,5 @@
-batch_size: 16
-num_workers: 32
+batch_size: 64
+num_workers: 8
 lr: 1e-4
 weight_decay: 1e-2
 mri_dataset: 'dataset/mri_v5.2_SyN.hdf5'
