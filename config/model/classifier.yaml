@@ -1,11 +1,11 @@
-batch_size: 64
-num_workers: 8
+batch_size: 32
+num_workers: 16
 lr: 1e-4
 weight_decay: 1e-2
 mri_dataset: 'dataset/mri_v5.2_SyN.hdf5'
 augmentation: True
 tabular_dataset: 'dataset/img'
-early_stop: 200
+early_stop: 100
 max_epoch: 500
 embedding_size: 128
 dropout_rate: 0.2
