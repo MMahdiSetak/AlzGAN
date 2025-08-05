@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import datetime
 
+from matplotlib import pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 
@@ -23,3 +24,24 @@ class Logger:
             sys.stdout = sys.__stdout__
             out = buffer.getvalue()
             f.write(out)
+
+
+def log_3d(img, title="", file_name='test'):
+    center_slices = [dim // 2 for dim in img.shape]
+    # img = np.transpose(img, (0, 2, 1))
+
+    fig, axes = plt.subplots(1, 3, figsize=(8, 3))
+    fig.suptitle(title, fontsize=16, fontweight='bold')
+    # titles = ['Axial', 'Coronal', 'Sagittal']
+
+    slices = [img[center_slices[0], :, :], img[:, center_slices[1], :], img[:, :, center_slices[2]]]
+
+    for ax, slice_img in zip(axes, slices):
+        ax.imshow(slice_img, cmap='gray')
+        # ax.set_title(title)
+        # ax.axis('off')
+
+    # Save the figure to a file
+    plt.show()
+    # plt.savefig(f"log/mri/{file_name}.png")
+    plt.close(fig)
