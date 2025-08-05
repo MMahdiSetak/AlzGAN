@@ -64,6 +64,7 @@ def run(cfg: DictConfig):
         mode="max",
         save_top_k=1,
         filename="classifier_best_model",
+        save_last=True,
     )
     early_stop_callback = EarlyStopping(
         monitor='accuracy/val',
@@ -96,6 +97,6 @@ def run(cfg: DictConfig):
         dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
     )
-    os.path.join(logger.log_dir, "checkpoints", "classifier_best_model.ckpt")
-    model = Classifier.load_from_checkpoint(logger.log_dir)
+    model_path = os.path.join(logger.log_dir, "checkpoints", "classifier_best_model.ckpt")
+    model = Classifier.load_from_checkpoint(model_path)
     trainer.test(model=model, dataloaders=test_loader)
