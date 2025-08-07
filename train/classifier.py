@@ -67,7 +67,7 @@ def run(cfg: DictConfig):
         save_last=True,
     )
     early_stop_callback = EarlyStopping(
-        monitor='accuracy/val',
+        monitor='loss/val',
         patience=cfg.early_stop,
         verbose=True,
         mode='max'
