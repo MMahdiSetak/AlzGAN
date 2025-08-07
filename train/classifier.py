@@ -70,7 +70,7 @@ def run(cfg: DictConfig):
         monitor='loss/val',
         patience=cfg.early_stop,
         verbose=True,
-        mode='max'
+        mode='min'
     )
     trainer = pl.Trainer(
         max_epochs=cfg.max_epoch,
