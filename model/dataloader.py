@@ -83,8 +83,8 @@ class MergedDataset(Dataset):
                 # ): 0.35,
                 # tio.RandomGamma(log_gamma=0.3): 0.30,
                 tio.RandomAffine(
-                    scales=(0.95, 1.05),
-                    degrees=5,
+                    scales=(0.9, 1.1),
+                    degrees=10,
                     translation=5
                 ): 0.3,
                 tio.Lambda(lambda x: x): 0.7
