@@ -21,3 +21,4 @@ cnn_dropout_rate: 0.0
 fc_dropout_rate: 0.4
 fc_hidden: 64
 embed_dim: 32
+num_classes: 3

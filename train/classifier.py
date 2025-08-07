@@ -57,7 +57,8 @@ def run(cfg: DictConfig):
         class_weights=weight_tensor,
         vq_gan_checkpoint=cfg.vq_gan_checkpoint,
         ddpm_checkpoint=cfg.ddpm_checkpoint,
-        tabular=cfg.tabular
+        tabular=cfg.tabular,
+        num_classes=cfg.num_classes,
     )
     checkpoint_callback = ModelCheckpoint(
         monitor="accuracy/val",

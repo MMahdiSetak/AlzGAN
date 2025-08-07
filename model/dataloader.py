@@ -76,18 +76,18 @@ class MergedDataset(Dataset):
         augmentation_transforms = [
             tio.RandomFlip(axes='LR', p=0.5),
             tio.OneOf({
-                # tio.RandomElasticDeformation(
-                #     num_control_points=7,
-                #     max_displacement=7.5,
-                #     locked_borders=2
-                # ): 0.35,
+                tio.RandomElasticDeformation(
+                    num_control_points=7,
+                    max_displacement=3,
+                    locked_borders=2
+                ): 0.35,
                 # tio.RandomGamma(log_gamma=0.3): 0.30,
                 tio.RandomAffine(
                     scales=(0.9, 1.1),
                     degrees=10,
                     translation=5
-                ): 0.3,
-                tio.Lambda(lambda x: x): 0.7
+                ): 0.35,
+                tio.Lambda(lambda x: x): 0.3
             }),
             # tio.RandomNoise(
             #     mean=0,
