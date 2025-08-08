@@ -156,6 +156,81 @@ def create_mri_dataset():
                 ds[f'mri_{split}'][index] = dataset_mri
 
 
+def recreate_mri_dataset():
+    df = pd.read_csv('dataset/tabular/img_merged.csv')
+    df = df[df['DIAGNOSIS'] != 1]
+    df['DIAGNOSIS'] = df['DIAGNOSIS'] / 2
+    # Define numerical cols for scaling
+    numerical_cols = ['MMSCORE', 'TOTSCORE', 'TOTAL13', 'FAQTOTAL', 'PTEDUCAT', 'AGE']
+
+    # First split: 80% train, 20% temp (val + test)
+    gss1 = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    train_idx, temp_idx = next(gss1.split(df, groups=df['PTID']))
+    train = df.iloc[train_idx]
+
+    # Second split: 50% of temp for val (10% overall), 50% for test (10% overall)
+    temp_df = df.iloc[temp_idx]
+    gss2 = GroupShuffleSplit(n_splits=1, test_size=0.5, random_state=42)
+    val_idx_rel, test_idx_rel = next(gss2.split(temp_df, groups=temp_df['PTID']))
+
+    # Convert relative indices to absolute
+    val_idx = temp_df.iloc[val_idx_rel].index
+    test_idx = temp_df.iloc[test_idx_rel].index
+
+    val = df.loc[val_idx]
+    test = df.loc[test_idx]
+
+    train = train.copy().reset_index(drop=True)
+    val = val.copy().reset_index(drop=True)
+    test = test.copy().reset_index(drop=True)
+
+    scaler = MinMaxScaler()
+    scaler.fit(train[numerical_cols])
+    train[numerical_cols] = scaler.transform(train[numerical_cols])
+    val[numerical_cols] = scaler.transform(val[numerical_cols])
+    test[numerical_cols] = scaler.transform(test[numerical_cols])
+
+    os.makedirs('dataset/img/', exist_ok=True)
+    for split_name, df in [('train', train), ('val', val), ('test', test)]:
+        df.to_csv(f'dataset/img/2c_{split_name}.csv', index=False)
+        y = df['DIAGNOSIS']
+
+        # Print class distribution
+        print(f"\n{split_name.capitalize()} class distribution:")
+        print(y.value_counts())
+
+    mri_target = (160, 192, 160)
+    old_train_df = pd.read_csv('dataset/img/train.csv')
+    old_val_df = pd.read_csv('dataset/img/val.csv')
+    old_test_df = pd.read_csv('dataset/img/test.csv')
+    # Open old HDF5 once for reading
+    with h5py.File('dataset/mri_v5.2_Rigid.hdf5', 'r') as old_h5f:
+        with h5py.File('2c_mri_v5.2_Rigid.hdf5', 'w') as new_h5f:
+            ds = {
+                'mri_train': new_h5f.create_dataset('mri_train', (len(train), *mri_target), dtype='float32'),
+                'mri_val': new_h5f.create_dataset('mri_val', (len(val), *mri_target), dtype='float32'),
+                'mri_test': new_h5f.create_dataset('mri_test', (len(test), *mri_target), dtype='float32'),
+            }
+            for split, split_df in tqdm([('train', train), ('val', val), ('test', test)], desc="Processing splits"):
+                for index, row in tqdm(split_df.iterrows(), total=len(split_df), desc=f"Processing {split} rows"):
+                    image_path = row['image_path']
+                    match_train = old_train_df[old_train_df['image_path'] == image_path]
+                    match_val = old_val_df[old_val_df['image_path'] == image_path]
+                    match_test = old_test_df[old_test_df['image_path'] == image_path]
+                    if len(match_train) > 0:
+                        dataset_mri = old_h5f[f'mri_train'][match_train.index[0]]
+                    elif len(match_val) > 0:
+                        dataset_mri = old_h5f[f'mri_val'][match_val.index[0]]
+                    elif len(match_test) > 0:
+                        dataset_mri = old_h5f[f'mri_test'][match_test.index[0]]
+                    else:
+                        print(
+                            f"Warning: No unique match found for image_path '{image_path}' in old datasets. Skipping.")
+                        continue
+                    ds[f'mri_{split}'][index] = dataset_mri
+
+
 def run():
     # merge_mri_csv('dataset/MRI2/ADNI/')
-    create_mri_dataset()
+    # create_mri_dataset()
+    recreate_mri_dataset()
