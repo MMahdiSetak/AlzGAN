@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import datetime
 
+import numpy as np
 from matplotlib import pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
@@ -34,10 +35,15 @@ def log_3d(img, title="", file_name='test'):
     fig.suptitle(title, fontsize=16, fontweight='bold')
     # titles = ['Axial', 'Coronal', 'Sagittal']
 
-    slices = [img[center_slices[0], :, :], img[:, center_slices[1], :], img[:, :, center_slices[2]]]
+    slices = [
+        img[center_slices[0], :, :],
+        img[:, center_slices[1], :],
+        img[:, :, center_slices[2]]
+    ]
 
     for ax, slice_img in zip(axes, slices):
-        ax.imshow(slice_img, cmap='gray')
+        rotated_slice = np.rot90(slice_img, k=1)
+        ax.imshow(rotated_slice, cmap='gray')
         # ax.set_title(title)
         # ax.axis('off')
 

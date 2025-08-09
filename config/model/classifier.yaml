@@ -11,11 +11,11 @@ tabular_dataset: 'dataset/img/2c_'
 early_stop: 100
 max_epoch: 500
 
-#vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt"
-vq_gan_checkpoint:
+vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt"
+#vq_gan_checkpoint:
 #ddpm_checkpoint: "log/LcDDPM/version_11/checkpoints/epoch=999-step=17000.ckpt"
 ddpm_checkpoint:
-tabular: False
+tabular: True
 
 num_layers: 4
 base_channels: 8
