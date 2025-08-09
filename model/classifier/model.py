@@ -13,12 +13,14 @@ from model.vq_gan_3d.vqgan import VQGAN
 
 class Classifier(pl.LightningModule):
     def __init__(self, class_weights, num_layers=4, base_channels=32, channel_multiplier=2,
-                 cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, embed_dim=32, lr=1e-3, weight_decay=1e-2,
-                 vq_gan_checkpoint=None, tabular=True, ddpm_checkpoint=None, max_epoch=300, num_classes=3):
+                 cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, embed_dim=32, lr=1e-3, eta_min=1e-5,
+                 weight_decay=1e-2, vq_gan_checkpoint=None, tabular=True, ddpm_checkpoint=None, max_epoch=300,
+                 num_classes=3):
         super().__init__()
         self.save_hyperparameters()
 
         self.lr = lr
+        self.eta_min = eta_min
         self.weight_decay = weight_decay
         self.epochs = max_epoch
 
@@ -59,7 +61,7 @@ class Classifier(pl.LightningModule):
 
         if tabular:
             self.tabular_features = TabularMLP(input_dim=13, hidden_dims=[128, 64], output_dim=embed_dim,
-                                            dropout=fc_dropout_rate)
+                                               dropout=fc_dropout_rate)
             fc_input += embed_dim
         if ddpm_checkpoint is not None:
             ddpm_model = LcDDPM.load_from_checkpoint(checkpoint_path=ddpm_checkpoint)
@@ -140,7 +142,7 @@ class Classifier(pl.LightningModule):
         scheduler = CosineAnnealingLR(
             optimizer,
             T_max=self.epochs,
-            eta_min=1e-5
+            eta_min=self.eta_min
         )
         return {
             "optimizer": optimizer,
