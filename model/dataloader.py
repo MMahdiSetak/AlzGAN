@@ -13,7 +13,7 @@ from model.log import log_3d
 
 class MergedDataset(Dataset):
     def __init__(self, csv_path, hdf5_path, split, mri_cache=None, apply_augmentation=False, tabular_cols=None):
-        self.df = pd.read_csv(os.path.join(csv_path, f'{split}.csv'))
+        self.df = pd.read_csv(f'{csv_path}{split}.csv')
         if mri_cache is not None:
             self.mri_images = mri_cache
         else:
