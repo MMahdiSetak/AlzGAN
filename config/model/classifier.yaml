@@ -4,10 +4,10 @@ lr: 5e-5
 eta_min: 1e-5
 weight_decay: 1e-2
 #mri_dataset: 'dataset/mri_v5.2_Rigid.hdf5'
-mri_dataset: 'dataset/2c_mri_v5.2_Rigid.hdf5'
+mri_dataset: 'dataset/mci_v5.2_Rigid.hdf5'
 augmentation: True
 #tabular_dataset: 'dataset/img/'
-tabular_dataset: 'dataset/img/2c_'
+tabular_dataset: 'dataset/img/mci_'
 early_stop: 100
 max_epoch: 500
 
