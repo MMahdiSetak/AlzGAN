@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 from omegaconf import DictConfig
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.strategies import DDPStrategy
 from torch.utils.data import DataLoader
 
 from model.classifier.model import Classifier
@@ -75,7 +76,7 @@ def run(cfg: DictConfig):
     )
     trainer = pl.Trainer(
         max_epochs=cfg.max_epoch,
-        # strategy=DDPStrategy(find_unused_parameters=True),
+        strategy=DDPStrategy(find_unused_parameters=True),
         num_sanity_val_steps=0,
         accelerator="auto",
         # strategy="fsdp",
