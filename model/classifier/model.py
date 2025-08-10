@@ -39,7 +39,7 @@ class Classifier(pl.LightningModule):
         self.test_metrics = MetricCollection(metrics, postfix="/test")
 
         self.classifier = Parametric3DCNN(
-            input_size=(80, 96, 80),
+            input_size=(160, 192, 160),
             num_layers=num_layers,
             base_channels=base_channels,
             channel_multiplier=channel_multiplier,
@@ -55,7 +55,7 @@ class Classifier(pl.LightningModule):
             self.encoder = vq_gan_model.encoder
             # for param in self.encoder.parameters():
             #     param.requires_grad = False
-            self.mri_features = Simple3DCNN(input_size=(8, 8, 8), channels=[32, 16], fc=64, num_classes=embed_dim,
+            self.mri_features = Simple3DCNN(input_size=(16, 16, 16), channels=[32, 16], fc=64, num_classes=embed_dim,
                                             dropout_rate=0.4)
             fc_input += embed_dim
 
@@ -66,7 +66,7 @@ class Classifier(pl.LightningModule):
         if ddpm_checkpoint is not None:
             ddpm_model = LcDDPM.load_from_checkpoint(checkpoint_path=ddpm_checkpoint)
             self.ddpm_model = ddpm_model.model
-            self.pet_features = Simple3DCNN(input_size=(8, 8, 8), channels=[32, 16], fc=64, num_classes=embed_dim,
+            self.pet_features = Simple3DCNN(input_size=(16, 16, 16), channels=[32, 16], fc=64, num_classes=embed_dim,
                                             dropout_rate=0.4)
             fc_input += embed_dim
 
