@@ -61,7 +61,7 @@ class VQGAN(pl.LightningModule):
 
         self.encoder = Encoder(cfg.image_type, cfg.n_hiddens, cfg.image_channels, cfg.norm_type, cfg.num_groups)
         self.decoder = Decoder(cfg.image_type, cfg.n_hiddens, cfg.image_channels, cfg.norm_type, cfg.num_groups)
-        self.quantizer = VectorQuantizer(self.n_codes, self.embedding_dim, self.beta)
+        # self.quantizer = VectorQuantizer(self.n_codes, self.embedding_dim, self.beta)
 
         self.save_hyperparameters()
 
@@ -80,26 +80,26 @@ class VQGAN(pl.LightningModule):
     #         self.encoder = torch.compile(self.encoder, mode='reduce-overhead')
     #         self.decoder = torch.compile(self.decoder, mode='reduce-overhead')
 
-    # def forward(self, x):
-    #     z = self.encoder(x)
-    #     x_recon = self.decoder(z)
-    #     recon_loss = F.l1_loss(x_recon, x)
-    #     return recon_loss, x_recon, z
-
     def forward(self, x):
         z = self.encoder(x)
-        # z = self.pre_quant_conv(z)
-        z_q, vq_loss, _ = self.quantizer(z)
-        # z_q = self.post_quant_conv(z_q)
-        x_recon = self.decoder(z_q)
+        x_recon = self.decoder(z)
         recon_loss = F.l1_loss(x_recon, x)
-        total_loss = recon_loss + vq_loss
-        return total_loss, recon_loss, vq_loss, x_recon, z_q
+        return recon_loss, x_recon, z
+
+    # def forward(self, x):
+    #     z = self.encoder(x)
+    #     # z = self.pre_quant_conv(z)
+    #     z_q, vq_loss, _ = self.quantizer(z)
+    #     # z_q = self.post_quant_conv(z_q)
+    #     x_recon = self.decoder(z_q)
+    #     recon_loss = F.l1_loss(x_recon, x)
+    #     total_loss = recon_loss + vq_loss
+    #     return total_loss, recon_loss, vq_loss, x_recon, z_q
 
     def training_step(self, batch, batch_idx):
         bs = batch.shape[0]
-        # recon_loss, x_recon, _ = self.forward(batch)
-        total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
+        recon_loss, x_recon, _ = self.forward(batch)
+        # total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
         if batch_idx == 0:
             original = fix_image_range(batch)
             x_recon = fix_image_range(x_recon)
@@ -108,20 +108,20 @@ class VQGAN(pl.LightningModule):
         lr = self.optimizers().param_groups[0]['lr']
         self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
         self.log('train/recon_loss', recon_loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('train/vq_loss', vq_loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        return total_loss
+        # self.log('train/vq_loss', vq_loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        return recon_loss
 
     def validation_step(self, batch, batch_idx):
         bs = batch.shape[0]
-        # recon_loss, x_recon, vq_output = self.forward(batch)
-        total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
+        recon_loss, x_recon, vq_output = self.forward(batch)
+        # total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
         original = fix_image_range(batch)
         x_recon = fix_image_range(x_recon)
         metrics = self.val_metrics(x_recon, original)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
         self.log('val/recon_loss', recon_loss, prog_bar=False, sync_dist=True)
-        self.log('val/vq_loss', vq_loss, prog_bar=False, sync_dist=True)
-        return total_loss
+        # self.log('val/vq_loss', vq_loss, prog_bar=False, sync_dist=True)
+        return recon_loss
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
@@ -159,8 +159,8 @@ class VQGAN(pl.LightningModule):
 
         try:
             z = self.encoder(x)
-            z_q, _, _ = self.quantizer(z)
-            x_recon = self.decoder(z_q)
+            # z_q, _, _ = self.quantizer(z)
+            x_recon = self.decoder(z)
 
             # Random frame selection for logging
             frame_idx = torch.randint(0, T, [B], device=x.device)
