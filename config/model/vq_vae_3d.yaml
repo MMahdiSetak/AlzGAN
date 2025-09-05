@@ -12,9 +12,9 @@ max_epochs: 300
 precision: 16-mixed
 gradient_clip_val: 1.0
 
-embedding_dim: 32
+embedding_dim: 16
 n_codes: 2048
-n_hiddens: 8
+n_hiddens: 4
 lr: 5e-3
 eta_min: 1e-3
 num_groups: 8
