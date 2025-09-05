@@ -1,9 +1,9 @@
 seed: 1234
 batch_size: 32
 num_workers: 16
-image_type: 'pet'  # 'pet' or 'mri'
-#dataset: 'dataset/mri_label_v5.1_Rigid.hdf5'
-dataset: 'dataset/mri_pet_label_v5.1_Rigid.hdf5'
+image_type: 'mri'  # 'pet' or 'mri'
+dataset: 'dataset/mri_v5.2_Rigid.hdf5'
+#dataset: 'dataset/mri_pet_label_v5.1_Rigid.hdf5'
 image_channels: 1
 
 accumulate_grad_batches: 1
