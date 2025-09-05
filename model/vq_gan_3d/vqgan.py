@@ -7,23 +7,69 @@ from torchmetrics import MeanSquaredError, MeanAbsoluteError, MetricCollection
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
 
+class VectorQuantizer(nn.Module):
+    def __init__(self, n_codes, embedding_dim, beta=0.25):
+        super().__init__()
+        self.n_codes = n_codes
+        self.embedding_dim = embedding_dim
+        self.beta = beta
+
+        self.embedding = nn.Embedding(self.n_codes, self.embedding_dim)
+        self.embedding.weight.data.uniform_(-1.0 / self.n_codes, 1.0 / self.n_codes)
+
+    def forward(self, z):
+        # z: B, C, T, H, W (assuming 3D latent)
+        # Flatten spatial dimensions
+        z_flattened = z.permute(0, 2, 3, 4, 1).reshape(-1, self.embedding_dim)  # (B*T*H*W, C)
+
+        # Compute distances
+        distances = (
+            torch.sum(z_flattened**2, dim=1, keepdim=True)
+            + torch.sum(self.embedding.weight**2, dim=1)
+            - 2 * torch.matmul(z_flattened, self.embedding.weight.t())
+        )
+
+        # Find closest encodings
+        encoding_indices = torch.argmin(distances, dim=1)
+        z_q = self.embedding(encoding_indices).view(z.shape)
+
+        # Compute VQ loss
+        commitment_loss = torch.mean((z_q.detach() - z)**2)
+        codebook_loss = torch.mean((z_q - z.detach())**2)
+        vq_loss = codebook_loss + self.beta * commitment_loss
+
+        # Straight-through estimator
+        z_q = z + (z_q - z).detach()
+
+        return z_q, vq_loss, encoding_indices
+
+
+def fix_image_range(x):
+    x -= x.min()
+    x /= x.max()
+    return x
+
+
 class VQGAN(pl.LightningModule):
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
         self.embedding_dim = cfg.embedding_dim
         self.n_codes = cfg.n_codes
+        # self.beta = cfg.beta
+        self.beta = 0.25
 
         self.encoder = Encoder(cfg.image_type, cfg.n_hiddens, cfg.image_channels, cfg.norm_type, cfg.num_groups)
         self.decoder = Decoder(cfg.image_type, cfg.n_hiddens, cfg.image_channels, cfg.norm_type, cfg.num_groups)
+        self.quantizer = VectorQuantizer(self.n_codes, self.embedding_dim, self.beta)
 
         self.save_hyperparameters()
 
         metrics = {
             "MAE": MeanAbsoluteError(),
             "MSE": MeanSquaredError(),
-            "PSNR": PeakSignalNoiseRatio(data_range=2),
-            "SSIM": StructuralSimilarityIndexMeasure(data_range=2)
+            "PSNR": PeakSignalNoiseRatio(data_range=1),
+            "SSIM": StructuralSimilarityIndexMeasure(data_range=1)
         }
         self.train_metrics = MetricCollection(metrics, prefix="train/")
         self.val_metrics = MetricCollection(metrics, prefix="val/")
@@ -34,30 +80,48 @@ class VQGAN(pl.LightningModule):
     #         self.encoder = torch.compile(self.encoder, mode='reduce-overhead')
     #         self.decoder = torch.compile(self.decoder, mode='reduce-overhead')
 
+    # def forward(self, x):
+    #     z = self.encoder(x)
+    #     x_recon = self.decoder(z)
+    #     recon_loss = F.l1_loss(x_recon, x)
+    #     return recon_loss, x_recon, z
+
     def forward(self, x):
         z = self.encoder(x)
-        x_recon = self.decoder(z)
+        # z = self.pre_quant_conv(z)
+        z_q, vq_loss, _ = self.quantizer(z)
+        # z_q = self.post_quant_conv(z_q)
+        x_recon = self.decoder(z_q)
         recon_loss = F.l1_loss(x_recon, x)
-        return recon_loss, x_recon, z
+        total_loss = recon_loss + vq_loss
+        return total_loss, recon_loss, vq_loss, x_recon, z_q
 
     def training_step(self, batch, batch_idx):
         bs = batch.shape[0]
-        recon_loss, x_recon, _ = self.forward(batch)
+        # recon_loss, x_recon, _ = self.forward(batch)
+        total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
         if batch_idx == 0:
-            metrics = self.train_metrics(x_recon, batch)
+            original = fix_image_range(batch)
+            x_recon = fix_image_range(x_recon)
+            metrics = self.train_metrics(x_recon, original)
             self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
         lr = self.optimizers().param_groups[0]['lr']
         self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
         self.log('train/recon_loss', recon_loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        return recon_loss
+        self.log('train/vq_loss', vq_loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        return total_loss
 
     def validation_step(self, batch, batch_idx):
         bs = batch.shape[0]
-        recon_loss, x_recon, vq_output = self.forward(batch)
-        metrics = self.val_metrics(x_recon, batch)
+        # recon_loss, x_recon, vq_output = self.forward(batch)
+        total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
+        original = fix_image_range(batch)
+        x_recon = fix_image_range(x_recon)
+        metrics = self.val_metrics(x_recon, original)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
         self.log('val/recon_loss', recon_loss, prog_bar=False, sync_dist=True)
-        return recon_loss
+        self.log('val/vq_loss', vq_loss, prog_bar=False, sync_dist=True)
+        return total_loss
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
@@ -95,7 +159,8 @@ class VQGAN(pl.LightningModule):
 
         try:
             z = self.encoder(x)
-            x_recon = self.decoder(z)
+            z_q, _, _ = self.quantizer(z)
+            x_recon = self.decoder(z_q)
 
             # Random frame selection for logging
             frame_idx = torch.randint(0, T, [B], device=x.device)
