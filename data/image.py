@@ -228,7 +228,7 @@ def resize_image(image, target_size):
 
 
 # mri_template = ants.image_read('template/icbm_avg_152_t1_tal_nlin_symmetric_VI_mask.nii')
-mri_template = ants.image_read('../template/stripped_cropped.nii')
+mri_template = ants.image_read('template/stripped_cropped.nii')
 
 
 def mri_registration(path):
@@ -694,7 +694,7 @@ affine = np.eye(4)
 
 def skull_stripping(img):
     nifti_img = nib.Nifti1Image(img, affine)
-    nib.save(nifti_img, "../temp.nii")
+    nib.save(nifti_img, "temp.nii")
     command = f'docker run --rm --gpus all -v .:/temp freesurfer/synthstrip:1.6 -i /temp/temp.nii -o /temp/stripped.nii'
     proc = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     proc.wait()

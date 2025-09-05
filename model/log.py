@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import datetime
 
+import imageio
 import numpy as np
 from matplotlib import pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
@@ -40,14 +41,31 @@ def log_3d(img, title="", file_name='test'):
         img[:, center_slices[1], :],
         img[:, :, center_slices[2]]
     ]
+    cnt = 0
 
     for ax, slice_img in zip(axes, slices):
+        # if cnt != 0:
+        #     rotated_slice = slice_img
+        # else:
+        #     rotated_slice = np.rot90(slice_img, k=1)
         rotated_slice = np.rot90(slice_img, k=1)
         ax.imshow(rotated_slice, cmap='gray')
+        ax.set_facecolor('none')
         # ax.set_title(title)
-        # ax.axis('off')
+        ax.axis('off')
+        cnt += 1
 
-    # Save the figure to a file
-    plt.show()
-    # plt.savefig(f"log/mri/{file_name}.png")
+        # Save the figure to a file
+    # plt.show()
+    plt.savefig(f"{file_name}.png", transparent=True, bbox_inches='tight')
     plt.close(fig)
+
+
+def log_video(img, name='pet_scan_video'):
+    H, W, Z = img.shape
+    writer = imageio.get_writer(f'{name}.mp4', fps=16, codec='libx264')
+    for h in range(H):
+        slice_ = img[h, :, :]
+        slice_ = np.rot90(slice_, k=1)
+        writer.append_data(slice_)
+    writer.close()
