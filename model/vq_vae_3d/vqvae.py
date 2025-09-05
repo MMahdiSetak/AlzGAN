@@ -50,7 +50,7 @@ def fix_image_range(x):
     return x
 
 
-class VQGAN(pl.LightningModule):
+class VQVAE(pl.LightningModule):
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg

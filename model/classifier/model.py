@@ -8,7 +8,7 @@ from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AU
 from model.LcDDPM.model import LcDDPM
 from model.classifier.module import Simple3DCNN, Parametric3DCNN
 from model.classifier.tabular import TabularMLP
-from model.vq_gan_3d.vqgan import VQGAN
+from model.vq_vae_3d.vqvae import VQVAE
 
 
 class Classifier(pl.LightningModule):
@@ -51,7 +51,7 @@ class Classifier(pl.LightningModule):
         fc_input = embed_dim
 
         if vq_gan_checkpoint is not None:
-            vq_gan_model = VQGAN.load_from_checkpoint(checkpoint_path=vq_gan_checkpoint)
+            vq_gan_model = VQVAE.load_from_checkpoint(checkpoint_path=vq_gan_checkpoint)
             self.encoder = vq_gan_model.encoder
             # for param in self.encoder.parameters():
             #     param.requires_grad = False

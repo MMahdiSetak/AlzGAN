@@ -9,7 +9,7 @@ import torchvision
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities import rank_zero_only
 
-from model.vq_gan_3d.utils import save_video_grid
+from model.vq_vae_3d.utils import save_video_grid
 
 
 class ImageLogger(Callback):

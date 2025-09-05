@@ -1,6 +1,6 @@
 seed: 1234
-batch_size: 16
-num_workers: 16
+batch_size: 1
+num_workers: 2
 image_type: 'mri'  # 'pet' or 'mri'
 dataset: 'dataset/mri_v5.2_Rigid.hdf5'
 #dataset: 'dataset/mri_pet_label_v5.1_Rigid.hdf5'
@@ -12,26 +12,12 @@ max_epochs: 300
 precision: 16-mixed
 gradient_clip_val: 1.0
 
-
 embedding_dim: 32
 n_codes: 2048
 n_hiddens: 8
 lr: 5e-3
 eta_min: 1e-3
-disc_channels: 64
-disc_layers: 3
-discriminator_iter_start: 50000
-disc_loss_type: hinge
-image_gan_weight: 1.0
-video_gan_weight: 1.0
-l1_weight: 4.0
-gan_feat_weight: 0.0
-perceptual_weight: 0.0
-i3d_feat: False
-restart_thres: 1.0
-no_random_restart: False
-norm_type: group
-padding_type: replicate
 num_groups: 8
+norm_type: group
 
 

@@ -7,13 +7,13 @@ from pytorch_lightning.strategies import DDPStrategy
 from torch.utils.data import DataLoader
 
 from model.dataloader import VQGANDataset
-from model.vq_gan_3d.vqgan import VQGAN
+from model.vq_vae_3d.vqvae import VQVAE
 from train.callbacks import ImageLogger, VideoLogger
 import hydra
 from omegaconf import DictConfig
 
 
-@hydra.main(config_path='../config/model', config_name='vq_gan_3d', version_base=None)
+@hydra.main(config_path='../config/model', config_name='vq_vae_3d', version_base=None)
 def run(cfg: DictConfig):
     pl.seed_everything(cfg.seed)
     batch_size = cfg.batch_size
@@ -21,7 +21,7 @@ def run(cfg: DictConfig):
     datapath = cfg.dataset
     image_type = cfg.image_type
 
-    model = VQGAN(cfg)
+    model = VQVAE(cfg)
     callbacks = []
     callbacks.append(ModelCheckpoint(
         monitor='val/recon_loss',

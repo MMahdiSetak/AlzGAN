@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from model.log import Logger
 # from ddpm.diffusion import default
-from model.vq_gan_3d.vqgan import VQGAN
+from model.vq_vae_3d.vqvae import VQVAE
 from model.dataloader import DataLoader
 from train.callbacks import ImageLogger, VideoLogger
 # from train.get_dataset import get_dataset
@@ -36,9 +36,9 @@ def run(cfg: DictConfig):
         "Setting learning rate to {:.2e} = {} (accumulate_grad_batches) * {} (num_gpus/8) * {} (batchsize/4) * {:.2e} (base_lr)".format(
             cfg.model.lr, accumulate, ngpu / 8, bs / 4, base_lr))
 
-    model = VQGAN(cfg)
-    logger = Logger("vq_gan_3d")
-    logger.save_model_metadata(model, logger.pet_target_shape, "vq_gan_3d", 2)
+    model = VQVAE(cfg)
+    logger = Logger("vq_vae_3d")
+    logger.save_model_metadata(model, logger.pet_target_shape, "vq_vae_3d", 2)
 
     callbacks = []
     callbacks.append(ModelCheckpoint(monitor='val/recon_loss',

@@ -7,7 +7,7 @@ from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMe
 
 from model.ddpm.trainer import GaussianDiffusion
 from model.ddpm.unet import create_model
-from model.vq_gan_3d.vqgan import VQGAN
+from model.vq_vae_3d.vqvae import VQVAE
 
 
 class LcDDPM(pl.LightningModule):
@@ -29,8 +29,8 @@ class LcDDPM(pl.LightningModule):
             channels=cfg.out_channels
         )
 
-        mri_vqgan_model = VQGAN.load_from_checkpoint(checkpoint_path=cfg.mri_vqgan_checkpoint)
-        pet_vqgan_model = VQGAN.load_from_checkpoint(checkpoint_path=cfg.pet_vqgan_checkpoint)
+        mri_vqgan_model = VQVAE.load_from_checkpoint(checkpoint_path=cfg.mri_vqgan_checkpoint)
+        pet_vqgan_model = VQVAE.load_from_checkpoint(checkpoint_path=cfg.pet_vqgan_checkpoint)
         self.mri_encoder = mri_vqgan_model.encoder
         self.mri_encoder.eval()
         self.pet_encoder = pet_vqgan_model.encoder
