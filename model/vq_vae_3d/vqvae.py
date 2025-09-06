@@ -208,7 +208,7 @@ class Encoder(nn.Module):
         super().__init__()
         if img_type == 'mri':
             kernels = [5, 4]
-            strides = [(5, 3, 5), (2, 4, 2)]
+            strides = [(5, 2, 5), (1, 3, 1)]
         elif img_type == 'pet':
             kernels = [3, 3]
             strides = [(2, 2, 3), (2, 2, 1)]
@@ -248,7 +248,7 @@ class Decoder(nn.Module):
     def __init__(self, type, n_hiddens, image_channel, norm_type='group', num_groups=32):
         super().__init__()
         if type == 'mri':
-            kernels = [(2, 4, 2), (5, 3, 5)]
+            kernels = [(1, 3, 1), (5, 2, 5)]
         elif type == 'pet':
             kernels = [(2, 2, 1), (2, 2, 3)]
         else:

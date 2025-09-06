@@ -17,7 +17,7 @@ n_codes: 2048
 n_hiddens: 8
 lr: 5e-3
 eta_min: 1e-3
-num_groups: 8
+num_groups: 32
 norm_type: group
 
 
