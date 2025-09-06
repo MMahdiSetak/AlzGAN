@@ -207,7 +207,7 @@ class Encoder(nn.Module):
     def __init__(self, img_type, n_hiddens, image_channel=3, norm_type='group', num_groups=32):
         super().__init__()
         if img_type == 'mri':
-            kernels = [5, 4]
+            kernels = [5, 3]
             strides = [(5, 2, 5), (1, 3, 1)]
         elif img_type == 'pet':
             kernels = [3, 3]
