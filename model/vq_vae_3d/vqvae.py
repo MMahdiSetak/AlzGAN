@@ -24,9 +24,9 @@ class VectorQuantizer(nn.Module):
 
         # Compute distances
         distances = (
-            torch.sum(z_flattened**2, dim=1, keepdim=True)
-            + torch.sum(self.embedding.weight**2, dim=1)
-            - 2 * torch.matmul(z_flattened, self.embedding.weight.t())
+                torch.sum(z_flattened ** 2, dim=1, keepdim=True)
+                + torch.sum(self.embedding.weight ** 2, dim=1)
+                - 2 * torch.matmul(z_flattened, self.embedding.weight.t())
         )
 
         # Find closest encodings
@@ -34,8 +34,8 @@ class VectorQuantizer(nn.Module):
         z_q = self.embedding(encoding_indices).view(z.shape)
 
         # Compute VQ loss
-        commitment_loss = torch.mean((z_q.detach() - z)**2)
-        codebook_loss = torch.mean((z_q - z.detach())**2)
+        commitment_loss = torch.mean((z_q.detach() - z) ** 2)
+        codebook_loss = torch.mean((z_q - z.detach()) ** 2)
         vq_loss = codebook_loss + self.beta * commitment_loss
 
         # Straight-through estimator
@@ -45,8 +45,8 @@ class VectorQuantizer(nn.Module):
 
 
 def fix_image_range(x):
-    x -= x.min()
-    x /= x.max()
+    x -= x.amin(dim=(1, 2, 3, 4), keepdim=True)
+    x /= x.amax(dim=(1, 2, 3, 4), keepdim=True)
     return x
 
 
