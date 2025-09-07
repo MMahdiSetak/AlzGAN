@@ -1,4 +1,5 @@
 """Adapted from https://github.com/FirasGit/medicaldiffusion"""
+import os
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -66,4 +67,6 @@ def run(cfg: DictConfig):
         batch_size=batch_size, num_workers=num_workers // 8 if num_workers > 8 else 2, shuffle=False, drop_last=False,
         persistent_workers=True
     )
+    model_path = os.path.join(logger.log_dir, "checkpoints", "latest_checkpoint.ckpt")
+    model = VQVAE.load_from_checkpoint(model_path)
     trainer.test(model, test_loader)
