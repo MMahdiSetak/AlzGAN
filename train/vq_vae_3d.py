@@ -6,7 +6,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.strategies import DDPStrategy
 from torch.utils.data import DataLoader
 
-from model.dataloader import VQGANDataset
+from model.dataloader import VQVAEDataset
 from model.vq_vae_3d.vqvae import VQVAE
 from train.callbacks import ImageLogger, VideoLogger
 import hydra
@@ -32,7 +32,7 @@ def run(cfg: DictConfig):
     callbacks.append(VideoLogger(
         batch_frequency=1500, max_videos=4, clamp=True))
 
-    logger = TensorBoardLogger(save_dir="./log", name=f"vq_gan_{image_type}")
+    logger = TensorBoardLogger(save_dir="./log", name=f"vq_vae_{image_type}")
     trainer = pl.Trainer(
         num_sanity_val_steps=0,
         check_val_every_n_epoch=10,
@@ -51,18 +51,18 @@ def run(cfg: DictConfig):
     )
 
     train_loader = DataLoader(
-        dataset=VQGANDataset(datapath, 'train', modality=image_type),
+        dataset=VQVAEDataset(datapath, 'train', modality=image_type),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=True
     )
     val_loader = DataLoader(
-        dataset=VQGANDataset(datapath, 'val', modality=image_type),
+        dataset=VQVAEDataset(datapath, 'val', modality=image_type),
         batch_size=batch_size, num_workers=num_workers // 8 if num_workers > 8 else 2, shuffle=False, drop_last=False,
         persistent_workers=True
     )
     trainer.fit(model, train_loader, val_loader)
 
     test_loader = DataLoader(
-        dataset=VQGANDataset(datapath, 'test', modality=image_type),
+        dataset=VQVAEDataset(datapath, 'test', modality=image_type),
         batch_size=batch_size, num_workers=num_workers // 8 if num_workers > 8 else 2, shuffle=False, drop_last=False,
         persistent_workers=True
     )
