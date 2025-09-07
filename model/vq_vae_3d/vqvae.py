@@ -162,6 +162,7 @@ class VQVAE(pl.LightningModule):
 
         # Clone inputs to avoid CUDA graph conflicts
         x = x.clone()
+        x = fix_image_range(x)
 
         # Use eval mode temporarily
         was_training = self.training
