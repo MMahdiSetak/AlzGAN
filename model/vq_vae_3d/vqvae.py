@@ -73,6 +73,7 @@ class VQVAE(pl.LightningModule):
         }
         self.train_metrics = MetricCollection(metrics, prefix="train/")
         self.val_metrics = MetricCollection(metrics, prefix="val/")
+        self.test_metrics = MetricCollection(metrics, prefix="test/")
 
     # def configure_model(self):
     #     """Called before fit/validate/test/predict"""
@@ -97,13 +98,12 @@ class VQVAE(pl.LightningModule):
     #     return total_loss, recon_loss, vq_loss, x_recon, z_q
 
     def training_step(self, batch, batch_idx):
+        batch = fix_image_range(batch)
         bs = batch.shape[0]
         recon_loss, x_recon, _ = self.forward(batch)
         # total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
         if batch_idx == 0:
-            original = fix_image_range(batch)
-            x_recon = fix_image_range(x_recon)
-            metrics = self.train_metrics(x_recon, original)
+            metrics = self.train_metrics(x_recon, batch)
             self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
         lr = self.optimizers().param_groups[0]['lr']
         self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
@@ -112,14 +112,24 @@ class VQVAE(pl.LightningModule):
         return recon_loss
 
     def validation_step(self, batch, batch_idx):
+        batch = fix_image_range(batch)
         bs = batch.shape[0]
         recon_loss, x_recon, vq_output = self.forward(batch)
         # total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
-        original = fix_image_range(batch)
-        x_recon = fix_image_range(x_recon)
-        metrics = self.val_metrics(x_recon, original)
+        metrics = self.val_metrics(x_recon, batch)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
         self.log('val/recon_loss', recon_loss, prog_bar=False, sync_dist=True)
+        # self.log('val/vq_loss', vq_loss, prog_bar=False, sync_dist=True)
+        return recon_loss
+
+    def test_step(self, batch, batch_idx):
+        batch = fix_image_range(batch)
+        bs = batch.shape[0]
+        recon_loss, x_recon, vq_output = self.forward(batch)
+        # total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
+        metrics = self.test_metrics(x_recon, batch)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+        self.log('test/recon_loss', recon_loss, prog_bar=False, sync_dist=True)
         # self.log('val/vq_loss', vq_loss, prog_bar=False, sync_dist=True)
         return recon_loss
 

@@ -60,3 +60,10 @@ def run(cfg: DictConfig):
         persistent_workers=True
     )
     trainer.fit(model, train_loader, val_loader)
+
+    test_loader = DataLoader(
+        dataset=VQGANDataset(datapath, 'test', modality=image_type),
+        batch_size=batch_size, num_workers=num_workers // 8 if num_workers > 8 else 2, shuffle=False, drop_last=False,
+        persistent_workers=True
+    )
+    trainer.test(model, test_loader)

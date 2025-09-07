@@ -1,5 +1,5 @@
 seed: 1234
-batch_size: 16
+batch_size: 12
 num_workers: 16
 image_type: 'mri'  # 'pet' or 'mri'
 dataset: 'dataset/mri_v5.2_Rigid.hdf5'
