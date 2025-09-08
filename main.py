@@ -3,16 +3,16 @@
 # get_patch_indices()
 
 if __name__ == '__main__':
-    # import torch
-    # from train.LcDDPM import run
-    #
-    # torch.set_float32_matmul_precision('medium')
-    # run()
+    import torch
+    from train.LcDDPM import run
 
-    from data.image import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
+    torch.set_float32_matmul_precision('medium')
+    run()
+
+    # from data.image import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
 
     # create_mri_dataset(mri_path=mri_data_path)
-    create_mri_pet_label_dataset(mri_path=mri_data_path, pet_path=pet_data_path)
+    # create_mri_pet_label_dataset(mri_path=mri_data_path, pet_path=pet_data_path)
     print("Done! 🎉🎊")
 # import optuna
 #

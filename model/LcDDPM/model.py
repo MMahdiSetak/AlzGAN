@@ -50,8 +50,8 @@ class LcDDPM(pl.LightningModule):
         metrics = {
             "MAE": MeanAbsoluteError(),
             "MSE": MeanSquaredError(),
-            "PSNR": PeakSignalNoiseRatio(data_range=2),
-            "SSIM": StructuralSimilarityIndexMeasure(data_range=2)
+            "PSNR": PeakSignalNoiseRatio(data_range=1),
+            "SSIM": StructuralSimilarityIndexMeasure(data_range=1)
         }
         self.train_metrics = MetricCollection(metrics, prefix="train/")
         self.val_metrics = MetricCollection(metrics, prefix="val/")
@@ -63,6 +63,8 @@ class LcDDPM(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         mri, pet = batch
+        mri = fix_image_range(mri)
+        pet = fix_image_range(pet)
         loss = self(pet, condition_tensors=mri)
         lr = self.optimizers().param_groups[0]['lr']
         self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
@@ -71,6 +73,8 @@ class LcDDPM(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         mri, real_pet = batch
+        mri = fix_image_range(mri)
+        real_pet = fix_image_range(real_pet)
         bs = real_pet.size(0)
         loss = self(real_pet, condition_tensors=mri)
         fake_pet = self.inference(mri)
@@ -108,3 +112,9 @@ class LcDDPM(pl.LightningModule):
                 "frequency": 1,
             }
         }
+
+
+def fix_image_range(x):
+    x -= x.amin(dim=(1, 2, 3, 4), keepdim=True)
+    x /= x.amax(dim=(1, 2, 3, 4), keepdim=True)
+    return x

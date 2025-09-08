@@ -2,16 +2,16 @@ batch_size: 32
 num_workers: 16
 lr: 1e-4
 eta_min: 1e-6
-dataset: 'dataset/mri_pet_label_v5.1_Rigid.hdf5'
+dataset: 'dataset/mri_pet_label_v5.2_Rigid.hdf5'
 #early_stop: 100
 max_epochs: 1000
-mri_vqgan_checkpoint: "log/vq_gan_mri/version_116/checkpoints/latest_checkpoint.ckpt"
-pet_vqgan_checkpoint: "log/vq_gan_pet/version_9/checkpoints/latest_checkpoint.ckpt"
+mri_vqgan_checkpoint: "log/vq_gan_mri/version_38/checkpoints/latest_checkpoint.ckpt"
+pet_vqgan_checkpoint: "log/vq_vae_pet/version_0/checkpoints/latest_checkpoint.ckpt"
 
-input_size: 16
-depth_size: 16
+input_size: 32
+depth_size: 32
 channel_mult: "1,2"
-num_channels: 128
+num_channels: 256
 num_res_blocks: 2
 attention_resolutions:
 num_heads: 1
