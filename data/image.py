@@ -761,8 +761,8 @@ def mri_dcm2nii(mri_path):
     print(count)
 
 
-mri_data_path = "../dataset/MRI2/ADNI/"
-pet_data_path = "../dataset/PET/ADNI/"
+mri_data_path = "dataset/MRI2/ADNI/"
+pet_data_path = "dataset/PET/ADNI/"
 
 # dataset_info(mri_data_paths)
 # create_mri_pet_label_dataset(mri_data_paths, pet_data_path)
