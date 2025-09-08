@@ -55,6 +55,7 @@ class LcDDPM(pl.LightningModule):
         }
         self.train_metrics = MetricCollection(metrics, prefix="train/")
         self.val_metrics = MetricCollection(metrics, prefix="val/")
+        self.test_metrics = MetricCollection(metrics, prefix="test/")
 
     def forward(self, x, condition_tensors=None):
         condition_tensors = self.mri_encoder(condition_tensors)
@@ -82,6 +83,19 @@ class LcDDPM(pl.LightningModule):
         metrics = self.val_metrics(fake_pet, real_pet)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
         self.log('val/loss', loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        return metrics
+
+    def test_step(self, batch, batch_idx):
+        mri, real_pet = batch
+        mri = fix_image_range(mri)
+        real_pet = fix_image_range(real_pet)
+        bs = real_pet.size(0)
+        loss = self(real_pet, condition_tensors=mri)
+        fake_pet = self.inference(mri)
+
+        metrics = self.test_metrics(fake_pet, real_pet)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
+        self.log('test/loss', loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         return metrics
 
     @torch.no_grad()

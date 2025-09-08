@@ -1,3 +1,5 @@
+import os
+
 import hydra
 import pytorch_lightning as pl
 from omegaconf import DictConfig
@@ -47,7 +49,11 @@ def run(cfg: DictConfig):
     #     channels=out_channels
     # )
     model = LcDDPM(cfg)
-    # callbacks = []
+    callbacks = []
+    callbacks.append(ModelCheckpoint(
+        monitor='train/loss',
+        save_top_k=1, mode='min', filename='ddpm_best_model')
+    )
     # # callbacks.append(ImageLogger(
     # #     batch_frequency=750, max_images=4, clamp=True))
     # # callbacks.append(VideoLogger(
@@ -79,9 +85,17 @@ def run(cfg: DictConfig):
         precision='16-mixed',
         gradient_clip_val=1,
         # callbacks=[EMACallback()],
-        # callbacks=callbacks,
+        callbacks=callbacks,
         # accumulate_grad_batches=2,
         log_every_n_steps=5,
         # enable_checkpointing=True,
     )
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+
+    test_loader = DataLoader(
+        dataset=LcDDPMDataset(datapath, 'test'),
+        batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False
+    )
+    model_path = os.path.join(logger.log_dir, "checkpoints", "ddpm_best_model.ckpt")
+    model = LcDDPM.load_from_checkpoint(model_path)
+    trainer.test(model, test_loader)
