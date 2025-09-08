@@ -1,6 +1,7 @@
 import os
 import random
 import subprocess
+import tempfile
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -237,8 +238,17 @@ def mri_registration(path):
     # TODO Add N4
     # corrected_image = ants.n4_bias_field_correction(moving_image, shrink_factor=4, convergence={'iters': [50, 50, 50, 50], 'tol': 1e-7})
     # TODO SyN pipline
-    registration = ants.registration(fixed=mri_template, moving=moving_image, type_of_transform='Rigid')
-    return registration["warpedmovout"].numpy()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        outprefix = os.path.join(temp_dir, "registration_")
+
+        registration = ants.registration(
+            fixed=mri_template,
+            moving=moving_image,
+            type_of_transform='Rigid',
+            outprefix=outprefix
+        )
+
+        return registration["warpedmovout"].numpy()
 
 
 def pet_preprocess(img: np.ndarray) -> np.ndarray:
@@ -370,11 +380,11 @@ def create_mri_pet_label_dataset(mri_path, pet_path):
     # df = pd.read_csv("mri_labels.csv")
     # df = pd.read_csv("dataset/mri.csv")
     # TODO float32
-    with h5py.File('mri_pet_label_v5.1_Rigid.hdf5', 'w') as h5f:
+    with h5py.File('mri_pet_v5.2_Rigid.hdf5', 'w') as h5f:
         ds = {
-            'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='uint8'),
-            'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='uint8'),
-            'mri_test': h5f.create_dataset('mri_test', (split_num['test'], *mri_target), dtype='uint8'),
+            'mri_train': h5f.create_dataset('mri_train', (split_num['train'], *mri_target), dtype='float32'),
+            'mri_val': h5f.create_dataset('mri_val', (split_num['val'], *mri_target), dtype='float32'),
+            'mri_test': h5f.create_dataset('mri_test', (split_num['test'], *mri_target), dtype='float32'),
 
             'pet_train': h5f.create_dataset('pet_train', (split_num['train'], *pet_target), dtype='uint8'),
             'pet_val': h5f.create_dataset('pet_val', (split_num['val'], *pet_target), dtype='uint8'),
@@ -514,8 +524,8 @@ def crop_image(img: np.ndarray) -> np.ndarray:
     crop_shape = (160, 192, 192)
     starts = [(dim - crop) // 2 for dim, crop in zip(img.shape, crop_shape)]
     return img[starts[0]:starts[0] + crop_shape[0],
-           starts[1]:starts[1] + crop_shape[1],
-           starts[2]:starts[2] + crop_shape[2]]
+    starts[1]:starts[1] + crop_shape[1],
+    starts[2]:starts[2] + crop_shape[2]]
 
 
 # TODO z-score normalization (mean=0, std=1)
@@ -525,6 +535,16 @@ def normalize_image(img: np.ndarray) -> np.ndarray:
     m = img.max()
     # TODO img.astype(np.float32)
     return np.round((img.astype(np.float64) * 255) / m).astype(np.uint8)
+
+
+def z_normalize_image(img: np.ndarray) -> np.ndarray:
+    img = np.maximum(img, 0)  # Clip negatives if any (common in raw MRI)
+    mask = img > 0
+    foreground = img[mask]
+    mean = np.mean(foreground)
+    std = np.std(foreground)
+    img = (img - mean) / std
+    return img.astype(np.float32)
 
 
 def mri_preprocess(img: np.ndarray) -> np.ndarray:
@@ -544,7 +564,7 @@ def mri_preprocess(img: np.ndarray) -> np.ndarray:
 def mri_preprocess2(path: str) -> np.ndarray:
     img = mri_registration(path)
     # img = img[15:175, 20:212, 5:165]
-    normalized_img = normalize_image(img)
+    normalized_img = z_normalize_image(img)
     return normalized_img
 
 
