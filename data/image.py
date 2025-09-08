@@ -255,7 +255,7 @@ def pet_preprocess(img: np.ndarray) -> np.ndarray:
     img = np.transpose(img, (2, 1, 0))
     img = img[::-1, ::-1, :]
     skull_stripping(img)
-    img = nib.load('../stripped.nii').get_fdata()
+    img = nib.load('stripped.nii').get_fdata()
     img = img[30:130, 10:150, :]
     normalized_img = normalize_image(img)
     # pet (160, 160, 96) -> (100, 140, 96)
@@ -268,7 +268,7 @@ def pet_preprocess2(img: np.ndarray) -> np.ndarray:
     img = np.transpose(img, (2, 1, 0))
     img = img[::-1, ::-1, :]
     skull_stripping(img)
-    img = nib.load('../stripped.nii').get_fdata()
+    img = nib.load('stripped.nii').get_fdata()
     # img = img[16:112, :, :]
     normalized_img = normalize_image(img)
     # padded_image = np.pad(normalized_img, ((0, 0), (0, 0), (16, 16)), mode='constant')
