@@ -11,11 +11,11 @@ pet_vqgan_checkpoint: "log/vq_vae_pet/version_0/checkpoints/latest_checkpoint.ck
 input_size: 32
 depth_size: 32
 channel_mult: "1,2,4"
-num_channels: 128
-num_res_blocks: 2
+num_channels: 256
+num_res_blocks: 1
 attention_resolutions:
 num_heads: 1
 #save_and_sample_every: 1000
-timesteps: 100
+timesteps: 250
 in_channels: 64
 out_channels: 32
