@@ -235,30 +235,47 @@ def create_mci_dataset():
     df['EXAMDATE'] = pd.to_datetime(df['EXAMDATE'], format='%Y-%m-%d')
     mci = df[df['DIAGNOSIS'] == 1].copy().reset_index(drop=True)
     df = df[df['DIAGNOSIS'] != 0]
-    stable = progress = 0
+    stable = progress = no_data = 0
     for index, row in mci.iterrows():
         history = df[df['PTID'] == row['PTID']].sort_values(by='EXAMDATE')
-        ad_rows = history[history['DIAGNOSIS'] == 2]
-        if ad_rows.empty:
-            stable += 1
-            mci.loc[index, 'DIAGNOSIS'] = 0
+        history['delta_days'] = (history['EXAMDATE'] - row['EXAMDATE']).dt.days
+        filtered_history = history[(history['delta_days'] > 0) & (history['delta_days'] <= 730)].copy()
+        if filtered_history.empty:
+            no_data += 1
+            mci.loc[index, 'DIAGNOSIS'] = -1
             continue
-        first_ad_date = ad_rows['EXAMDATE'].min()
-        delta = (first_ad_date - row['EXAMDATE']).days
-
-        if delta <= 730:
-            progress += 1
-            # mci.iloc[index]['DIAGNOSIS'] = 1
         else:
-            stable += 1
-            mci.loc[index, 'DIAGNOSIS'] = 0
+            mci.loc[index, 'DIAGNOSIS'] = filtered_history.iloc[-1]['DIAGNOSIS'] - 1
+            if filtered_history.iloc[0]['DIAGNOSIS'] == 1:
+                stable += 1
+            elif filtered_history.iloc[0]['DIAGNOSIS'] == 2:
+                progress += 1
+            else:
+                no_data += 1
 
-        # if 2 in history['DIAGNOSIS'].values:
-        #     progress += 1
-        # else:
-        #     stable += 1
+    mci = mci[mci['DIAGNOSIS'] != -1].reset_index(drop=True)
 
-    print(progress, stable)
+    # ad_rows = history[history['DIAGNOSIS'] == 2]
+    # if ad_rows.empty:
+    #     no_data += 1
+    #     mci.loc[index, 'DIAGNOSIS'] = -1
+    #     continue
+    # first_ad_date = ad_rows['EXAMDATE'].min()
+    # delta = (first_ad_date - row['EXAMDATE']).days
+    #
+    # if delta <= 730:
+    #     progress += 1
+    #     # mci.iloc[index]['DIAGNOSIS'] = 1
+    # else:
+    #     stable += 1
+    #     mci.loc[index, 'DIAGNOSIS'] = 0
+
+    # if 2 in history['DIAGNOSIS'].values:
+    #     progress += 1
+    # else:
+    #     stable += 1
+
+    print(progress, stable, no_data)
     df = mci
 
     # df['DIAGNOSIS'] = df['DIAGNOSIS'] / 2
@@ -309,7 +326,7 @@ def create_mci_dataset():
     old_test_df = pd.read_csv('dataset/img/test.csv')
     # Open old HDF5 once for reading
     with h5py.File('dataset/mri_v5.2_Rigid.hdf5', 'r') as old_h5f:
-        with h5py.File('mci_v5.2_Rigid.hdf5', 'w') as new_h5f:
+        with h5py.File('mci-2y_v5.2_Rigid.hdf5', 'w') as new_h5f:
             ds = {
                 'mri_train': new_h5f.create_dataset('mri_train', (len(train), *mri_target), dtype='float32'),
                 'mri_val': new_h5f.create_dataset('mri_val', (len(val), *mri_target), dtype='float32'),
