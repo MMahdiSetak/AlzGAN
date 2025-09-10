@@ -17,7 +17,7 @@ vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt
 #vq_gan_checkpoint:
 ddpm_checkpoint: "log/LcDDPM/version_11/checkpoints/epoch=999-step=17000.ckpt"
 #ddpm_checkpoint:
-tabular: True
+tabular: False
 
 num_layers: 4
 base_channels: 8

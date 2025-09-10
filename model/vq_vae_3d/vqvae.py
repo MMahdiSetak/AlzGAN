@@ -98,7 +98,7 @@ class VQVAE(pl.LightningModule):
     #     return total_loss, recon_loss, vq_loss, x_recon, z_q
 
     def training_step(self, batch, batch_idx):
-        batch = fix_image_range(batch)
+        # batch = fix_image_range(batch)
         bs = batch.shape[0]
         recon_loss, x_recon, _ = self.forward(batch)
         # total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
@@ -112,7 +112,7 @@ class VQVAE(pl.LightningModule):
         return recon_loss
 
     def validation_step(self, batch, batch_idx):
-        batch = fix_image_range(batch)
+        # batch = fix_image_range(batch)
         bs = batch.shape[0]
         recon_loss, x_recon, vq_output = self.forward(batch)
         # total_loss, recon_loss, vq_loss, x_recon, _ = self.forward(batch)
@@ -162,7 +162,7 @@ class VQVAE(pl.LightningModule):
 
         # Clone inputs to avoid CUDA graph conflicts
         x = x.clone()
-        x = fix_image_range(x)
+        # x = fix_image_range(x)
 
         # Use eval mode temporarily
         was_training = self.training
@@ -218,11 +218,11 @@ class Encoder(nn.Module):
     def __init__(self, img_type, n_hiddens, image_channel=3, norm_type='group', num_groups=32):
         super().__init__()
         if img_type == 'mri':
-            kernels = [5, 3]
-            strides = [(5, 2, 5), (1, 3, 1)]
+            kernels = [5, 4]
+            strides = [(5, 3, 5), (2, 4, 2)]
         elif img_type == 'pet':
-            kernels = [3, 3]
-            strides = [(2, 2, 3), (2, 2, 1)]
+            kernels = [4, 2]
+            strides = [(4, 4, 3), (2, 2, 2)]
         else:
             kernels = [3, 3]
             strides = [2, 2]
@@ -259,9 +259,9 @@ class Decoder(nn.Module):
     def __init__(self, type, n_hiddens, image_channel, norm_type='group', num_groups=32):
         super().__init__()
         if type == 'mri':
-            kernels = [(1, 3, 1), (5, 2, 5)]
+            kernels = [(2, 4, 2), (5, 3, 5)]
         elif type == 'pet':
-            kernels = [(2, 2, 1), (2, 2, 3)]
+            kernels = [(2, 2, 2), (4, 4, 3)]
         else:
             kernels = [2, 2]
 
