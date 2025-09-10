@@ -12,7 +12,8 @@ from model.log import log_3d
 
 
 class MergedDataset(Dataset):
-    def __init__(self, csv_path, hdf5_path, split, mri_cache=None, apply_augmentation=False, tabular_cols=None):
+    def __init__(self, csv_path, hdf5_path, split, mri=True, mri_cache=None, apply_augmentation=False,
+                 tabular_cols=None):
         self.df = pd.read_csv(f'{csv_path}{split}.csv')
         if mri_cache is not None:
             self.mri_images = mri_cache
@@ -25,7 +26,8 @@ class MergedDataset(Dataset):
             tabular_cols = numerical_cols + ['PTGENDER', 'PTHAND'] + [col for col in self.df if
                                                                       col.startswith('PTMARRY_')]
         self.tabular_cols = tabular_cols
-        self.apply_augmentation = apply_augmentation
+        self.mri = mri
+        self.apply_augmentation = apply_augmentation and mri
         self.augmentation_transform = self._create_augmentation_pipeline()
 
     def __len__(self):
@@ -33,6 +35,9 @@ class MergedDataset(Dataset):
 
     def __getitem__(self, idx):
         tabular = torch.tensor(self.df.loc[idx, self.tabular_cols].values.astype(np.float32))
+        label = torch.tensor(self.df.loc[idx, 'DIAGNOSIS'], dtype=torch.long)
+        if not self.mri:
+            return {'tabular': tabular, 'label': label}
         if self.mri_images is None:
             self.file = h5py.File(self.data_path, 'r')
             self.mri_images = self.file[f'mri_{self.split}']
@@ -40,7 +45,6 @@ class MergedDataset(Dataset):
         if type(mri) is not torch.Tensor:
             mri = torch.from_numpy(mri)
         mri = mri.unsqueeze(0)
-        label = torch.tensor(self.df.loc[idx, 'DIAGNOSIS'], dtype=torch.long)
 
         subject = tio.Subject(
             mri=tio.ScalarImage(tensor=mri),

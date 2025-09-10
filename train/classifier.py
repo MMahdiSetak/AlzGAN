@@ -18,13 +18,14 @@ def run(cfg: DictConfig):
     batch_size = cfg.batch_size
     num_workers = cfg.num_workers
     mri_dataset = cfg.mri_dataset
+    mri = cfg.mri_data
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     # train_ram_loader = MRIRAMLoader(mri_dataset, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
     # train_dataset = MRIDataset(data_path=datapath, split='train')
     # train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train', apply_augmentation=True)
-    train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='train',
+    train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='train', mri=mri,
                                   mri_cache=None, apply_augmentation=cfg.augmentation)
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
@@ -40,7 +41,7 @@ def run(cfg: DictConfig):
     val_loader = DataLoader(
         # dataset=FastMRIDataset(*val_ram_loader.get_data()),
         # dataset=MRIDataset(*val_ram_loader.get_data(), split='val'),
-        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='val',
+        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='val', mri=mri,
                               mri_cache=None),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=False,
     )
@@ -56,6 +57,7 @@ def run(cfg: DictConfig):
         weight_decay=cfg.weight_decay,
         max_epoch=cfg.max_epoch,
         class_weights=weight_tensor,
+        mri=cfg.mri_model,
         vq_gan_checkpoint=cfg.vq_gan_checkpoint,
         ddpm_checkpoint=cfg.ddpm_checkpoint,
         tabular=cfg.tabular,
@@ -96,7 +98,7 @@ def run(cfg: DictConfig):
     test_loader = DataLoader(
         # dataset=MRIDataset(data_path=datapath, split='test'),
         # dataset=MRIDataset(*test_ram_loader.get_data(), split='test'),
-        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='test'),
+        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, mri=mri, split='test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
     )
     model_path = os.path.join(logger.log_dir, "checkpoints", "classifier_best_model.ckpt")

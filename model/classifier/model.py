@@ -14,7 +14,7 @@ from model.vq_vae_3d.vqvae import VQVAE
 class Classifier(pl.LightningModule):
     def __init__(self, class_weights, num_layers=4, base_channels=32, channel_multiplier=2,
                  cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, embed_dim=32, lr=1e-3, eta_min=1e-5,
-                 weight_decay=1e-2, vq_gan_checkpoint=None, tabular=True, ddpm_checkpoint=None, max_epoch=300,
+                 weight_decay=1e-2, mri=True, vq_gan_checkpoint=None, tabular=True, ddpm_checkpoint=None, max_epoch=300,
                  num_classes=3):
         super().__init__()
         self.save_hyperparameters()
@@ -38,17 +38,19 @@ class Classifier(pl.LightningModule):
         self.val_metrics = MetricCollection(metrics, postfix="/val")
         self.test_metrics = MetricCollection(metrics, postfix="/test")
 
-        self.classifier = Parametric3DCNN(
-            input_size=(160, 192, 160),
-            num_layers=num_layers,
-            base_channels=base_channels,
-            channel_multiplier=channel_multiplier,
-            cnn_dropout_rate=cnn_dropout_rate,
-            fc_dropout_rate=fc_dropout_rate,
-            fc_hidden=fc_hidden,
-            num_classes=embed_dim
-        )
-        fc_input = embed_dim
+        fc_input = 0
+        if mri:
+            self.classifier = Parametric3DCNN(
+                input_size=(160, 192, 160),
+                num_layers=num_layers,
+                base_channels=base_channels,
+                channel_multiplier=channel_multiplier,
+                cnn_dropout_rate=cnn_dropout_rate,
+                fc_dropout_rate=fc_dropout_rate,
+                fc_hidden=fc_hidden,
+                num_classes=embed_dim
+            )
+            fc_input += embed_dim
 
         if vq_gan_checkpoint is not None:
             vq_gan_model = VQVAE.load_from_checkpoint(checkpoint_path=vq_gan_checkpoint)
@@ -77,8 +79,10 @@ class Classifier(pl.LightningModule):
         )
 
     def forward(self, mri, tabular=None):
-        main_feats = self.classifier(mri)
-        feats = [main_feats]
+        feats = []
+        if hasattr(self, "classifier"):
+            main_feats = self.classifier(mri)
+            feats.append(main_feats)
         if hasattr(self, "mri_features"):
             latent_mri = self.encoder(mri)
             mri_feats = self.mri_features(latent_mri)
@@ -95,7 +99,7 @@ class Classifier(pl.LightningModule):
         return out
 
     def training_step(self, batch, batch_idx):
-        mri = batch['mri']
+        mri = batch['mri'] if 'mri' in batch.keys() else None
         labels = batch['label']
         tabular = batch['tabular']
 
