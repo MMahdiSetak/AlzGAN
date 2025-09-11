@@ -8,8 +8,8 @@ weight_decay: 1e-2
 mri_dataset: 'dataset/mci-6m_v5.2_Rigid.hdf5'
 augmentation: True
 #tabular_dataset: 'dataset/img/'
-tabular_dataset: 'dataset/img/2c_'
-#tabular_dataset: 'dataset/img/mci_'
+#tabular_dataset: 'dataset/img/2c_'
+tabular_dataset: 'dataset/img/mci_'
 early_stop: 100
 max_epoch: 500
 
