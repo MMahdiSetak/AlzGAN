@@ -253,7 +253,7 @@ def create_mri_pet_dataset():
 
     mri_target = (160, 192, 160)
     pet_target = (128, 128, 96)
-    with h5py.File('mri_pet_v5.2_Rigid.hdf5', 'w') as h5f:
+    with h5py.File('mri_pet_tabular_v5.2_Rigid.hdf5', 'w') as h5f:
         ds = {
             'mri_train': h5f.create_dataset('mri_train', (len(train), *mri_target), dtype='float32'),
             'mri_val': h5f.create_dataset('mri_val', (len(val), *mri_target), dtype='float32'),
