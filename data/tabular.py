@@ -73,7 +73,7 @@ def run():
 
     DX = pd.read_csv("dataset/csv/DXSUM.csv")
     print("Number of subjects with diagnosis: ", len(DX['PTID'].unique()))
-    columns = ["PTID", "VISCODE2", "EXAMDATE", "DIAGNOSIS"]
+    columns = ["PTID", "VISCODE", "VISCODE2", "EXAMDATE", "DIAGNOSIS"]
     cleaned_DX = df_cleaner(DX, columns)
 
     merged_df = cleaned_DX.merge(
@@ -90,8 +90,8 @@ def run():
     print("Missing values in each column:")
     print(missing_counts)
 
-    final_columns = ["PTID", "VISCODE2", "EXAMDATE", "DIAGNOSIS", "MMSCORE", "TOTSCORE", "TOTAL13", "FAQTOTAL",
-                     "PTGENDER", "PTDOB", "PTHAND", "PTMARRY", "PTEDUCAT"]
+    final_columns = ["PTID", "VISCODE", "VISCODE2", "EXAMDATE", "DIAGNOSIS", "MMSCORE", "TOTSCORE", "TOTAL13",
+                     "FAQTOTAL", "PTGENDER", "PTDOB", "PTHAND", "PTMARRY", "PTEDUCAT"]
     cleaned_merged = df_cleaner(merged_df, final_columns)
     print("Number of finall subjects: ", len(cleaned_merged['PTID'].unique()))
 
