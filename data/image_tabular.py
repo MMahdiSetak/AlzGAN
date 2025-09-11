@@ -355,7 +355,7 @@ def create_mci_dataset():
     for index, row in mci.iterrows():
         history = df[df['PTID'] == row['PTID']].sort_values(by='EXAMDATE')
         history['delta_days'] = (history['EXAMDATE'] - row['EXAMDATE']).dt.days
-        filtered_history = history[(history['delta_days'] > 0) & (history['delta_days'] <= 365)].copy()
+        filtered_history = history[(history['delta_days'] > 0) & (history['delta_days'] <= 183)].copy()
         if filtered_history.empty:
             no_data += 1
             mci.loc[index, 'DIAGNOSIS'] = -1
@@ -442,7 +442,7 @@ def create_mci_dataset():
     old_test_df = pd.read_csv('dataset/img/test.csv')
     # Open old HDF5 once for reading
     with h5py.File('dataset/mri_v5.2_Rigid.hdf5', 'r') as old_h5f:
-        with h5py.File('mci-1y_v5.2_Rigid.hdf5', 'w') as new_h5f:
+        with h5py.File('mci-6m_v5.2_Rigid.hdf5', 'w') as new_h5f:
             ds = {
                 'mri_train': new_h5f.create_dataset('mri_train', (len(train), *mri_target), dtype='float32'),
                 'mri_val': new_h5f.create_dataset('mri_val', (len(val), *mri_target), dtype='float32'),
