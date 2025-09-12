@@ -10,7 +10,7 @@ augmentation: True
 #tabular_dataset: 'dataset/img/'
 #tabular_dataset: 'dataset/img/2c_'
 tabular_dataset: 'dataset/img/mci_'
-early_stop: 100
+early_stop: 50
 max_epoch: 500
 
 model_checkpoint: "log/classifier/version_76/checkpoints/classifier_best_model.ckpt"
