@@ -1,4 +1,6 @@
-python main.py
-python main.py tabular="False"
+python main.py mri_dataset="dataset/mci-6m_v5.2_Rigid.hdf5" tabular_dataset="dataset/img/mci_6m_"
+python main.py mri_dataset="dataset/mci-1y_v5.2_Rigid.hdf5" tabular_dataset="dataset/img/mci_1y_"
+python main.py mri_dataset="dataset/mci-2y_v5.2_Rigid.hdf5" tabular_dataset="dataset/img/mci_2y_"
+#python main.py tabular="False"
 #python main.py augmentation=False tabular=False mri_dataset="dataset/mri_v5.2_Rigid.hdf5"
 #python main.py augmentation=False tabular=False mri_dataset="dataset/mri_v5.2_Rigid.hdf5"
