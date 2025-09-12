@@ -13,6 +13,8 @@ tabular_dataset: 'dataset/img/mci_'
 early_stop: 100
 max_epoch: 500
 
+model_checkpoint: "log/classifier/version_76/checkpoints/classifier_best_model.ckpt"
+#model_checkpoint:
 vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt"
 #vq_gan_checkpoint:
 ddpm_checkpoint: "log/LcDDPM/version_11/checkpoints/epoch=999-step=17000.ckpt"

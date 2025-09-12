@@ -45,24 +45,27 @@ def run(cfg: DictConfig):
                               mri_cache=None),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=False,
     )
-    model = Classifier(
-        num_layers=cfg.num_layers,
-        base_channels=cfg.base_channels,
-        channel_multiplier=cfg.channel_multiplier,
-        cnn_dropout_rate=cfg.cnn_dropout_rate,
-        fc_dropout_rate=cfg.fc_dropout_rate,
-        fc_hidden=cfg.fc_hidden,
-        embed_dim=cfg.embed_dim,
-        lr=cfg.lr,
-        weight_decay=cfg.weight_decay,
-        max_epoch=cfg.max_epoch,
-        class_weights=weight_tensor,
-        mri=cfg.mri_model,
-        vq_gan_checkpoint=cfg.vq_gan_checkpoint,
-        ddpm_checkpoint=cfg.ddpm_checkpoint,
-        tabular=cfg.tabular,
-        num_classes=cfg.num_classes,
-    )
+    if cfg.model_checkpoint is None:
+        model = Classifier(
+            num_layers=cfg.num_layers,
+            base_channels=cfg.base_channels,
+            channel_multiplier=cfg.channel_multiplier,
+            cnn_dropout_rate=cfg.cnn_dropout_rate,
+            fc_dropout_rate=cfg.fc_dropout_rate,
+            fc_hidden=cfg.fc_hidden,
+            embed_dim=cfg.embed_dim,
+            lr=cfg.lr,
+            weight_decay=cfg.weight_decay,
+            max_epoch=cfg.max_epoch,
+            class_weights=weight_tensor,
+            mri=cfg.mri_model,
+            vq_gan_checkpoint=cfg.vq_gan_checkpoint,
+            ddpm_checkpoint=cfg.ddpm_checkpoint,
+            tabular=cfg.tabular,
+            num_classes=cfg.num_classes,
+        )
+    else:
+        model = Classifier.load_from_checkpoint(checkpoint_path=cfg.model_checkpoint)
     checkpoint_callback = ModelCheckpoint(
         monitor="accuracy/val",
         mode="max",
