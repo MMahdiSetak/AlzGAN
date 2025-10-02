@@ -4,8 +4,8 @@ lr: 5e-5
 eta_min: 1e-5
 weight_decay: 1e-2
 #mri_dataset: 'dataset/mri_v5.2_Rigid.hdf5'
-#mri_dataset: 'dataset/2c_mri_v5.2_Rigid.hdf5'
-mri_dataset: 'dataset/mci-6m_v5.2_Rigid.hdf5'
+mri_dataset: 'dataset/2c_mri_v5.2_Rigid.hdf5'
+#mri_dataset: 'dataset/mci-6m_v5.2_Rigid.hdf5'
 augmentation: True
 #tabular_dataset: 'dataset/img/'
 #tabular_dataset: 'dataset/img/2c_'
@@ -22,6 +22,7 @@ ddpm_checkpoint: "log/LcDDPM/version_11/checkpoints/epoch=999-step=17000.ckpt"
 mri_model: True
 mri_data: True
 tabular: True
+real_pet: True
 
 num_layers: 4
 base_channels: 8

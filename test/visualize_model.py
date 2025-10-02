@@ -2,6 +2,7 @@ import hydra
 import imageio
 import numpy as np
 import torch
+from captum.attr import Occlusion
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
 import captum.attr as attr
@@ -13,10 +14,12 @@ from model.log import log_3d
 
 @hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
 def run(cfg: DictConfig):
-    train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=cfg.mri_dataset, split='train')
+    train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=cfg.mri_dataset, split='train', mri=True,
+                                  pet=False,
+                                  mri_cache=None, apply_augmentation=False)
 
     model = Classifier.load_from_checkpoint(
-        checkpoint_path='log/classifier/version_48/checkpoints/classifier_best_model.ckpt')
+        checkpoint_path='log/classifier/version_76/checkpoints/classifier_best_model.ckpt')
     model.eval()  # Temp eval mode for stable predictions
 
     sample = train_dataset[1]
@@ -27,9 +30,21 @@ def run(cfg: DictConfig):
     pred_class = outputs.argmax(dim=1).item()
 
     # todo try different algorithms
-    saliency = attr.Saliency(model)
+    # saliency = attr.Saliency(model)
+    # saliency = attr.IntegratedGradients(model)
+    occlusion = Occlusion(model)
     # Compute gradients w.r.t. inputs for the target class
-    attributions = saliency.attribute(inputs=(mri, tabular), target=pred_class)
+    # attributions = saliency.attribute(inputs=(mri, tabular), target=pred_class)
+    # attributions = saliency.attribute(inputs=(mri, tabular),
+    #                                   baselines=(torch.ones_like(mri) * mri.min(), torch.zeros_like(tabular)),
+    #                                   target=pred_class,
+    #                                   internal_batch_size=2)
+
+    attributions = occlusion.attribute(inputs=(mri, tabular),
+                                       strides=((1, 16, 16, 16), (13,)),
+                                       target=pred_class,
+                                       sliding_window_shapes=((1, 16, 16, 16), (13,)),
+                                       baselines=0)
     mri_attr = attributions[0]  # Only MRI attributions (ignore tabular)
     mri_attr = mri_attr.squeeze().squeeze().detach().cpu().numpy()
     original_mri = mri.squeeze().squeeze().detach().cpu().numpy()
@@ -52,7 +67,7 @@ def run(cfg: DictConfig):
     # Attribution heatmap overlaid
     plt.subplot(1, 2, 2)
     plt.imshow(original_slice, cmap='gray')
-    plt.imshow(attr_slice, cmap='hot', alpha=0.7)  # Overlay with transparency
+    plt.imshow(attr_slice, cmap='inferno', alpha=0.7)  # Overlay with transparency
     plt.title(f'Saliency Map (Class {pred_class})')
     plt.axis('off')
     plt.show()
@@ -105,7 +120,8 @@ def run2(cfg: DictConfig):
 
     saliency = attr.IntegratedGradients(model)
     attributions = saliency.attribute(inputs=(mri, tabular),
-                                      baselines=(torch.ones_like(mri)*mri.min(), torch.zeros_like(tabular)), target=pred_class,
+                                      baselines=(torch.ones_like(mri) * mri.min(), torch.zeros_like(tabular)),
+                                      target=pred_class,
                                       internal_batch_size=16)
     # attributions = saliency.attribute(inputs=(mri, tabular), target=pred_class)
     mri_attr = attributions[0]  # Only MRI attributions (ignore tabular)
@@ -135,7 +151,7 @@ def run2(cfg: DictConfig):
     # Attribution heatmap overlaid
     plt.subplot(1, 2, 2)
     plt.imshow(original_slice, cmap='gray')
-    plt.imshow(attr_slice, cmap='hot', alpha=0.7)  # Overlay with transparency
+    plt.imshow(attr_slice, cmap='viridis', alpha=0.7)  # Overlay with transparency
     plt.title(f'Saliency Map (Class {pred_class})')
     plt.axis('off')
     plt.show()

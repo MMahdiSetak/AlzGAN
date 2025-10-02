@@ -12,7 +12,7 @@ from model.log import log_3d
 
 
 class MergedDataset(Dataset):
-    def __init__(self, csv_path, hdf5_path, split, mri=True, mri_cache=None, apply_augmentation=False,
+    def __init__(self, csv_path, hdf5_path, split, mri=True, pet=False, mri_cache=None, apply_augmentation=False,
                  tabular_cols=None):
         self.df = pd.read_csv(f'{csv_path}{split}.csv')
         if mri_cache is not None:
@@ -27,6 +27,7 @@ class MergedDataset(Dataset):
                                                                       col.startswith('PTMARRY_')]
         self.tabular_cols = tabular_cols
         self.mri = mri
+        self.pet = pet
         self.apply_augmentation = apply_augmentation and mri
         self.augmentation_transform = self._create_augmentation_pipeline()
 
@@ -41,6 +42,8 @@ class MergedDataset(Dataset):
         if self.mri_images is None:
             self.file = h5py.File(self.data_path, 'r')
             self.mri_images = self.file[f'mri_{self.split}']
+            if self.pet:
+                self.pet_images = self.file[f'pet_{self.split}']
         mri = self.mri_images[idx]
         if type(mri) is not torch.Tensor:
             mri = torch.from_numpy(mri)
@@ -58,8 +61,11 @@ class MergedDataset(Dataset):
             print(f"Warning: Augmentation failed for sample {idx}: {e}")
             pass
         # log_3d(mri[0])
-
-        return {'tabular': tabular, 'mri': mri, 'label': label}
+        if self.pet:
+            pet = torch.from_numpy(self.pet_images[idx].astype(np.float32)).div_(127.5).sub_(1).unsqueeze_(0)
+            return {'tabular': tabular, 'mri': mri, 'pet': pet, 'label': label}
+        else:
+            return {'tabular': tabular, 'mri': mri, 'label': label}
 
     def get_class_weights(self):
         labels = self.df['DIAGNOSIS'].values
