@@ -2,7 +2,8 @@ import hydra
 import imageio
 import numpy as np
 import torch
-from captum.attr import Occlusion
+import torch.nn.functional as F
+from captum.attr import Occlusion, LayerGradCam
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive Agg backend
 from matplotlib import pyplot as plt
@@ -190,3 +191,87 @@ def run2(cfg: DictConfig):
     writer.close()
 
     print("better!")
+
+
+@hydra.main(config_path='../config/model', config_name='classifier', version_base=None)
+def run3(cfg: DictConfig):
+    train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=cfg.mri_dataset, split='train', mri=True,
+                                  pet=False,
+                                  mri_cache=None, apply_augmentation=False)
+
+    model = Classifier.load_from_checkpoint(
+        checkpoint_path='log/classifier/version_75/checkpoints/classifier_best_model.ckpt')
+    model.eval()  # Temp eval mode for stable predictions
+
+    sample = train_dataset[1]
+    mri = sample['mri'].to(device='cuda').unsqueeze(0)
+    with torch.no_grad():
+        outputs = model(mri)
+    pred_class = outputs.argmax(dim=1).item()
+
+    # Use Grad-CAM
+    # Replace 'conv_final' with your model's final convolutional layer (e.g., model.backbone.layer4[-1].conv2 for ResNet)
+    grad_cam = LayerGradCam(model, model.encoder.conv_blocks[1].res)  # Adjust layer name
+    attributions = grad_cam.attribute(inputs=mri, target=pred_class)
+
+    # Upsample Grad-CAM output to match MRI input size
+    # Assuming mri shape is [1, C, H, W, D], e.g., [1, 1, 128, 128, 128]
+    attributions = F.interpolate(
+        attributions,
+        size=mri.shape[2:],  # Upsample to [H, W, D]
+        mode='trilinear',  # Suitable for 3D data
+        align_corners=False
+    )
+
+    mri_attr = attributions.squeeze().squeeze().detach().cpu().numpy()
+    original_mri = mri.squeeze().squeeze().detach().cpu().numpy()
+
+    # Normalize attributions for visualization
+    mri_attr = np.abs(mri_attr)  # Take absolute value for importance
+    mri_attr = (mri_attr - mri_attr.min()) / (mri_attr.max() - mri_attr.min() + 1e-8)  # Normalize with epsilon for stability
+
+    slice_idx = mri.shape[2] // 2  # Middle slice
+    original_slice = original_mri[:, :, slice_idx]  # [H, W]
+    attr_slice = mri_attr[:, :, slice_idx]  # [H, W]
+
+    # Visualize and save 2D slice
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    plt.imshow(original_slice, cmap='gray')
+    plt.title('Original MRI Slice')
+    plt.axis('off')
+    plt.subplot(1, 2, 2)
+    plt.imshow(original_slice, cmap='gray')
+    plt.imshow(attr_slice, cmap='inferno', alpha=0.7)  # Overlay with transparency
+    plt.title(f'Grad-CAM (Class {pred_class})')
+    plt.axis('off')
+    plt.show()
+    plt.close()
+
+    H, W, Z = original_mri.shape
+    name = 'gradcam_test'
+    writer = imageio.get_writer(f'{name}.mp4', fps=8, codec='libx264')
+    for z in range(Z):
+        original_slice = original_mri[:, :, z]
+        attr_slice = mri_attr[:, :, z]
+
+        # Create figure for overlay
+        fig = plt.figure(figsize=(5.12, 5.12))
+        plt.imshow(original_slice, cmap='gray')
+        plt.imshow(attr_slice, cmap='inferno', alpha=0.6, vmin=0, vmax=1)
+        plt.title(f'Grad-CAM (Class {pred_class}, Slice {z})')
+        plt.axis('off')
+
+        # Convert figure to NumPy array
+        fig.canvas.draw()
+        img_array = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+        img_array = img_array.reshape(fig.canvas.get_width_height()[::-1] + (4,))
+        img_array = img_array[:, :, 1:]  # Convert ARGB to RGB by slicing out alpha
+
+        # Append to video
+        writer.append_data(img_array)
+        plt.close()
+
+    writer.close()
+
+    print("the best")
