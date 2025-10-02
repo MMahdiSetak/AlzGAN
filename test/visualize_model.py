@@ -211,7 +211,7 @@ def run3(cfg: DictConfig):
 
     # Use Grad-CAM
     # Replace 'conv_final' with your model's final convolutional layer (e.g., model.backbone.layer4[-1].conv2 for ResNet)
-    grad_cam = LayerGradCam(model, model.encoder.conv_blocks[1].res)  # Adjust layer name
+    grad_cam = LayerGradCam(model, model.encoder.conv_blocks[0].res)  # Adjust layer name
     attributions = grad_cam.attribute(inputs=mri, target=pred_class)
 
     # Upsample Grad-CAM output to match MRI input size
@@ -249,7 +249,7 @@ def run3(cfg: DictConfig):
     plt.close()
 
     H, W, Z = original_mri.shape
-    name = 'gradcam_test'
+    name = 'gradcam_test_0'
     writer = imageio.get_writer(f'{name}.mp4', fps=8, codec='libx264')
     for z in range(Z):
         original_slice = original_mri[:, :, z]
