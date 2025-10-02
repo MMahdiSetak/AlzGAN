@@ -19,7 +19,7 @@ def run(cfg: DictConfig):
                                   mri_cache=None, apply_augmentation=False)
 
     model = Classifier.load_from_checkpoint(
-        checkpoint_path='log/classifier/version_76/checkpoints/classifier_best_model.ckpt')
+        checkpoint_path='log/classifier/version_75/checkpoints/classifier_best_model.ckpt')
     model.eval()  # Temp eval mode for stable predictions
 
     sample = train_dataset[1]
@@ -30,21 +30,21 @@ def run(cfg: DictConfig):
     pred_class = outputs.argmax(dim=1).item()
 
     # todo try different algorithms
-    # saliency = attr.Saliency(model)
+    saliency = attr.Saliency(model)
     # saliency = attr.IntegratedGradients(model)
-    occlusion = Occlusion(model)
+    # occlusion = Occlusion(model)
     # Compute gradients w.r.t. inputs for the target class
-    # attributions = saliency.attribute(inputs=(mri, tabular), target=pred_class)
+    attributions = saliency.attribute(inputs=(mri, tabular), target=pred_class)
     # attributions = saliency.attribute(inputs=(mri, tabular),
     #                                   baselines=(torch.ones_like(mri) * mri.min(), torch.zeros_like(tabular)),
     #                                   target=pred_class,
     #                                   internal_batch_size=2)
 
-    attributions = occlusion.attribute(inputs=(mri, tabular),
-                                       strides=((1, 16, 16, 16), (13,)),
-                                       target=pred_class,
-                                       sliding_window_shapes=((1, 16, 16, 16), (13,)),
-                                       baselines=0)
+    # attributions = occlusion.attribute(inputs=(mri, tabular),
+    #                                    strides=((1, 16, 16, 16), (13,)),
+    #                                    target=pred_class,
+    #                                    sliding_window_shapes=((1, 16, 16, 16), (13,)),
+    #                                    baselines=0)
     mri_attr = attributions[0]  # Only MRI attributions (ignore tabular)
     mri_attr = mri_attr.squeeze().squeeze().detach().cpu().numpy()
     original_mri = mri.squeeze().squeeze().detach().cpu().numpy()
@@ -84,7 +84,7 @@ def run(cfg: DictConfig):
         # Create figure for overlay
         fig = plt.figure(figsize=(5.12, 5.12))
         plt.imshow(original_slice, cmap='gray')
-        plt.imshow(attr_slice, cmap='hot', alpha=0.6, vmin=0, vmax=1)
+        plt.imshow(attr_slice, cmap='inferno', alpha=0.6, vmin=0, vmax=1)
         plt.title(f'Saliency Map (Class {pred_class}, Slice {z})')
         plt.axis('off')
 
