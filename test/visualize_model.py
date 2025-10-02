@@ -26,7 +26,8 @@ def run(cfg: DictConfig):
     mri = sample['mri'].to(device='cuda').unsqueeze(0)
     tabular = sample['tabular'].to(device='cuda').unsqueeze(0)
     with torch.no_grad():
-        outputs = model(mri, tabular)
+        # outputs = model(mri, tabular)
+        outputs = model(mri)
     pred_class = outputs.argmax(dim=1).item()
 
     # todo try different algorithms
@@ -34,7 +35,8 @@ def run(cfg: DictConfig):
     # saliency = attr.IntegratedGradients(model)
     # occlusion = Occlusion(model)
     # Compute gradients w.r.t. inputs for the target class
-    attributions = saliency.attribute(inputs=(mri, tabular), target=pred_class)
+    # attributions = saliency.attribute(inputs=(mri, tabular), target=pred_class)
+    attributions = saliency.attribute(inputs=mri, target=pred_class)
     # attributions = saliency.attribute(inputs=(mri, tabular),
     #                                   baselines=(torch.ones_like(mri) * mri.min(), torch.zeros_like(tabular)),
     #                                   target=pred_class,
