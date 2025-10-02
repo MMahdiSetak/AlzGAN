@@ -3,6 +3,8 @@ import imageio
 import numpy as np
 import torch
 from captum.attr import Occlusion
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive Agg backend
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
 import captum.attr as attr
@@ -94,7 +96,7 @@ def run(cfg: DictConfig):
         # Convert figure to NumPy array
         fig.canvas.draw()
         # Get RGB buffer and convert to NumPy
-        img_array = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+        img_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         img_array = img_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))  # [height, width, 3]
 
         # Append to video
