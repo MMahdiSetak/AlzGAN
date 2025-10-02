@@ -47,7 +47,8 @@ def run(cfg: DictConfig):
     #                                    target=pred_class,
     #                                    sliding_window_shapes=((1, 16, 16, 16), (13,)),
     #                                    baselines=0)
-    mri_attr = attributions[0]  # Only MRI attributions (ignore tabular)
+    # mri_attr = attributions[0]  # Only MRI attributions (ignore tabular)
+    mri_attr = attributions  # Only MRI attributions (ignore tabular)
     mri_attr = mri_attr.squeeze().squeeze().detach().cpu().numpy()
     original_mri = mri.squeeze().squeeze().detach().cpu().numpy()
     # log_3d(mri_attr.squeeze().squeeze().detach().cpu().numpy(), title=f'mri_attr')
