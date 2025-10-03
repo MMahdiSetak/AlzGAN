@@ -211,7 +211,7 @@ def run3(cfg: DictConfig):
 
     # Use Grad-CAM
     # Replace 'conv_final' with your model's final convolutional layer (e.g., model.backbone.layer4[-1].conv2 for ResNet)
-    grad_cam = LayerGradCam(model, model.mri_features)  # Adjust layer name
+    grad_cam = LayerGradCam(model, model.mri_features.model[0])  # Adjust layer name
     attributions = grad_cam.attribute(inputs=mri, target=pred_class)
 
     # Upsample Grad-CAM output to match MRI input size
