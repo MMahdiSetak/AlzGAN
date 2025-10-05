@@ -19,13 +19,14 @@ def run(cfg: DictConfig):
     num_workers = cfg.num_workers
     mri_dataset = cfg.mri_dataset
     mri = cfg.mri_data
+    pet = cfg.real_pet
 
     logger = TensorBoardLogger(save_dir="./log", name="classifier")
     # train_ram_loader = MRIRAMLoader(mri_dataset, 'train')
     # train_dataset = FastMRIDataset(*train_ram_loader.get_data())
     # train_dataset = MRIDataset(data_path=datapath, split='train')
     # train_dataset = MRIDataset(*train_ram_loader.get_data(), split='train', apply_augmentation=True)
-    train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='train', mri=mri,
+    train_dataset = MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='train', mri=mri, pet=pet,
                                   mri_cache=None, apply_augmentation=cfg.augmentation)
     class_weights = train_dataset.get_class_weights()
     print(f"Class weights: {class_weights}")
@@ -61,6 +62,7 @@ def run(cfg: DictConfig):
             mri=cfg.mri_model,
             vq_gan_checkpoint=cfg.vq_gan_checkpoint,
             ddpm_checkpoint=cfg.ddpm_checkpoint,
+            pet_vae_checkpoint=cfg.pet_vae_checkpoint,
             tabular=cfg.tabular,
             num_classes=cfg.num_classes,
         )

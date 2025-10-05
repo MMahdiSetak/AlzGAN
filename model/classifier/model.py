@@ -1,3 +1,5 @@
+from typing import Literal
+
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -14,8 +16,8 @@ from model.vq_vae_3d.vqvae import VQVAE
 class Classifier(pl.LightningModule):
     def __init__(self, class_weights, num_layers=4, base_channels=32, channel_multiplier=2,
                  cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, embed_dim=32, lr=1e-3, eta_min=1e-5,
-                 weight_decay=1e-2, mri=True, vq_gan_checkpoint=None, tabular=True, ddpm_checkpoint=None, max_epoch=300,
-                 num_classes=3):
+                 weight_decay=1e-2, mri=True, vq_gan_checkpoint=None, tabular=True, ddpm_checkpoint=None,
+                 pet_vae_checkpoint=None, max_epoch=300, num_classes=3):
         super().__init__()
         self.save_hyperparameters()
 
@@ -26,13 +28,14 @@ class Classifier(pl.LightningModule):
 
         self.classification_loss = nn.CrossEntropyLoss(weight=class_weights)
 
+        task: Literal["binary", "multiclass"] = "binary" if num_classes <= 2 else "multiclass"
         metrics = {
-            "accuracy": Accuracy(task="multiclass", num_classes=num_classes),
-            "precision": Precision(task="multiclass", num_classes=num_classes),
-            "recall": Recall(task="multiclass", num_classes=num_classes),
-            "f1_score": F1Score(task="multiclass", num_classes=num_classes),
-            "auc": AUROC(task="multiclass", num_classes=num_classes),
-            "specificity": Specificity(task="multiclass", num_classes=num_classes),
+            "accuracy": Accuracy(task=task, num_classes=num_classes),
+            "precision": Precision(task=task, num_classes=num_classes),
+            "recall": Recall(task=task, num_classes=num_classes),
+            "f1_score": F1Score(task=task, num_classes=num_classes),
+            "auc": AUROC(task=task, num_classes=num_classes),
+            "specificity": Specificity(task=task, num_classes=num_classes),
         }
         self.train_metrics = MetricCollection(metrics, postfix="/train")
         self.val_metrics = MetricCollection(metrics, postfix="/val")
@@ -61,6 +64,14 @@ class Classifier(pl.LightningModule):
                                             dropout_rate=0.4)
             fc_input += embed_dim
 
+        if pet_vae_checkpoint is not None:
+            pet_vae_model = VQVAE.load_from_checkpoint(checkpoint_path=pet_vae_checkpoint)
+            self.pet_encoder = pet_vae_model.encoder
+            self.real_pet_features = Simple3DCNN(input_size=(16, 16, 16), channels=[32, 16], fc=64,
+                                                 num_classes=embed_dim,
+                                                 dropout_rate=0.4)
+            fc_input += embed_dim
+
         if tabular:
             self.tabular_features = TabularMLP(input_dim=13, hidden_dims=[128, 64], output_dim=embed_dim,
                                                dropout=fc_dropout_rate)
@@ -78,7 +89,7 @@ class Classifier(pl.LightningModule):
             nn.Linear(fc_input, num_classes)
         )
 
-    def forward(self, mri, tabular=None):
+    def forward(self, mri=None, tabular=None, pet=None):
         feats = []
         if hasattr(self, "classifier"):
             main_feats = self.classifier(mri)
@@ -91,6 +102,10 @@ class Classifier(pl.LightningModule):
                 latent_pet = self.ddpm_model.sample(latent_mri.shape[0], latent_mri)
                 pet_feats = self.pet_features(latent_pet)
                 feats.append(pet_feats)
+        if hasattr(self, "real_pet_features"):
+            latent_real_pet = self.pet_encoder(pet)
+            real_pet_feats = self.real_pet_features(latent_real_pet)
+            feats.append(real_pet_feats)
         if hasattr(self, "tabular_features"):
             tabular_feats = self.tabular_features(tabular)
             feats.append(tabular_feats)
@@ -100,11 +115,12 @@ class Classifier(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         mri = batch['mri'] if 'mri' in batch.keys() else None
+        pet = batch['pet'] if 'pet' in batch.keys() else None
+        tabular = batch['tabular'] if 'tabular' in batch.keys() else None
         labels = batch['label']
-        tabular = batch['tabular']
 
         bs = len(labels)
-        outputs = self(mri, tabular)
+        outputs = self(mri, tabular, pet)
         loss = self.classification_loss(outputs, labels)
 
         lr = self.optimizers().param_groups[0]['lr']
@@ -116,24 +132,26 @@ class Classifier(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        mri = batch['mri']
+        mri = batch['mri'] if 'mri' in batch.keys() else None
+        pet = batch['pet'] if 'pet' in batch.keys() else None
+        tabular = batch['tabular'] if 'tabular' in batch.keys() else None
         labels = batch['label']
-        tabular = batch['tabular']
 
         bs = len(labels)
-        outputs = self(mri, tabular)
+        outputs = self(mri, tabular, pet)
         loss = self.classification_loss(outputs, labels)
         metrics = self.val_metrics(outputs, labels)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
         self.log('loss/val', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
-        mri = batch['mri']
+        mri = batch['mri'] if 'mri' in batch.keys() else None
+        pet = batch['pet'] if 'pet' in batch.keys() else None
+        tabular = batch['tabular'] if 'tabular' in batch.keys() else None
         labels = batch['label']
-        tabular = batch['tabular']
 
         bs = len(labels)
-        outputs = self(mri, tabular)
+        outputs = self(mri, tabular, pet)
         metrics = self.test_metrics(outputs, labels)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 

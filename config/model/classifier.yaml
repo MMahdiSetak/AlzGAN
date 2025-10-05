@@ -4,12 +4,14 @@ lr: 5e-5
 eta_min: 1e-5
 weight_decay: 1e-2
 #mri_dataset: 'dataset/mri_v5.2_Rigid.hdf5'
-mri_dataset: 'dataset/2c_mri_v5.2_Rigid.hdf5'
+#mri_dataset: 'dataset/2c_mri_v5.2_Rigid.hdf5'
 #mri_dataset: 'dataset/mci-6m_v5.2_Rigid.hdf5'
+mri_dataset: 'dataset/2c_mri_pet_v5.2_Rigid.hdf5'
 augmentation: True
 #tabular_dataset: 'dataset/img/'
 #tabular_dataset: 'dataset/img/2c_'
-tabular_dataset: 'dataset/img/mci_'
+#tabular_dataset: 'dataset/img/mci_'
+tabular_dataset: 'dataset/img/2c_mri_pet_'
 early_stop: 50
 max_epoch: 500
 
@@ -17,8 +19,10 @@ model_checkpoint: "log/classifier/version_76/checkpoints/classifier_best_model.c
 #model_checkpoint:
 vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt"
 #vq_gan_checkpoint:
-ddpm_checkpoint: "log/LcDDPM/version_11/checkpoints/epoch=999-step=17000.ckpt"
-#ddpm_checkpoint:
+#ddpm_checkpoint: "log/LcDDPM/version_11/checkpoints/epoch=999-step=17000.ckpt"
+ddpm_checkpoint:
+pet_vae_checkpoint: "log/vq_gan_pet/version_3/checkpoints/latest_checkpoint.ckpt"
+#pet_vae_checkpoint:
 mri_model: True
 mri_data: True
 tabular: True
