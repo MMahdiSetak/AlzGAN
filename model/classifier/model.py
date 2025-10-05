@@ -25,6 +25,7 @@ class Classifier(pl.LightningModule):
         self.eta_min = eta_min
         self.weight_decay = weight_decay
         self.epochs = max_epoch
+        self.num_classes = num_classes
 
         self.classification_loss = nn.CrossEntropyLoss(weight=class_weights)
 
@@ -124,6 +125,8 @@ class Classifier(pl.LightningModule):
         loss = self.classification_loss(outputs, labels)
 
         lr = self.optimizers().param_groups[0]['lr']
+        if self.num_classes == 2:
+            outputs = torch.nn.functional.softmax(outputs, dim=1)[:, 1]
         metrics = self.train_metrics(outputs, labels)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
         self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
