@@ -420,11 +420,11 @@ def recreate_mri_pet_dataset():
                         dataset_mri = old_h5f[f'mri_train'][match_train.index[0]]
                         dataset_pet = old_h5f[f'pet_train'][match_train.index[0]]
                     elif len(match_val) > 0:
-                        dataset_mri = old_h5f[f'mri_train'][match_train.index[0]]
-                        dataset_pet = old_h5f[f'pet_train'][match_train.index[0]]
+                        dataset_mri = old_h5f[f'mri_train'][match_val.index[0]]
+                        dataset_pet = old_h5f[f'pet_train'][match_val.index[0]]
                     elif len(match_test) > 0:
-                        dataset_mri = old_h5f[f'mri_train'][match_train.index[0]]
-                        dataset_pet = old_h5f[f'pet_train'][match_train.index[0]]
+                        dataset_mri = old_h5f[f'mri_train'][match_test.index[0]]
+                        dataset_pet = old_h5f[f'pet_train'][match_test.index[0]]
                     else:
                         print(
                             f"Warning: No unique match found for pair '{mri_path}' and '{pet_path}' in old datasets. Skipping.")
