@@ -42,7 +42,7 @@ def run(cfg: DictConfig):
     val_loader = DataLoader(
         # dataset=FastMRIDataset(*val_ram_loader.get_data()),
         # dataset=MRIDataset(*val_ram_loader.get_data(), split='val'),
-        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='val', mri=mri,
+        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, split='val', mri=mri, pet=pet,
                               mri_cache=None),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False, persistent_workers=False,
     )
@@ -103,7 +103,7 @@ def run(cfg: DictConfig):
     test_loader = DataLoader(
         # dataset=MRIDataset(data_path=datapath, split='test'),
         # dataset=MRIDataset(*test_ram_loader.get_data(), split='test'),
-        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, mri=mri, split='test'),
+        dataset=MergedDataset(csv_path=cfg.tabular_dataset, hdf5_path=mri_dataset, mri=mri, pet=pet, split='test'),
         batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
     )
     model_path = os.path.join(logger.log_dir, "checkpoints", "classifier_best_model.ckpt")
