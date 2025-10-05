@@ -143,6 +143,8 @@ class Classifier(pl.LightningModule):
         bs = len(labels)
         outputs = self(mri, tabular, pet)
         loss = self.classification_loss(outputs, labels)
+        if self.num_classes == 2:
+            outputs = torch.nn.functional.softmax(outputs, dim=1)[:, 1]
         metrics = self.val_metrics(outputs, labels)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=False, batch_size=bs, sync_dist=True)
         self.log('loss/val', loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
@@ -155,6 +157,8 @@ class Classifier(pl.LightningModule):
 
         bs = len(labels)
         outputs = self(mri, tabular, pet)
+        if self.num_classes == 2:
+            outputs = torch.nn.functional.softmax(outputs, dim=1)[:, 1]
         metrics = self.test_metrics(outputs, labels)
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, batch_size=bs, sync_dist=True)
 
