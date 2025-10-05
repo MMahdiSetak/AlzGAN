@@ -413,9 +413,9 @@ def recreate_mri_pet_dataset():
                     match_train = old_train_df[
                         (old_train_df['mri_path'] == mri_path) & (old_train_df['pet_path'] == pet_path)]
                     match_val = old_val_df[
-                        (old_train_df['mri_path'] == mri_path) & (old_train_df['pet_path'] == pet_path)]
+                        (old_val_df['mri_path'] == mri_path) & (old_val_df['pet_path'] == pet_path)]
                     match_test = old_test_df[
-                        (old_train_df['mri_path'] == mri_path) & (old_train_df['pet_path'] == pet_path)]
+                        (old_test_df['mri_path'] == mri_path) & (old_test_df['pet_path'] == pet_path)]
                     if len(match_train) > 0:
                         dataset_mri = old_h5f[f'mri_train'][match_train.index[0]]
                         dataset_pet = old_h5f[f'pet_train'][match_train.index[0]]
