@@ -1,3 +1,4 @@
+import h5py
 from torch.utils.data import DataLoader
 
 from model.dataloader import DDPMPairDataset, PairDataset, TempPairDataset
@@ -13,6 +14,13 @@ from torchmetrics.image import PeakSignalNoiseRatio
 # )
 # train_ds = DDPMPairDataset('../dataset/mri_pet_label_v3.hdf5', 'train')
 # train_ds = PairDataset('../dataset/mri_pet_label_v3.hdf5', 'train')
+with h5py.File('../dataset/mri_pet_v5.2_Rigid.hdf5', 'r') as f:
+    print(len(f[f'mri_train']))
+    print(len(f[f'mri_val']))
+    print(len(f[f'mri_test']))
+
+exit()
+
 train_ds = TempPairDataset('../dataset/mri_pet_label_v3.hdf5', 'train')
 psnr = PeakSignalNoiseRatio(data_range=1)
 for i in range(10):
