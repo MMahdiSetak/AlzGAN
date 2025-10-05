@@ -4,10 +4,10 @@
 
 if __name__ == '__main__':
     import torch
-    from test.visualize_model import run3
+    from data.image_tabular import run
 
     torch.set_float32_matmul_precision('medium')
-    run3()
+    run()
 
     # from data.image import create_mri_dataset, mri_data_path, create_mri_pet_label_dataset, pet_data_path
 
