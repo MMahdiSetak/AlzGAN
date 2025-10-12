@@ -56,16 +56,16 @@ def log_3d(img, title="", file_name='test'):
         cnt += 1
 
         # Save the figure to a file
-    plt.show()
-    # plt.savefig(f"{file_name}.png", transparent=True, bbox_inches='tight')
+    # plt.show()
+    plt.savefig(f"{file_name}.png", transparent=True, bbox_inches='tight')
     plt.close(fig)
 
 
 def log_video(img, name='pet_scan_video'):
     H, W, Z = img.shape
     writer = imageio.get_writer(f'{name}.mp4', fps=16, codec='libx264')
-    for h in range(H):
-        slice_ = img[h, :, :]
+    for z in range(Z):
+        slice_ = img[:, :, z]
         slice_ = np.rot90(slice_, k=1)
         writer.append_data(slice_)
     writer.close()
