@@ -56,8 +56,8 @@ def log_3d(img, title="", file_name='test'):
         cnt += 1
 
         # Save the figure to a file
-    # plt.show()
-    plt.savefig(f"{file_name}.png", transparent=True, bbox_inches='tight')
+    plt.show()
+    # plt.savefig(f"{file_name}.png", transparent=True, bbox_inches='tight')
     plt.close(fig)
 
 

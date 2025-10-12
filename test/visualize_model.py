@@ -4,8 +4,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from captum.attr import Occlusion, LayerGradCam
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive Agg backend
+# import matplotlib
+# matplotlib.use('Agg')  # Use non-interactive Agg backend
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
 import captum.attr as attr
@@ -203,7 +203,7 @@ def run3(cfg: DictConfig):
         checkpoint_path='log/classifier/version_75/checkpoints/classifier_best_model.ckpt')
     model.eval()  # Temp eval mode for stable predictions
 
-    sample = train_dataset[1]
+    sample = train_dataset[19]
     mri = sample['mri'].to(device='cuda').unsqueeze(0)
     with torch.no_grad():
         outputs = model(mri)
@@ -211,7 +211,7 @@ def run3(cfg: DictConfig):
 
     # Use Grad-CAM
     # Replace 'conv_final' with your model's final convolutional layer (e.g., model.backbone.layer4[-1].conv2 for ResNet)
-    grad_cam = LayerGradCam(model, model.mri_features.model[0])  # Adjust layer name
+    grad_cam = LayerGradCam(model, model.encoder.conv_blocks[1].res)  # Adjust layer name
     attributions = grad_cam.attribute(inputs=mri, target=pred_class)
 
     # Upsample Grad-CAM output to match MRI input size
@@ -231,6 +231,7 @@ def run3(cfg: DictConfig):
     mri_attr = (mri_attr - mri_attr.min()) / (mri_attr.max() - mri_attr.min() + 1e-8)  # Normalize with epsilon for stability
 
     slice_idx = mri.shape[2] // 2  # Middle slice
+    # slice_idx = 25
     original_slice = original_mri[:, :, slice_idx]  # [H, W]
     attr_slice = mri_attr[:, :, slice_idx]  # [H, W]
 
@@ -249,7 +250,7 @@ def run3(cfg: DictConfig):
     plt.close()
 
     H, W, Z = original_mri.shape
-    name = 'gradcam_test_0'
+    name = 'gradcam_test_1'
     writer = imageio.get_writer(f'{name}.mp4', fps=8, codec='libx264')
     for z in range(Z):
         original_slice = original_mri[:, :, z]

@@ -49,15 +49,15 @@ def pair_log(mri, pet, filename):
     pet_centers = [dim // 2 for dim in pet.shape]
     slices = [[mri[mri_centers[0], :, :], mri[:, mri_centers[1], :], mri[:, :, mri_centers[2]]],
               [pet[pet_centers[0], :, :], pet[:, pet_centers[1], :], pet[:, :, pet_centers[2]]]]
-    _, axes = plt.subplots(2, 3, figsize=(4, 3))
+    _, axes = plt.subplots(2, 3, figsize=(12, 9))
     for i in range(2):
         for ax, slice_img in zip(axes[i], slices[i]):
             ax.imshow(np.rot90(slice_img), cmap='gray')
             ax.axis('off')
             ax.set_facecolor('none')
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0.05, hspace=0.05)
-    plt.savefig(f"log/2d/pair/{filename}.png", transparent=True, bbox_inches='tight')
-    # plt.show()
+    # plt.savefig(f"log/2d/pair/{filename}.png", transparent=True, bbox_inches='tight')
+    plt.show()
     plt.close()
 
 

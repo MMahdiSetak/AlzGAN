@@ -14,6 +14,19 @@ def run():
     X_test = pd.read_csv('dataset/tabular/test_x.csv')
     y_test = pd.read_csv('dataset/tabular/test_y.csv')['DIAGNOSIS']
 
+    # Drop rows where diagnosis == 1 from all splits
+    # mask_train = y_train != 1
+    # X_train = X_train[mask_train].reset_index(drop=True)
+    # y_train = y_train[mask_train].reset_index(drop=True)
+    #
+    # mask_val = y_val != 1
+    # X_val = X_val[mask_val].reset_index(drop=True)
+    # y_val = y_val[mask_val].reset_index(drop=True)
+    #
+    # mask_test = y_test != 1
+    # X_test = X_test[mask_test].reset_index(drop=True)
+    # y_test = y_test[mask_test].reset_index(drop=True)
+
     # Define model with class_weight for imbalance
     rf = RandomForestClassifier(random_state=42, class_weight='balanced')
 
@@ -31,16 +44,18 @@ def run():
 
     # Evaluate on val (for sanity check)
     y_val_pred = best_rf.predict(X_val)
+    # target = ['CN (0)', 'MCI (1)', 'AD (2)']
+    target = ['CN (0)', 'AD (1)']
     print("\nValidation Accuracy:", accuracy_score(y_val, y_val_pred))
     print("Validation Classification Report:\n",
-          classification_report(y_val, y_val_pred, target_names=['CN (0)', 'MCI (1)', 'AD (2)']))
+          classification_report(y_val, y_val_pred, target_names=target))
     print("Validation Confusion Matrix:\n", confusion_matrix(y_val, y_val_pred))
 
     # Final eval on test
     y_test_pred = best_rf.predict(X_test)
     print("\nTest Accuracy:", accuracy_score(y_test, y_test_pred))
     print("Test Classification Report:\n",
-          classification_report(y_test, y_test_pred, target_names=['CN (0)', 'MCI (1)', 'AD (2)']))
+          classification_report(y_test, y_test_pred, target_names=target))
     print("Test Confusion Matrix:\n", confusion_matrix(y_test, y_test_pred))
 
     # Feature importances (for insight—e.g., MMSE/ADAS often top)

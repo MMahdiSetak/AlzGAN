@@ -218,11 +218,11 @@ class Encoder(nn.Module):
     def __init__(self, img_type, n_hiddens, image_channel=3, norm_type='group', num_groups=32):
         super().__init__()
         if img_type == 'mri':
-            kernels = [5, 4]
-            strides = [(5, 3, 5), (2, 4, 2)]
+            kernels = [5, 4]  # [5, 4] [5, 3]
+            strides = [(5, 3, 5), (2, 4, 2)]  # [(5, 3, 5), (2, 4, 2)] [(5, 2, 5), (1, 3, 1)]
         elif img_type == 'pet':
-            kernels = [4, 2]
-            strides = [(4, 4, 3), (2, 2, 2)]
+            kernels = [4, 2]  # [4, 2] [3, 3]
+            strides = [(4, 4, 3), (2, 2, 2)]  # [(4, 4, 3), (2, 2, 2)] [(2, 2, 3), (2, 2, 1)]
         else:
             kernels = [3, 3]
             strides = [2, 2]
@@ -259,9 +259,9 @@ class Decoder(nn.Module):
     def __init__(self, type, n_hiddens, image_channel, norm_type='group', num_groups=32):
         super().__init__()
         if type == 'mri':
-            kernels = [(2, 4, 2), (5, 3, 5)]
+            kernels = [(2, 4, 2), (5, 3, 5)]  # [(2, 4, 2), (5, 3, 5)] [(1, 3, 1), (5, 2, 5)]
         elif type == 'pet':
-            kernels = [(2, 2, 2), (4, 4, 3)]
+            kernels = [(2, 2, 2), (4, 4, 3)] # [(2, 2, 2), (4, 4, 3)] [(2, 2, 1), (2, 2, 3)]
         else:
             kernels = [2, 2]
 

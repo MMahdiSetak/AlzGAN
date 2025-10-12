@@ -565,6 +565,6 @@ def run():
     # merge_mri_csv_pet('dataset/MRI2/ADNI/', 'dataset/PET/ADNI/')
     # create_mri_dataset()
     # create_mri_pet_dataset()
-    # recreate_mri_dataset()
-    recreate_mri_pet_dataset()
+    recreate_mri_dataset()
+    # recreate_mri_pet_dataset()
     # create_mci_dataset()
