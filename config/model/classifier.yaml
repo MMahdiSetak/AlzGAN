@@ -17,12 +17,19 @@ max_epoch: 500
 
 #model_checkpoint: "log/classifier/version_76/checkpoints/classifier_best_model.ckpt"
 model_checkpoint:
+
 #vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt"
-vq_gan_checkpoint:
+vq_gan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt"
+#vq_gan_checkpoint:
+
 #ddpm_checkpoint: "log/LcDDPM/version_11/checkpoints/epoch=999-step=17000.ckpt"
 ddpm_checkpoint:
-pet_vae_checkpoint: "log/vq_gan_pet/version_3/checkpoints/latest_checkpoint.ckpt"
-#pet_vae_checkpoint:
+lgan_checkpoint: "log/Lgan/version_1/checkpoints/LGAN_best_model.ckpt"
+
+#pet_vae_checkpoint: "log/vq_gan_pet/version_3/checkpoints/latest_checkpoint.ckpt"
+#pet_vae_checkpoint: "log/vq_gan_pet/version_3/checkpoints/latest_checkpoint.ckpt"
+pet_vae_checkpoint:
+
 mri_model: True
 mri_data: True
 tabular: True

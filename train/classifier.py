@@ -63,6 +63,7 @@ def run(cfg: DictConfig):
             vq_gan_checkpoint=cfg.vq_gan_checkpoint,
             ddpm_checkpoint=cfg.ddpm_checkpoint,
             pet_vae_checkpoint=cfg.pet_vae_checkpoint,
+            lgan_checkpoint=cfg.lgan_checkpoint,
             tabular=cfg.tabular,
             num_classes=cfg.num_classes,
         )

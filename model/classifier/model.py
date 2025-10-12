@@ -8,6 +8,7 @@ from torchmetrics import MetricCollection
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score, AUROC, Specificity
 
 from model.LcDDPM.model import LcDDPM
+from model.Lgan.model import LGAN
 from model.classifier.module import Simple3DCNN, Parametric3DCNN
 from model.classifier.tabular import TabularMLP
 from model.vq_vae_3d.vqvae import VQVAE
@@ -17,7 +18,7 @@ class Classifier(pl.LightningModule):
     def __init__(self, class_weights, num_layers=4, base_channels=32, channel_multiplier=2,
                  cnn_dropout_rate=0.3, fc_dropout_rate=0.6, fc_hidden=128, embed_dim=32, lr=1e-3, eta_min=1e-5,
                  weight_decay=1e-2, mri=True, vq_gan_checkpoint=None, tabular=True, ddpm_checkpoint=None,
-                 pet_vae_checkpoint=None, max_epoch=300, num_classes=3):
+                 pet_vae_checkpoint=None, lgan_checkpoint=None, max_epoch=300, num_classes=3):
         super().__init__()
         self.save_hyperparameters()
 
@@ -83,6 +84,14 @@ class Classifier(pl.LightningModule):
             self.pet_features = Simple3DCNN(input_size=(16, 16, 16), channels=[32, 16], fc=64, num_classes=embed_dim,
                                             dropout_rate=0.4)
             fc_input += embed_dim
+            self.gen_mode = "ddpm"
+        elif lgan_checkpoint is not None:
+            ddpm_model = LGAN.load_from_checkpoint(checkpoint_path=lgan_checkpoint)
+            self.lgan_model = ddpm_model.model
+            self.pet_features = Simple3DCNN(input_size=(16, 16, 16), channels=[32, 16], fc=64, num_classes=embed_dim,
+                                            dropout_rate=0.4)
+            fc_input += embed_dim
+            self.gen_mode = "lgan"
 
         self.fc = nn.Sequential(
             nn.ReLU(inplace=True),
@@ -100,7 +109,11 @@ class Classifier(pl.LightningModule):
             mri_feats = self.mri_features(latent_mri)
             feats.append(mri_feats)
             if hasattr(self, "pet_features"):
-                latent_pet = self.ddpm_model.sample(latent_mri.shape[0], latent_mri)
+                if self.gen_mode == "ddpm":
+                    latent_pet = self.ddpm_model.sample(latent_mri.shape[0], latent_mri)
+                else:
+                    zero_step = torch.zeros(latent_mri.shape[0]).to(self.device)
+                    latent_pet = self.lgan_model(latent_mri, zero_step)
                 pet_feats = self.pet_features(latent_pet)
                 feats.append(pet_feats)
         if hasattr(self, "real_pet_features"):
