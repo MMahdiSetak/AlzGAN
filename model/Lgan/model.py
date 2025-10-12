@@ -58,6 +58,8 @@ class LGAN(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         mri, real_pet = batch
+        mri /= 255
+        real_pet /= 255
         fake_pet = self(mri)
         loss = F.mse_loss(real_pet, fake_pet)
         lr = self.optimizers().param_groups[0]['lr']
@@ -67,6 +69,8 @@ class LGAN(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         mri, real_pet = batch
+        mri /= 255
+        real_pet /= 255
         bs = real_pet.size(0)
         fake_pet = self(mri).detach()
         loss = F.mse_loss(real_pet.detach(), fake_pet)
@@ -78,6 +82,8 @@ class LGAN(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         mri, real_pet = batch
+        mri /= 255
+        real_pet /= 255
         bs = real_pet.size(0)
         fake_pet = self(mri).detach()
         loss = F.mse_loss(real_pet.detach(), fake_pet)
