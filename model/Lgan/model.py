@@ -51,7 +51,8 @@ class LGAN(pl.LightningModule):
 
     def forward(self, x):
         x = self.mri_encoder(x)
-        x = self.model(x)
+        zero_step = torch.zeros(x.shape[0]).to(self.device)
+        x = self.model(x, zero_step)
         x = self.pet_decoder(x)
         return x
 

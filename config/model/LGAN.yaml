@@ -8,11 +8,11 @@ max_epochs: 1000
 mri_vqgan_checkpoint: "log/vq_gan_mri/version_30/checkpoints/latest_checkpoint.ckpt"
 pet_vqgan_checkpoint: "log/vq_gan_pet/version_3/checkpoints/latest_checkpoint.ckpt"
 
-input_size: 32
-depth_size: 32
-channel_mult: "1,2,4"
-num_channels: 256
-num_res_blocks: 1
+input_size: 16
+depth_size: 16
+channel_mult: "1,2"
+num_channels: 128
+num_res_blocks: 2
 attention_resolutions:
 num_heads: 1
 in_channels: 32
